@@ -534,7 +534,9 @@ class MainWindow(QtWidgets.QMainWindow):
         name = self._current_path.name if self._current_path else "No file"
         self._status_file.setText(name)
         total = self._series.frame_count if self._series else 0
-        self._status_frame.setText(f"Frame {self._frame_index + 1}/{total}" if total else "Frame 0/0")
+        frame_text = f"Frame {self._frame_index + 1}/{total}" if total else "Frame 0/0"
+        self._status_frame.setText(frame_text)
+        self._frame_label.setText(frame_text)
         self._status_fps.setText(f"FPS {self._fps:.2f}")
         stats = self._frame_cache.stats()
         self._status_cache.setText(f"Cache {stats.size}/{stats.capacity}")
@@ -712,7 +714,6 @@ class MainWindow(QtWidgets.QMainWindow):
     def _update_slider(self) -> None:
         if not self._series or self._series.frame_count == 0:
             self._slider.setMaximum(0)
-            self._frame_label.setText("Frame 0/0")
             return
         total = self._series.frame_count
         self._slider.blockSignals(True)
@@ -720,7 +721,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self._slider.setMaximum(max(0, total - 1))
         self._slider.setValue(self._frame_index)
         self._slider.blockSignals(False)
-        self._frame_label.setText(f"Frame {self._frame_index + 1}/{total}")
 
     def _render_frame(self) -> None:
         if not self._series or self._series.frame_count == 0:
