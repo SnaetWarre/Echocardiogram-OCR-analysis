@@ -132,8 +132,15 @@ class PipelineManager:
 
 
 def build_default_manager(config: Optional[PipelineConfig] = None) -> PipelineManager:
+    from app.pipeline.echo_ocr_pipeline import EchoOcrPipeline
+
     manager = PipelineManager()
     manager.register(NoopPipeline(config=config))
     manager.register(DummyEchoPipeline(config=config))
+    try:
+        manager.register(EchoOcrPipeline(config=config))
+    except Exception:
+        # Optional OCR dependencies can be missing in some environments.
+        pass
     manager.set_active("dummy-echo")
     return manager

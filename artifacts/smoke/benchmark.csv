@@ -1,0 +1,2 @@
+dicom_path,frame_index,engine,latency_ms,ocr_confidence,parsed_measurements,text_preview
+artifacts/smoke/sample_echo.dcm,0,tesseract,89.58986800007551,0.0,0,

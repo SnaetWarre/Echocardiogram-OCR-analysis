@@ -44,6 +44,7 @@ from app.ui.main_window_view import (
     _set_loading_state,
     _set_sidebar_collapsed,
     _set_tree_root,
+    _on_tree_context_menu,
     _slider_changed,
     _tick,
     _toggle_filter,
@@ -72,17 +73,19 @@ class MainWindow(QtWidgets.QMainWindow):
         self._playing = False
         self._sidebar_collapsed = False
         self._lazy_decode_enabled = os.getenv("DICOM_LAZY_DECODE", "1") == "1"
-        self._load_on_main_thread = os.getenv("DICOM_LOAD_MAIN_THREAD", "0") == "1"
+        # Stability-first default: threaded loading can be re-enabled explicitly.
+        self._load_on_main_thread = os.getenv("DICOM_LOAD_MAIN_THREAD", "1") == "1"
         self._prefetch_enabled = os.getenv("DICOM_PREFETCH", "0") == "1"
         self._prefetch_radius = int(os.getenv("DICOM_PREFETCH_RADIUS", "0"))
         self._prefetch_threads = int(os.getenv("DICOM_PREFETCH_THREADS", "1"))
+        self._ai_enabled = os.getenv("DICOM_AI_ENABLED", "0") == "1"
 
         self._frame_cache = LruFrameCache[Tuple[str, int]](capacity=256)
         self._prefetch_pool = QtCore.QThreadPool.globalInstance()
         if self._prefetch_threads > 0:
             self._prefetch_pool.setMaxThreadCount(self._prefetch_threads)
 
-        self._pipeline_manager = build_default_manager()
+        self._pipeline_manager = build_default_manager() if self._ai_enabled else None
         self._last_ai_result: Optional[AiResult] = None
 
         self._loader_thread: Optional[QtCore.QThread] = None
@@ -143,6 +146,7 @@ MainWindow._open_folder = _open_folder
 MainWindow._open_file = _open_file
 MainWindow._set_tree_root = _set_tree_root
 MainWindow._tree_double_clicked = _tree_double_clicked
+MainWindow._on_tree_context_menu = _on_tree_context_menu
 MainWindow._toggle_sidebar = _toggle_sidebar
 MainWindow._set_sidebar_collapsed = _set_sidebar_collapsed
 MainWindow._set_loading_state = _set_loading_state

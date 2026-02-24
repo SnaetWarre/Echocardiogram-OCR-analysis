@@ -53,16 +53,28 @@ def _toggle_filter(self: "MainWindow") -> None:
 
 
 def _open_folder(self: "MainWindow") -> None:
-    folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Select Folder", str(Path.cwd()))
+    dialog = QtWidgets.QFileDialog(self, "Select Folder", str(Path.cwd()))
+    dialog.setFileMode(QtWidgets.QFileDialog.FileMode.Directory)
+    dialog.setOption(QtWidgets.QFileDialog.Option.ShowDirsOnly, True)
+    dialog.setOption(QtWidgets.QFileDialog.Option.DontUseNativeDialog, True)
+    if dialog.exec() != int(QtWidgets.QDialog.DialogCode.Accepted):
+        return
+    selected = dialog.selectedFiles()
+    folder = selected[0] if selected else ""
     if not folder:
         return
     self._set_tree_root(Path(folder))
 
 
 def _open_file(self: "MainWindow") -> None:
-    file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
-        self, "Select DICOM File", str(Path.cwd()), "DICOM Files (*.dcm);;All Files (*.*)"
-    )
+    dialog = QtWidgets.QFileDialog(self, "Select DICOM File", str(Path.cwd()))
+    dialog.setFileMode(QtWidgets.QFileDialog.FileMode.ExistingFile)
+    dialog.setNameFilter("DICOM Files (*.dcm);;All Files (*.*)")
+    dialog.setOption(QtWidgets.QFileDialog.Option.DontUseNativeDialog, True)
+    if dialog.exec() != int(QtWidgets.QDialog.DialogCode.Accepted):
+        return
+    selected = dialog.selectedFiles()
+    file_path = selected[0] if selected else ""
     if not file_path:
         return
     self._load_dicom(Path(file_path))
@@ -81,6 +93,41 @@ def _tree_double_clicked(self: "MainWindow", index: QtCore.QModelIndex) -> None:
         self._set_tree_root(path)
         return
     self._load_dicom(path)
+
+
+def _tree_path_from_proxy_index(
+    self: "MainWindow", proxy_index: QtCore.QModelIndex
+) -> Optional[Path]:
+    if not proxy_index.isValid():
+        return None
+    source_index = self._proxy_model.mapToSource(proxy_index)
+    if not source_index.isValid():
+        return None
+    raw = self._fs_model.filePath(source_index)
+    if not raw:
+        return None
+    return Path(raw)
+
+
+def _on_tree_context_menu(self: "MainWindow", pos: QtCore.QPoint) -> None:
+    index = self._tree.indexAt(pos)
+    if not index.isValid():
+        return
+    path = self._tree_path_from_proxy_index(index)
+    if path is None:
+        return
+
+    menu = QtWidgets.QMenu(self)
+    action_copy_name = menu.addAction("Copy Filename")
+    action_copy_path = menu.addAction("Copy Full Path")
+
+    selected = menu.exec(self._tree.viewport().mapToGlobal(pos))
+    if selected is action_copy_name:
+        QtWidgets.QApplication.clipboard().setText(path.name)
+        self.statusBar().showMessage("Filename copied.", 2000)
+    elif selected is action_copy_path:
+        QtWidgets.QApplication.clipboard().setText(str(path))
+        self.statusBar().showMessage("Full path copied.", 2000)
 
 
 def _toggle_sidebar(self: "MainWindow") -> None:
@@ -145,11 +192,13 @@ def _load_dicom(self: "MainWindow", path: Path) -> None:
         self.statusBar().showMessage(f"File not found: {path}", 3000)
         return
 
+    self._log_event(f"Load request: {path}")
     if self._load_on_main_thread:
         self._set_loading_state(True, f"Loading {path.name}...")
         try:
             series = load_dicom_series(path, load_pixels=not self._lazy_decode_enabled)
         except DicomLoadError as exc:
+            self._log_event(f"Load failed (main thread): {path} :: {exc}")
             if not self._ui_batch_running:
                 self._set_loading_state(False)
                 self._show_error("Load Error", str(exc))
@@ -158,8 +207,19 @@ def _load_dicom(self: "MainWindow", path: Path) -> None:
             self._ui_batch_index += 1
             QtCore.QTimer.singleShot(0, self._ui_batch_next)
             return
+        except Exception as exc:
+            self._log_event(f"Load failed (unexpected): {path} :: {exc}")
+            if not self._ui_batch_running:
+                self._set_loading_state(False)
+                self._show_error("Load Error", f"Unexpected error while loading file: {exc}")
+                return
+            self._log_ui_batch_result(False, str(exc))
+            self._ui_batch_index += 1
+            QtCore.QTimer.singleShot(0, self._ui_batch_next)
+            return
         if not self._ui_batch_running:
             self._set_loading_state(False)
+        self._log_event(f"Load finished (main thread): {path}")
         self._apply_loaded_series(series)
         return
 
@@ -189,6 +249,7 @@ def _on_load_finished(
 
     if error or series is None:
         message = error or "Failed to load DICOM."
+        self._log_event(f"Load failed (worker): {message}")
         if self._ui_batch_running:
             self._log_ui_batch_result(False, message)
             self._ui_batch_index += 1
@@ -197,6 +258,7 @@ def _on_load_finished(
         self._show_error("Load Error", message)
         return
 
+    self._log_event(f"Load finished (worker): {series.metadata.path}")
     self._apply_loaded_series(series)
 
 

@@ -13,6 +13,9 @@ if TYPE_CHECKING:
 
 
 def _run_ai(self: "MainWindow") -> None:
+    if not getattr(self, "_ai_enabled", False) or self._pipeline_manager is None:
+        self.statusBar().showMessage("AI is disabled for this session.", 2500)
+        return
     if not self._current_path:
         self.statusBar().showMessage("No DICOM loaded.", 2000)
         return

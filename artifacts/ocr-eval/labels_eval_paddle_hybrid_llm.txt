@@ -1,0 +1,100 @@
+Echo OCR Labels Evaluation
+==========================
+Cases total: 31
+Cases evaluated: 31
+Missing files: 0
+Expected total measurements: 78
+Predicted total measurements: 236
+True positives: 28
+Precision: 0.1186
+Recall: 0.359
+
+Per-file details:
+- /home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0011.dcm | status=ok expected=1 predicted=5 hits=0
+  misses: ao diam|3.2|cm
+  extras: 1a0 diam|3.2|, aa 7's|2|, cae fo|2|, diam|3.2|cm, oly|3|
+- /home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0012.dcm | status=ok expected=1 predicted=1 hits=0
+  misses: lvot diam|2.0|cm
+  extras: lvot diam|2.0|
+- /home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0013.dcm | status=ok expected=1 predicted=1 hits=0
+  misses: la diam|4.0|cm
+  extras: 1ladiam|4.0|cm
+- /home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0014.dcm | status=ok expected=1 predicted=2 hits=0
+  misses: ao asc|3.2|cm
+  extras: my|4|, wene a|4|
+- /home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0016.dcm | status=ok expected=3 predicted=8 hits=0
+  misses: ivsd|0.9|cm, lvidd|5.4|cm, lvpwd|1.0|cm
+  extras: 0.9m lvidd|5.4|m, 1.0cm ew|4|, 5.4m lypwd|1.0|cm, a a|10|, ge|4|, iwvsd|0.9|m, lvidd|5.4|m, lypwd|1.0|cm
+- /home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0017.dcm | status=ok expected=3 predicted=6 hits=1
+  misses: %fs|34|%, lvids|3.6|cm
+  extras: 3.6m ef(teich)|62|%, ag|10|, lvids|3.6|m, ne eee|10|, nid 1lvids|3.6|m
+- /home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0021.dcm | status=ok expected=2 predicted=9 hits=0
+  misses: tr maxpg|14|mmhg, tr vmax|1.9|m/s
+  extras: a pe|15|, aie|1|, mis aa|14|mmhg, mmhg sys|1|, pg|14|mmhg, sys|1|, tr ¥max|1.9|m/s, trmaxpg|14|mmhg, trmax|1.9|
+- /home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0024.dcm | status=ok expected=2 predicted=6 hits=0
+  misses: pv maxpg|3|mmhg, pv vmax|0.87|m/s
+  extras: j|0.87|m/s, maxpg|3|mmhg, mis pv|3|mmhg, pv max pg|3|mmhg, pvvmax|0.87|, pvvmax|0.87|m/s
+- /home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0028.dcm | status=ok expected=2 predicted=5 hits=2
+  extras: maxpg|4|mmhg, mis pv|4|mmhg, pv vmax|0.96|
+- /home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0034.dcm | status=ok expected=2 predicted=5 hits=1
+  misses: tr maxpg|21|mmhg
+  extras: j ie|2.3|m/s, mis trmaxpg|21|mmhg, trmaxpg|21|mmhg, vmax|2.3|
+- /home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0035.dcm | status=ok expected=2 predicted=5 hits=1
+  misses: tr maxpg|14|mmhg
+  extras: mis trmaxpg|14|mmhg, trmaxpg|14|mmhg, tr|1.9|, vmax|1.9|
+- /home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0044.dcm | status=ok expected=2 predicted=5 hits=1
+  misses: ra length|5.9|cm
+  extras: cm|6.6|cm, length|5.9|cm, length|6.6|cm, »>ra length|5.9|cm
+- /home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0046.dcm | status=ok expected=5 predicted=21 hits=4
+  misses: mv e vel|0.7|m/s
+  extras: a mv|183|ms, dec slope|4|m/s2, dect|183|ms, d|4|, e mv|4|m/s2, ee|4|%, m/s2|103|, mis ss|2|, mis|5|, mv a|0.6|m/s, mv e/a|1.2|, mv e|0.7|m/s, mv vel|0.7|m/s, ratio|1.2|, swe w|1|, vel|0.6|m/s, vel|0.7|m/s
+- /home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0050.dcm | status=ok expected=4 predicted=13 hits=2
+  misses: p vein a|0.3|m/s, p vein s|0.5|m/s
+  extras: 1p veins|0.5|m/s, cs 3p|0.3|m/s, d|0.4|m/s, mis p|1.2|, mis|2|, p vein|0.4|m/s, ratio|1.2|, vein s/d|1.2|, veina|0.3|, veina|0.3|m/s, veins|0.5|m/s
+- /home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0051.dcm | status=ok expected=3 predicted=13 hits=1
+  misses: laas a4c|19.5|cm2, laesv a-l a4c|56|ml
+  extras: a vv|10.6|, a4c|19.5|cm2, a4c|56|ml, a|3|, cm laas|19.5|cm2, j fe|1|, laas|19.5|cm2, laesv a-l|56|ml, laesv|56|ml, lals|5.8|cm, ls.|7|, ml|10.6|
+- /home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0053.dcm | status=ok expected=2 predicted=6 hits=0
+  misses: lvedv mod a4c|105.47|ml, lvld a4c|7.18|cm
+  extras: a4c|105.47|, j|7.18|, lvedv mod|105.47|, lvedv|105.47|, lvld a4c|7.18|, lvld|7.18|
+- /home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0054.dcm | status=ok expected=4 predicted=14 hits=1
+  misses: lvef mod a4c|63.66|%, lvesv mod a4c|38.32|ml, sv mod a4c|67.14|ml
+  extras: a4c|138.32|ml, a4c|63.66|%, adc|67.14|ml, cm yy|138.32|ml, lvef mod|63.66|%, lvef|63.66|%, lvesv mod|138.32|ml, lvesv|138.32|ml, ml ai|7|, ml|1|, o la|63.66|%, sv mod|67.14|ml, sv|67.14|ml
+- /home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0055.dcm | status=ok expected=1 predicted=0 hits=0
+  misses: e' lat|0.09|m/s
+- /home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0056.dcm | status=ok expected=1 predicted=0 hits=0
+  misses: e' sept|0.08|m/s
+- /home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0061.dcm | status=ok expected=3 predicted=11 hits=2
+  misses: lvot vmax|1.1|m/s
+  extras: 1lvot vmax|1.1|m/s, a lvot|19.9|cm, a lvot|5|mmhg, maxpg|5|mmhg, mis|5|, mmhg pe|19.9|cm, oe 1lvot|1.1|m/s, vmax|1.1|m/s, vti 19.9cm|10|
+- /home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0062.dcm | status=ok expected=7 predicted=24 hits=2
+  misses: av maxpg|6|mmhg, av meanpg|4|mmhg, av vmean|1.0|m/s, ava (vti)|2.3|cm2, ava vmax|2.8|cm2
+  extras: a e|28|cm, ae|1|, at fa|4|mmhg, av ¥vmean|1.0|m/s, ava(vti)|2.3|cm2, avavmax|2.8|cm2, avmaxpg|6|mmhg, avmeanpg|4|mmhg, avpgmean|4|mmhg, avpg|6|mmhg, avvmax|1.3|m/s, avvmean|1.0|m/s, avvti|28|cm, cm2 he|1|, cm2|5|, fe he|4|, laral|6|mmhg, mis ee|6|mmhg, mis|108|, mmhg 1b|4|mmhg, oey|4|, sate,|2.8|cm2
+- /home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0064.dcm | status=ok expected=5 predicted=15 hits=3
+  misses: av maxpg|5|mmhg, av meanpg|3|mmhg
+  extras: <a sa|28|cm, av vmax|1.1|, av vmean|0.9|, avmaxpg|5|mmhg, avmeanpg|3|mmhg, eee a|3|mmhg, li|3|, mis iy|3|, mis|0.9|m/s, mmhg|1007|, vti|28|cm, z av|28|cm
+- /home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0066.dcm | status=ok expected=1 predicted=0 hits=0
+  misses: rvidd|3.2|cm
+- /home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0069.dcm | status=ok expected=2 predicted=5 hits=1
+  misses: tr maxpg|17|mmhg
+  extras: j ie|2.1|m/s, mis trmaxpg|17|mmhg, tr vmax|2.1|, trmaxpg|17|mmhg
+- /home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0071.dcm | status=ok expected=5 predicted=13 hits=4
+  misses: laesv index (a-l)|31.99|ml/m2
+  extras: a-l a2c|84.0|ml, a2c|24|cm2, cm laas|24|cm2, cm2 laesv|84.0|ml, cs laesv(a-l)|70.05|ml, index (a-l)|31.99|ml/m2, laesv index(a-l)|31.99|ml/m2, ml laesv|31.99|ml/m2, ml/m2|1|
+- /home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0074.dcm | status=ok expected=2 predicted=6 hits=0
+  misses: lvedv mod a2c|93.58|ml, lvld a3c|7.76|cm
+  extras: cr lvedv|93.58|, f|7.76|, lvedv|93.58|, lvld a2c|7.76|, lvld|7.76|, mod a2c|93.58|
+- /home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0075.dcm | status=ok expected=7 predicted=22 hits=2
+  misses: lvedv mod bp|102|ml, lvef mod a2c|62.09|%, lvesv mod a2c|35.48|ml, lvesv mod bp|37|ml, sv mod a2c|58.10|ml
+  extras: a2cc|62.09|%, a2c|58.10|ml, bp|102|ml, bp|37|ml, ge lvesv|35.48|ml, lvedv mod|102|ml, lvedv|64|%, lvef mod|62.09|%, lvef|62.09|%, lvesv mod|37|ml, lvesv|35.48|ml, lvesv|37|ml, lvesv|58.10|ml, lvls|6.07|cm, ml le|1|, ml ‘oy|62.09|%, mod a2c|35.48|ml, o a|64|%, oy a|1|, sv mod|58.10|ml
+- /home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0090.dcm | status=ok expected=1 predicted=0 hits=0
+  misses: ivc|2.2|cm
+- /home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0092.dcm | status=ok expected=1 predicted=3 hits=0
+  misses: ao desc diam|2.6|cm
+  extras: ao desc|2.6|cm, desc diam|2.6|cm, diam|2.6|cm
+- /home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0096.dcm | status=ok expected=1 predicted=2 hits=0
+  misses: ao arch diam|2.8|cm
+  extras: arch diam|2.8|cm, co a)|2.8|cm
+- /home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0099.dcm | status=ok expected=1 predicted=10 hits=0
+  misses: l|2.37|cm
+  extras: bl we|51|, d|17.0|, ey es|4|, fps:|51|, fps|51|, ies d:|17.0|, ors eatin|51|, s ses|7|, s|4|, ws|7|

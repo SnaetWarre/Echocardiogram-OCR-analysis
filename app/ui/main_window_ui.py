@@ -60,10 +60,18 @@ def _build_ui(self: "MainWindow") -> None:
     self._tree.setHeaderHidden(True)
     self._tree.setAlternatingRowColors(True)
     self._tree.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
+    self._tree.setTextElideMode(QtCore.Qt.TextElideMode.ElideNone)
+    self._tree.setHorizontalScrollMode(QtWidgets.QAbstractItemView.ScrollMode.ScrollPerPixel)
+    self._tree.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+    self._tree.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
+    self._tree.customContextMenuRequested.connect(self._on_tree_context_menu)
     self._tree.doubleClicked.connect(self._tree_double_clicked)
     self._tree.setModel(self._proxy_model)
     self._tree.setRootIndex(
         self._proxy_model.mapFromSource(self._fs_model.index(str(Path.cwd())))
+    )
+    self._tree.header().setSectionResizeMode(
+        0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents
     )
     left_layout.addWidget(self._tree)
 
@@ -201,7 +209,8 @@ def _build_ui(self: "MainWindow") -> None:
     ai_buttons.addWidget(self._btn_export_txt)
     self._tab_ai_layout.addLayout(ai_buttons)
 
-    self._tabs.addTab(self._tab_ai, "AI Results")
+    if getattr(self, "_ai_enabled", False):
+        self._tabs.addTab(self._tab_ai, "AI Results")
     right_layout.addWidget(self._tabs)
 
     splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
@@ -260,7 +269,8 @@ def _build_toolbar(self: "MainWindow") -> None:
     act_folder.triggered.connect(self._open_folder)
     act_toggle.triggered.connect(self._toggle_sidebar)
     act_filter.triggered.connect(self._toggle_filter)
-    act_run_ai.triggered.connect(self._run_ai)
+    if getattr(self, "_ai_enabled", False):
+        act_run_ai.triggered.connect(self._run_ai)
     act_batch_test.triggered.connect(self._start_batch_test)
     act_batch_run.triggered.connect(self._start_ui_batch_run)
     act_zoom_in.triggered.connect(lambda: self._viewer.zoom(1.2))
@@ -279,4 +289,5 @@ def _build_toolbar(self: "MainWindow") -> None:
     toolbar.addAction(act_zoom_out)
     toolbar.addAction(act_zoom_fit)
     toolbar.addSeparator()
-    toolbar.addAction(act_run_ai)
+    if getattr(self, "_ai_enabled", False):
+        toolbar.addAction(act_run_ai)
