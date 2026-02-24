@@ -57,14 +57,14 @@ class ImageViewer(QtWidgets.QGraphicsView):
         self._center_empty_text()
 
         self.setBackgroundBrush(QtGui.QColor("#FAFAFA"))
-        self.setFrameShape(QtWidgets.QFrame.NoFrame)
+        self.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
         self.setRenderHints(
-            QtGui.QPainter.Antialiasing
-            | QtGui.QPainter.SmoothPixmapTransform
-            | QtGui.QPainter.TextAntialiasing
+            QtGui.QPainter.RenderHint.Antialiasing
+            | QtGui.QPainter.RenderHint.SmoothPixmapTransform
+            | QtGui.QPainter.RenderHint.TextAntialiasing
         )
 
-        self.setDragMode(QtWidgets.QGraphicsView.NoDrag)
+        self.setDragMode(QtWidgets.QGraphicsView.DragMode.NoDrag)
         self._panning = False
         self._last_mouse_pos: Optional[QtCore.QPoint] = None
 
@@ -135,7 +135,7 @@ class ImageViewer(QtWidgets.QGraphicsView):
             self.setViewport(QtOpenGLWidgets.QOpenGLWidget())
         else:
             self.setViewport(QtWidgets.QWidget())
-        self.setViewportUpdateMode(QtWidgets.QGraphicsView.FullViewportUpdate)
+        self.setViewportUpdateMode(QtWidgets.QGraphicsView.ViewportUpdateMode.FullViewportUpdate)
 
     def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
         super().resizeEvent(event)
@@ -150,10 +150,10 @@ class ImageViewer(QtWidgets.QGraphicsView):
         self._set_zoom(self._zoom * factor, anchor=event.position().toPoint())
 
     def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
-        if event.button() == QtCore.Qt.LeftButton:
+        if event.button() == QtCore.Qt.MouseButton.LeftButton:
             self._panning = True
             self._last_mouse_pos = event.pos()
-            self.setCursor(QtCore.Qt.ClosedHandCursor)
+            self.setCursor(QtCore.Qt.CursorShape.ClosedHandCursor)
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event: QtGui.QMouseEvent) -> None:
@@ -165,16 +165,19 @@ class ImageViewer(QtWidgets.QGraphicsView):
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event: QtGui.QMouseEvent) -> None:
-        if event.button() == QtCore.Qt.LeftButton:
+        if event.button() == QtCore.Qt.MouseButton.LeftButton:
             self._panning = False
             self._last_mouse_pos = None
-            self.setCursor(QtCore.Qt.ArrowCursor)
+            self.setCursor(QtCore.Qt.CursorShape.ArrowCursor)
         super().mouseReleaseEvent(event)
 
     def _fit_image(self) -> None:
         if self._pixmap_item.pixmap().isNull():
             return
-        self.fitInView(self._pixmap_item.boundingRect(), QtCore.Qt.KeepAspectRatio)
+        self.fitInView(
+            self._pixmap_item.boundingRect(),
+            QtCore.Qt.AspectRatioMode.KeepAspectRatio,
+        )
         self._zoom = 1.0
         self.viewChanged.emit(self._zoom)
         self._update_hover_hud()
@@ -184,9 +187,9 @@ class ImageViewer(QtWidgets.QGraphicsView):
         if value == self._zoom:
             return
         if anchor is not None:
-            self.setTransformationAnchor(QtWidgets.QGraphicsView.AnchorUnderMouse)
+            self.setTransformationAnchor(QtWidgets.QGraphicsView.ViewportAnchor.AnchorUnderMouse)
         else:
-            self.setTransformationAnchor(QtWidgets.QGraphicsView.AnchorViewCenter)
+            self.setTransformationAnchor(QtWidgets.QGraphicsView.ViewportAnchor.AnchorViewCenter)
 
         factor = value / self._zoom
         self._zoom = value
@@ -217,7 +220,7 @@ class ImageViewer(QtWidgets.QGraphicsView):
             text_item.setPos(box.x, box.y - 18)
             bg = QtWidgets.QGraphicsRectItem(text_item.boundingRect())
             bg.setBrush(QtGui.QBrush(self._overlay_style.text_bg))
-            bg.setPen(QtGui.QPen(QtCore.Qt.NoPen))
+            bg.setPen(QtGui.QPen(QtCore.Qt.PenStyle.NoPen))
             bg.setZValue(5.5)
             bg.setPos(text_item.pos())
             self._scene.addItem(bg)
