@@ -116,8 +116,14 @@ class PaddleOcrEngine:
 
             # Avoid repeated online host checks when local model files exist.
             os.environ.setdefault("PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK", "True")
-            # PaddleOCR constructor differs across versions. Keep args minimal for compatibility.
-            self._ocr = PaddleOCR(use_angle_cls=False, lang=lang, show_log=False)
+            # PaddleOCR constructor differs across versions. show_log removed in some releases.
+            try:
+                self._ocr = PaddleOCR(use_angle_cls=False, lang=lang, show_log=False)
+            except Exception as e:
+                if "show_log" in str(e) or "Unknown argument" in str(e):
+                    self._ocr = PaddleOCR(use_angle_cls=False, lang=lang)
+                else:
+                    raise
         except Exception as exc:  # noqa: BLE001
             raise UnavailableOcrEngineError(f"paddleocr unavailable: {exc}") from exc
 
