@@ -47,14 +47,33 @@ def _norm_name(value: str) -> str:
         "tr vmax": "TR Vmax",
         "pv maxpg": "PV maxPG",
         "pv vmax": "PV Vmax",
+        "ef(teich)": "EF(Teich)",
+        "ef (teich)": "EF(Teich)",
+        "laesv(a-l)": "LAESV (A-L)",
+        "laesv (a-l)": "LAESV (A-L)",
+        "laesv a-l": "LAESV (A-L)",
+        "ao diam": "Ao Diam",
+        "ao asc": "Ao asc",
+        "arch diam": "Ao arch diam",
+        "lvsv": "SV",
+        "lvot diam": "LVOT Diam",
+        "la diam": "LA Diam",
     }
     lowered = name.lower()
     return aliases.get(lowered, name)
 
 
+_VIEW_SUFFIXES = re.compile(
+    r"\s*(?:a4c|a2c|a3c|mod|bp|a-l|\(a-l\))\s*", re.IGNORECASE
+)
+
+
 def _relaxed_name_key(value: str) -> str:
     lowered = _norm_name(value).lower().replace("¥", "v")
-    return re.sub(r"[^a-z0-9]+", "", lowered)
+    # Strip view/method suffixes for relaxed matching (LAAS A4C ≈ LAAS)
+    stripped = _VIEW_SUFFIXES.sub(" ", lowered)
+    stripped = " ".join(stripped.split())
+    return re.sub(r"[^a-z0-9]+", "", stripped)
 
 
 def _norm_value(value: str) -> str:

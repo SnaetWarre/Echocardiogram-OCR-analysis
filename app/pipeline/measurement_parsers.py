@@ -4,7 +4,7 @@ import json
 import re
 import subprocess
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Protocol
+from typing import Dict, List, Optional, Protocol, Tuple
 
 from app.models.types import AiMeasurement
 
@@ -20,6 +20,38 @@ _UNIT_ALIASES = {
     "m1s": "m/s",
     "mhg": "mmHg",
     "mmhg": "mmHg",
+    "m/s^2": "m/s2",
+}
+
+_COMPOUND_MERGE: Dict[Tuple[str, str], str] = {
+    ("tr", "vmax"): "TR Vmax",
+    ("tr", "maxpg"): "TR maxPG",
+    ("pv", "vmax"): "PV Vmax",
+    ("pv", "maxpg"): "PV maxPG",
+    ("mv", "vmax"): "MV Vmax",
+    ("mv", "maxpg"): "MV maxPG",
+    ("av", "vmax"): "AV Vmax",
+    ("av", "maxpg"): "AV maxPG",
+}
+
+_COMPOUND_PREFIXES = frozenset({"tr", "pv", "mv", "av"})
+_COMPOUND_SUFFIXES = frozenset({"vmax", "vmean", "maxpg", "meanpg"})
+
+_EVAL_NAME_ALIASES = {
+    "tr maxpg": "TR maxPG",
+    "tr vmax": "TR Vmax",
+    "pv maxpg": "PV maxPG",
+    "pv vmax": "PV Vmax",
+    "ef(teich)": "EF(Teich)",
+    "ef (teich)": "EF(Teich)",
+    "laesv(a-l)": "LAESV (A-L)",
+    "laesv (a-l)": "LAESV (A-L)",
+    "laesv a-l": "LAESV (A-L)",
+    "ao diam": "Ao Diam",
+    "ao asc": "Ao asc",
+    "arch diam": "Ao arch diam",
+    "lvot diam": "LVOT Diam",
+    "la diam": "LA Diam",
 }
 
 _TELEMETRY_KEYWORDS = {
@@ -45,6 +77,9 @@ def _normalize_name(raw: str) -> str:
     text = " ".join(text.split()).strip()
     if not text:
         return text
+    lowered = text.lower()
+    if lowered in _EVAL_NAME_ALIASES:
+        return _EVAL_NAME_ALIASES[lowered]
 
     # Keep separators readable and stable for downstream matching.
     text = re.sub(r"\s*/\s*", "/", text)
@@ -144,12 +179,55 @@ def _name_key(raw: str) -> str:
     return re.sub(r"[^a-z0-9]+", "", raw.lower())
 
 
+def _merge_compound_measurements(items: List[AiMeasurement]) -> List[AiMeasurement]:
+    """Merge split compound measurements (e.g. tr + vmax -> TR Vmax) with same value."""
+    if len(items) < 2:
+        return items
+    result: List[AiMeasurement] = []
+    used: set = set()
+    for i, a in enumerate(items):
+        if i in used:
+            continue
+        val_a = _normalize_value(a.value)
+        name_a_lower = a.name.strip().lower()
+        merged = None
+        for j, b in enumerate(items):
+            if j <= i or j in used:
+                continue
+            if _normalize_value(b.value) != val_a:
+                continue
+            name_b_lower = b.name.strip().lower()
+            pair = None
+            if name_a_lower in _COMPOUND_PREFIXES and name_b_lower in _COMPOUND_SUFFIXES:
+                pair = (name_a_lower, name_b_lower)
+            elif name_b_lower in _COMPOUND_PREFIXES and name_a_lower in _COMPOUND_SUFFIXES:
+                pair = (name_b_lower, name_a_lower)
+            if pair and pair in _COMPOUND_MERGE:
+                merged_unit = (a.unit or b.unit or "").strip() or None
+                merged_unit = _normalize_unit(merged_unit) if merged_unit else None
+                merged = AiMeasurement(
+                    name=_COMPOUND_MERGE[pair],
+                    value=val_a,
+                    unit=merged_unit,
+                    source=a.source,
+                )
+                used.add(j)
+                break
+        if merged is not None:
+            used.add(i)
+            result.append(merged)
+        else:
+            result.append(a)
+    return result
+
+
 def _is_telemetry_name(name: str) -> bool:
     lowered = name.lower()
     return any(token in lowered for token in _TELEMETRY_KEYWORDS)
 
 
 def _postprocess_measurements(items: List[AiMeasurement]) -> List[AiMeasurement]:
+    items = _merge_compound_measurements(items)
     normalized: List[AiMeasurement] = []
     for item in items:
         name = _normalize_name(item.name)
@@ -391,14 +469,66 @@ class LocalLlmMeasurementParser:
 
     def _build_generic_json_prompt(self, ocr_text: str) -> str:
         return (
-            "You extract echocardiogram measurements from OCR text.\n"
-            "Return ONLY valid JSON: an array of objects with keys "
-            '\"name\", \"value\", \"unit\".\n'
+            "You extract echocardiogram measurements from OCR text. "
+            "Return ONLY valid JSON: an array of objects with keys \"name\", \"value\", \"unit\".\n\n"
+            "Examples (match these exact label formats):\n"
+            "- \"TR Vmax 1.9 m/s  TR maxPG 14 mmHg\" -> "
+            "[{\"name\": \"TR Vmax\", \"value\": \"1.9\", \"unit\": \"m/s\"}, "
+            "{\"name\": \"TR maxPG\", \"value\": \"14\", \"unit\": \"mmHg\"}]\n"
+            "- \"IVSd 0.9  LVIDd 5.4  LVPWd 1.0 cm\" -> "
+            "[{\"name\": \"IVSd\", \"value\": \"0.9\", \"unit\": \"cm\"}, "
+            "{\"name\": \"LVIDd\", \"value\": \"5.4\", \"unit\": \"cm\"}, "
+            "{\"name\": \"LVPWd\", \"value\": \"1.0\", \"unit\": \"cm\"}]\n"
+            "- \"LVIDs 3.6cm  EF(Teich) 62%  %FS 34\" -> "
+            "[{\"name\": \"LVIDs\", \"value\": \"3.6\", \"unit\": \"cm\"}, "
+            "{\"name\": \"EF(Teich)\", \"value\": \"62\", \"unit\": \"%\"}, "
+            "{\"name\": \"%FS\", \"value\": \"34\", \"unit\": \"%\"}]\n"
+            "- \"RA LENGTH 5.9  LA LENGTH 6.6 cm\" -> "
+            "[{\"name\": \"RA LENGTH\", \"value\": \"5.9\", \"unit\": \"cm\"}, "
+            "{\"name\": \"LA LENGTH\", \"value\": \"6.6\", \"unit\": \"cm\"}]\n"
+            "- \"MV E VEL 0.7  MV DecT 183 ms  MV A Vel 0.6 m/s  MV E/A Ratio 1.2\" -> "
+            "[{\"name\": \"MV E VEL\", \"value\": \"0.7\", \"unit\": \"m/s\"}, "
+            "{\"name\": \"MV DecT\", \"value\": \"183\", \"unit\": \"ms\"}, "
+            "{\"name\": \"MV A Vel\", \"value\": \"0.6\", \"unit\": \"m/s\"}, "
+            "{\"name\": \"MV E/A Ratio\", \"value\": \"1.2\", \"unit\": \"\"}]\n"
+            "- \"P Vein A 0.3  P vein D 0.4  P Vein S 0.5 m/s  P Vein S/D Ratio 1.2\" -> "
+            "[{\"name\": \"P Vein A\", \"value\": \"0.3\", \"unit\": \"m/s\"}, "
+            "{\"name\": \"P vein D\", \"value\": \"0.4\", \"unit\": \"m/s\"}, "
+            "{\"name\": \"P Vein S\", \"value\": \"0.5\", \"unit\": \"m/s\"}, "
+            "{\"name\": \"P Vein S/D Ratio\", \"value\": \"1.2\", \"unit\": \"\"}]\n"
+            "- \"LALs A4C 5.8  LAAs A4C 19.5 cm2  LAESV A-L A4C 56 ml\" -> "
+            "[{\"name\": \"LALs A4C\", \"value\": \"5.8\", \"unit\": \"cm\"}, "
+            "{\"name\": \"LAAs A4C\", \"value\": \"19.5\", \"unit\": \"cm2\"}, "
+            "{\"name\": \"LAESV A-L A4C\", \"value\": \"56\", \"unit\": \"ml\"}]\n"
+            "- \"E' Lat 0.09  E' Sept 0.08 m/s\" -> "
+            "[{\"name\": \"E' Lat\", \"value\": \"0.09\", \"unit\": \"m/s\"}, "
+            "{\"name\": \"E' Sept\", \"value\": \"0.08\", \"unit\": \"m/s\"}]\n"
+            "- \"LVOT Vmax 1.1 m/s  LVOT maxPG 5 mmHg  LVOT VTI 19.9 cm\" -> "
+            "[{\"name\": \"LVOT Vmax\", \"value\": \"1.1\", \"unit\": \"m/s\"}, "
+            "{\"name\": \"LVOT maxPG\", \"value\": \"5\", \"unit\": \"mmHg\"}, "
+            "{\"name\": \"LVOT VTI\", \"value\": \"19.9\", \"unit\": \"cm\"}]\n"
+            "- \"AVA Vmax 2.8  AVA (VTI) 2.3 cm2  AV Vmax 1.3 m/s  AV maxPG 6 mmHg\" -> "
+            "[{\"name\": \"AVA Vmax\", \"value\": \"2.8\", \"unit\": \"cm2\"}, "
+            "{\"name\": \"AVA (VTI)\", \"value\": \"2.3\", \"unit\": \"cm2\"}, "
+            "{\"name\": \"AV Vmax\", \"value\": \"1.3\", \"unit\": \"m/s\"}, "
+            "{\"name\": \"AV maxPG\", \"value\": \"6\", \"unit\": \"mmHg\"}]\n"
+            "- \"Ao Desc Diam 2.6  Ao Arch Diam 2.8 cm\" -> "
+            "[{\"name\": \"Ao Desc Diam\", \"value\": \"2.6\", \"unit\": \"cm\"}, "
+            "{\"name\": \"Ao Arch Diam\", \"value\": \"2.8\", \"unit\": \"cm\"}]\n"
+            "- \"IVC 2.2  RVIDd 3.2 cm\" -> "
+            "[{\"name\": \"IVC\", \"value\": \"2.2\", \"unit\": \"cm\"}, "
+            "{\"name\": \"RVIDd\", \"value\": \"3.2\", \"unit\": \"cm\"}]\n"
+            "- \"EF Biplane 64%  LVEDV MOD BP 102  LVESV MOD BP 37 ml  SV MOD A2C 58.10 ml\" -> "
+            "[{\"name\": \"EF Biplane\", \"value\": \"64\", \"unit\": \"%\"}, "
+            "{\"name\": \"LVEDV MOD BP\", \"value\": \"102\", \"unit\": \"ml\"}, "
+            "{\"name\": \"LVESV MOD BP\", \"value\": \"37\", \"unit\": \"ml\"}, "
+            "{\"name\": \"SV MOD A2C\", \"value\": \"58.10\", \"unit\": \"ml\"}]\n\n"
             "Rules:\n"
-            "- Keep labels exactly as written if uncertain.\n"
-            "- value must be numeric string.\n"
-            "- unit can be empty string when missing.\n"
-            "- Do not include commentary.\n\n"
+            "- Use EXACT label names from examples: IVSd, LVIDd, LVPWd, LVIDs, EF(Teich), %FS, RA/LA LENGTH, MV E VEL, MV DecT (ms), P Vein A/D/S, LALs/LAAs/LAESV A4C, E' Lat/Sept, LVOT/AV/AVA, Ao Desc/Arch Diam, IVC, RVIDd, EF Biplane, SV MOD.\n"
+            "- ALWAYS include full name. Never output just \"Vmax\" or \"diam\". Include method/view: mod, A4C, A2C, A3C, BP, (A-L).\n"
+            "- Units: m/s (velocity), mmHg (pressure), cm (dimensions), cm2 (area), ml (volume), % (EF/FS), ms (DecT only).\n"
+            "- Infer missing units from context. value = numeric string. unit = \"\" when unknown.\n"
+            "- JSON only. No commentary.\n\n"
             "OCR text:\n"
             f"{ocr_text}\n"
         )
