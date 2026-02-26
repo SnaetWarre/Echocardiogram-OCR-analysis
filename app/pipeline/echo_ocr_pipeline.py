@@ -250,6 +250,9 @@ class EchoOcrPipeline(BasePipeline):
             (10, 5, int(w * 0.26), int(h * 0.13)),
             (15, 10, int(w * 0.30), int(h * 0.16)),
             (0, 0, int(w * 0.35), int(h * 0.18)),
+            (5, 0, int(w * 0.28), int(h * 0.12)),
+            (0, 5, int(w * 0.32), int(h * 0.14)),
+            (8, 8, int(w * 0.25), int(h * 0.11)),
         ]
         for x, y, bw, bh in fallback_candidates:
             x = max(0, min(x, w - 2))
@@ -267,12 +270,11 @@ class EchoOcrPipeline(BasePipeline):
             measurements = self.parser.parse(ocr.text, confidence=ocr.confidence)
             text = ocr.text.lower()
             hint_score = 0.0
-            if "pv" in text:
-                hint_score += 0.8
-            if "vmax" in text:
-                hint_score += 0.8
-            if "mmhg" in text:
-                hint_score += 0.8
+            for hint in ("pv", "tr", "mv", "vmax", "maxpg", "mmhg", "diam", "ef", "lv", "la"):
+                if hint in text:
+                    hint_score += 0.5
+            if any(u in text for u in ("m/s", "cm", "ml", "%")):
+                hint_score += 0.3
             candidate_score = (len(measurements) * 1.2) + hint_score + (ocr.confidence * 0.5)
             if best is None or candidate_score > best[4]:
                 best = (ocr, measurements, bbox, base_conf, candidate_score)
@@ -286,25 +288,35 @@ class EchoOcrPipeline(BasePipeline):
         return best_ocr, best_measurements, best_bbox, base_conf
 
     def _to_ai_result(self, records: List[MeasurementRecord]) -> AiResult:
-        measurements = [
-            AiMeasurement(
-                name=record.measurement_name,
-                value=record.measurement_value,
-                unit=record.measurement_unit or None,
-                source="echo_ocr_pipeline",
+        # Deduplicate by (name, value, unit); keep highest confidence per key
+        seen: Dict[tuple, Tuple[AiMeasurement, MeasurementRecord]] = {}
+        for record in records:
+            key = (
+                record.measurement_name.lower().strip(),
+                record.measurement_value.strip(),
+                (record.measurement_unit or "").strip().lower(),
             )
-            for record in records
-        ]
+            if key not in seen or record.parser_confidence > seen[key][1].parser_confidence:
+                seen[key] = (
+                    AiMeasurement(
+                        name=record.measurement_name,
+                        value=record.measurement_value,
+                        unit=record.measurement_unit or None,
+                        source="echo_ocr_pipeline",
+                    ),
+                    record,
+                )
+        measurements = [m for m, _ in seen.values()]
         boxes = [
             OverlayBox(
-                x=float(record.roi_bbox[0]),
-                y=float(record.roi_bbox[1]),
-                width=float(record.roi_bbox[2]),
-                height=float(record.roi_bbox[3]),
+                x=float(r.roi_bbox[0]),
+                y=float(r.roi_bbox[1]),
+                width=float(r.roi_bbox[2]),
+                height=float(r.roi_bbox[3]),
                 label="measurement_box",
-                confidence=record.parser_confidence,
+                confidence=r.parser_confidence,
             )
-            for record in records
+            for _, r in seen.values()
         ]
         return AiResult(
             model_name=f"{self.name}:{self.ocr_engine.name}",
