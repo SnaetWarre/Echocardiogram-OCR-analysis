@@ -8,59 +8,16 @@ from PySide6 import QtCore, QtWidgets
 
 from app.models.types import AiResult, DicomSeries
 from app.pipeline.ai_pipeline import build_default_manager
-from app.ui.main_window_ai import (
-    _apply_ai_result,
-    _export_ai_csv,
-    _export_ai_txt,
-    _on_ai_failed,
-    _on_ai_finished,
-    _run_ai,
-)
-from app.ui.main_window_batch import (
-    _finish_ui_batch,
-    _log_event,
-    _log_ui_batch_result,
-    _on_batch_finished,
-    _on_batch_progress,
-    _show_error,
-    _start_batch_test,
-    _start_ui_batch_run,
-    _ui_batch_next,
-)
-from app.ui.main_window_ui import _build_toolbar, _build_ui, _icon
-from app.ui.main_window_view import (
-    _apply_loaded_series,
-    _load_dicom,
-    _next_frame,
-    _on_filter_changed,
-    _on_load_finished,
-    _on_search_changed,
-    _on_view_changed,
-    _open_file,
-    _open_folder,
-    _prefetch_around,
-    _prev_frame,
-    _render_frame,
-    _set_loading_state,
-    _set_sidebar_collapsed,
-    _set_tree_root,
-    _on_tree_context_menu,
-    _slider_changed,
-    _tick,
-    _toggle_filter,
-    _toggle_play,
-    _toggle_sidebar,
-    _tree_double_clicked,
-    _update_metadata_tabs,
-    _update_slider,
-    _update_status,
-)
+from app.ui.main_window_ai import MainWindowAIMixin
+from app.ui.main_window_batch import MainWindowBatchMixin
+from app.ui.main_window_ui import MainWindowUIMixin
+from app.ui.main_window_view import MainWindowViewMixin
 from app.ui.theme import apply_theme
 from app.ui.workers import AiRunWorker, BatchTestWorker, DicomLoadWorker
 from app.utils.cache import LruFrameCache
 
 
-class MainWindow(QtWidgets.QMainWindow):
+class MainWindow(MainWindowUIMixin, MainWindowViewMixin, MainWindowAIMixin, MainWindowBatchMixin, QtWidgets.QMainWindow):
     def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle("DICOM Cine Viewer")
@@ -121,51 +78,3 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _apply_theme(self) -> None:
         apply_theme(self)
-
-
-MainWindow._build_ui = _build_ui
-MainWindow._icon = _icon
-MainWindow._build_toolbar = _build_toolbar
-
-MainWindow._show_error = _show_error
-MainWindow._log_event = _log_event
-MainWindow._start_ui_batch_run = _start_ui_batch_run
-MainWindow._ui_batch_next = _ui_batch_next
-MainWindow._log_ui_batch_result = _log_ui_batch_result
-MainWindow._finish_ui_batch = _finish_ui_batch
-MainWindow._start_batch_test = _start_batch_test
-MainWindow._on_batch_progress = _on_batch_progress
-MainWindow._on_batch_finished = _on_batch_finished
-
-MainWindow._update_status = _update_status
-MainWindow._on_view_changed = _on_view_changed
-MainWindow._on_search_changed = _on_search_changed
-MainWindow._on_filter_changed = _on_filter_changed
-MainWindow._toggle_filter = _toggle_filter
-MainWindow._open_folder = _open_folder
-MainWindow._open_file = _open_file
-MainWindow._set_tree_root = _set_tree_root
-MainWindow._tree_double_clicked = _tree_double_clicked
-MainWindow._on_tree_context_menu = _on_tree_context_menu
-MainWindow._toggle_sidebar = _toggle_sidebar
-MainWindow._set_sidebar_collapsed = _set_sidebar_collapsed
-MainWindow._set_loading_state = _set_loading_state
-MainWindow._load_dicom = _load_dicom
-MainWindow._on_load_finished = _on_load_finished
-MainWindow._apply_loaded_series = _apply_loaded_series
-MainWindow._update_metadata_tabs = _update_metadata_tabs
-MainWindow._update_slider = _update_slider
-MainWindow._render_frame = _render_frame
-MainWindow._prefetch_around = _prefetch_around
-MainWindow._slider_changed = _slider_changed
-MainWindow._prev_frame = _prev_frame
-MainWindow._next_frame = _next_frame
-MainWindow._toggle_play = _toggle_play
-MainWindow._tick = _tick
-
-MainWindow._run_ai = _run_ai
-MainWindow._on_ai_finished = _on_ai_finished
-MainWindow._on_ai_failed = _on_ai_failed
-MainWindow._apply_ai_result = _apply_ai_result
-MainWindow._export_ai_csv = _export_ai_csv
-MainWindow._export_ai_txt = _export_ai_txt
