@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import os
-from pathlib import Path
 import shutil
 import sys
-from typing import List, Protocol
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Protocol
 
 import numpy as np
 
@@ -20,15 +20,14 @@ class OcrToken:
 class OcrResult:
     text: str
     confidence: float
-    tokens: List[OcrToken]
+    tokens: list[OcrToken]
     engine_name: str
 
 
 class OcrEngine(Protocol):
     name: str
 
-    def extract(self, image: np.ndarray) -> OcrResult:
-        ...
+    def extract(self, image: np.ndarray) -> OcrResult: ...
 
 
 class UnavailableOcrEngineError(RuntimeError):
@@ -51,7 +50,7 @@ class TesseractEngine:
                 if local_tesseract.exists():
                     pytesseract.pytesseract.tesseract_cmd = str(local_tesseract)
             self._pytesseract = pytesseract
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             raise UnavailableOcrEngineError("pytesseract is not installed") from exc
 
     def extract(self, image: np.ndarray) -> OcrResult:
@@ -63,7 +62,7 @@ class TesseractEngine:
             config=cfg,
         )
         texts = []
-        tokens: List[OcrToken] = []
+        tokens: list[OcrToken] = []
         for idx, raw in enumerate(data.get("text", [])):
             text = str(raw).strip()
             if not text:
@@ -71,7 +70,7 @@ class TesseractEngine:
             conf_raw = data.get("conf", ["-1"])[idx]
             try:
                 conf = max(float(conf_raw), 0.0) / 100.0
-            except Exception:  # noqa: BLE001
+            except Exception:
                 conf = 0.0
             texts.append(text)
             tokens.append(OcrToken(text=text, confidence=conf))
@@ -87,18 +86,18 @@ class TesseractEngine:
 class EasyOcrEngine:
     name = "easyocr"
 
-    def __init__(self, langs: List[str] | None = None, gpu: bool = False) -> None:
+    def __init__(self, langs: list[str] | None = None, gpu: bool = False) -> None:
         try:
             import easyocr  # type: ignore
 
             self._reader = easyocr.Reader(langs or ["en"], gpu=gpu, verbose=False)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             raise UnavailableOcrEngineError(f"easyocr unavailable: {exc}") from exc
 
     def extract(self, image: np.ndarray) -> OcrResult:
         rows = self._reader.readtext(image, detail=1, paragraph=False)
-        tokens: List[OcrToken] = []
-        lines: List[str] = []
+        tokens: list[OcrToken] = []
+        lines: list[str] = []
         for row in rows:
             if len(row) < 3:
                 continue
@@ -134,13 +133,13 @@ class PaddleOcrEngine:
                     self._ocr = PaddleOCR(use_angle_cls=False, lang=lang)
                 else:
                     raise
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             raise UnavailableOcrEngineError(f"paddleocr unavailable: {exc}") from exc
 
     def extract(self, image: np.ndarray) -> OcrResult:
         rows = self._ocr.ocr(image, cls=False)
-        tokens: List[OcrToken] = []
-        lines: List[str] = []
+        tokens: list[OcrToken] = []
+        lines: list[str] = []
         for group in rows or []:
             for item in group or []:
                 if not isinstance(item, list) or len(item) < 2:

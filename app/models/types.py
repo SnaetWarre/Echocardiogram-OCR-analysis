@@ -3,56 +3,56 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable
 
 import numpy as np
 
 
 @dataclass(frozen=True)
 class PatientInfo:
-    name: Optional[str] = None
-    patient_id: Optional[str] = None
-    birth_date: Optional[str] = None
-    sex: Optional[str] = None
-    institution: Optional[str] = None
-    study_date: Optional[str] = None
-    study_time: Optional[str] = None
-    study_description: Optional[str] = None
-    series_description: Optional[str] = None
+    name: str | None = None
+    patient_id: str | None = None
+    birth_date: str | None = None
+    sex: str | None = None
+    institution: str | None = None
+    study_date: str | None = None
+    study_time: str | None = None
+    study_description: str | None = None
+    series_description: str | None = None
 
 
 @dataclass(frozen=True)
 class DicomMetadata:
     path: Path
-    modality: Optional[str] = None
-    sop_instance_uid: Optional[str] = None
-    series_instance_uid: Optional[str] = None
-    study_instance_uid: Optional[str] = None
-    frame_time_ms: Optional[float] = None
-    fps: Optional[float] = None
-    rows: Optional[int] = None
-    cols: Optional[int] = None
-    frame_count: Optional[int] = None
-    photometric_interpretation: Optional[str] = None
-    transfer_syntax: Optional[str] = None
-    additional: Dict[str, Any] = field(default_factory=dict)
+    modality: str | None = None
+    sop_instance_uid: str | None = None
+    series_instance_uid: str | None = None
+    study_instance_uid: str | None = None
+    frame_time_ms: float | None = None
+    fps: float | None = None
+    rows: int | None = None
+    cols: int | None = None
+    frame_count: int | None = None
+    photometric_interpretation: str | None = None
+    transfer_syntax: str | None = None
+    additional: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
 class FrameData:
     index: int
     pixels: np.ndarray
-    timestamp: Optional[datetime] = None
+    timestamp: datetime | None = None
 
 
 @dataclass
 class DicomSeries:
     metadata: DicomMetadata
     patient: PatientInfo
-    frames: List[FrameData] = field(default_factory=list)
-    raw_frames: Optional[np.ndarray] = None
-    frame_loader: Optional[Callable[[int], np.ndarray]] = None
-    frame_count_override: Optional[int] = None
+    frames: list[FrameData] = field(default_factory=list)
+    raw_frames: np.ndarray | None = None
+    frame_loader: Callable[[int], np.ndarray] | None = None
+    frame_count_override: int | None = None
 
     @property
     def frame_count(self) -> int:
@@ -76,7 +76,7 @@ class DicomSeries:
 
 @dataclass
 class ViewerState:
-    current_path: Optional[Path] = None
+    current_path: Path | None = None
     frame_index: int = 0
     fps: float = 30.0
     zoom: float = 1.0
@@ -90,8 +90,8 @@ class OverlayBox:
     y: float
     width: float
     height: float
-    label: Optional[str] = None
-    confidence: Optional[float] = None
+    label: str | None = None
+    confidence: float | None = None
     color: str = "#00A2FF"
 
 
@@ -99,36 +99,36 @@ class OverlayBox:
 class AiMeasurement:
     name: str
     value: str
-    unit: Optional[str] = None
-    source: Optional[str] = None
+    unit: str | None = None
+    source: str | None = None
 
 
 @dataclass
 class AiResult:
     model_name: str
     created_at: datetime
-    boxes: List[OverlayBox] = field(default_factory=list)
-    measurements: List[AiMeasurement] = field(default_factory=list)
-    raw: Dict[str, Any] = field(default_factory=dict)
+    boxes: list[OverlayBox] = field(default_factory=list)
+    measurements: list[AiMeasurement] = field(default_factory=list)
+    raw: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
 class PipelineRequest:
     dicom_path: Path
-    output_dir: Optional[Path] = None
-    parameters: Dict[str, Any] = field(default_factory=dict)
+    output_dir: Path | None = None
+    parameters: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
 class PipelineResult:
     dicom_path: Path
     status: str
-    ai_result: Optional[AiResult] = None
-    error: Optional[str] = None
+    ai_result: AiResult | None = None
+    error: str | None = None
 
 
 @dataclass
 class FileNode:
     path: Path
     is_dir: bool
-    children: List["FileNode"] = field(default_factory=list)
+    children: list[FileNode] = field(default_factory=list)

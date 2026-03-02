@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional, Tuple
 
 import numpy as np
 
@@ -9,7 +8,7 @@ import numpy as np
 @dataclass(frozen=True)
 class RoiDetection:
     present: bool
-    bbox: Optional[Tuple[int, int, int, int]]
+    bbox: tuple[int, int, int, int] | None
     confidence: float
 
 

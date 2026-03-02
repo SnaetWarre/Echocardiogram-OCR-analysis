@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
-from typing import Dict, Tuple
 
 
 @dataclass(frozen=True)
@@ -17,12 +16,12 @@ class MeasurementRecord:
     ocr_text_raw: str
     ocr_confidence: float
     parser_confidence: float
-    roi_bbox: Tuple[int, int, int, int]
+    roi_bbox: tuple[int, int, int, int]
     processed_at: str
     pipeline_version: str
     ocr_engine: str = ""
 
-    def to_dict(self) -> Dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         payload = asdict(self)
         payload["roi_bbox"] = ",".join(str(value) for value in self.roi_bbox)
         return payload

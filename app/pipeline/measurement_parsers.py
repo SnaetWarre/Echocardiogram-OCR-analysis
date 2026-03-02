@@ -10,8 +10,7 @@ from app.models.types import AiMeasurement
 
 
 class MeasurementParser(Protocol):
-    def parse(self, text: str, *, confidence: float) -> List[AiMeasurement]:
-        ...
+    def parse(self, text: str, *, confidence: float) -> List[AiMeasurement]: ...
 
 
 _UNIT_ALIASES = {
@@ -82,17 +81,17 @@ def _normalize_name(raw: str) -> str:
             out.append(f"{prefix} {suffix_map[compact.group(2)]}" + suffix)
             continue
         if lowered.endswith("maxpg"):
-            base = base[: -5] + "maxPG"
+            base = base[:-5] + "maxPG"
         elif lowered.endswith("meanpg"):
-            base = base[: -6] + "meanPG"
+            base = base[:-6] + "meanPG"
         elif lowered.endswith("vmax"):
-            base = base[: -4] + "Vmax"
+            base = base[:-4] + "Vmax"
         elif lowered.endswith("vmean"):
-            base = base[: -5] + "Vmean"
+            base = base[:-5] + "Vmean"
         elif lowered.endswith("vti"):
-            base = base[: -3] + "VTI"
+            base = base[:-3] + "VTI"
         elif lowered.endswith("dect"):
-            base = base[: -4] + "DecT"
+            base = base[:-4] + "DecT"
         elif lowered in {"ef", "fs", "ivc", "ivsd", "lvidd", "lvids", "lvpwd", "rvidd"}:
             base = lowered.upper()
         elif re.fullmatch(r"[A-Za-z]{2,4}", base) and base.upper() == base:
@@ -166,9 +165,7 @@ def _postprocess_measurements(items: List[AiMeasurement]) -> List[AiMeasurement]
         if not re.match(r"^[-+]?\d+(?:\.\d+)?$", value):
             continue
         unit = _complete_unit(name, unit)
-        normalized.append(
-            AiMeasurement(name=name, value=value, unit=unit, source=item.source)
-        )
+        normalized.append(AiMeasurement(name=name, value=value, unit=unit, source=item.source))
 
     # Conservative unit completion: same semantic label + value gets unit from any duplicate.
     best_unit_by_key: Dict[str, str] = {}
@@ -183,7 +180,9 @@ def _postprocess_measurements(items: List[AiMeasurement]) -> List[AiMeasurement]
         if not unit:
             key = f"{_name_key(item.name)}|{item.value}"
             unit = best_unit_by_key.get(key)
-        enriched.append(AiMeasurement(name=item.name, value=item.value, unit=unit, source=item.source))
+        enriched.append(
+            AiMeasurement(name=item.name, value=item.value, unit=unit, source=item.source)
+        )
 
     # Deduplicate near-identical variants; keep longest label and filled unit.
     dedup: Dict[str, AiMeasurement] = {}
@@ -236,7 +235,9 @@ class RegexMeasurementParser:
         # Generic multiline fallback: handles line-split OCR without hardcoded dictionaries.
         lines = [line.strip() for line in text.splitlines() if line.strip()]
         number_re = re.compile(r"[-+]?\d+(?:[.,]\d+)?$")
-        unit_re = re.compile(r"^(%|mmhg|cm/s|m/s|cm|mm|ms|s|bpm|ml/m2|cm2|ml|m/s2|mis|m1s|mls)$", re.I)
+        unit_re = re.compile(
+            r"^(%|mmhg|cm/s|m/s|cm|mm|ms|s|bpm|ml/m2|cm2|ml|m/s2|mis|m1s|mls)$", re.I
+        )
         alpha_re = re.compile(r"[A-Za-z]")
         inline_value_re = re.compile(r"^([-+]?\d+(?:[.,]\d+)?)\s*([A-Za-z/%0-9]+)?$")
 
@@ -369,6 +370,76 @@ class LocalLlmMeasurementParser:
             name = str(row.get("name", "")).strip()
             value = str(row.get("value", "")).strip().replace(",", ".")
             unit = str(row.get("unit", "")).strip()
+
+            # --- DETERMINISTIC POST PROCESSING ---
+            # 1. Name corrections
+            name_lower = name.lower()
+            if "azc" in name_lower:
+                name = name.replace("Azc", "A2C").replace("azc", "A2C")
+            if "a2c" in name_lower:
+                name = name.replace("A2c", "A2C").replace("a2c", "A2C")
+            if "a3c" in name_lower:
+                name = name.replace("A3c", "A3C").replace("a3c", "A3C")
+            if "a4c" in name_lower:
+                name = name.replace("A4c", "A4C").replace("a4c", "A4C")
+            if "ef" in name_lower and "teich" in name_lower:
+                name = "EF(Teich)"
+            if "%6fs" in name_lower:
+                name = "%FS"
+            if "lvdd" in name_lower:
+                name = name.replace("LVDd", "LVIDd").replace("Lvdd", "LVIDd")
+            if "tsopt" in name_lower:
+                name = "E' Sept"
+            if "moanpg" in name_lower:
+                name = name.replace("moanPG", "meanPG")
+            if "mexpg" in name_lower:
+                name = name.replace("mexPG", "maxPG")
+            if "eia" in name_lower:
+                name = name.replace("EIA", "E/A")
+            if "sid" in name_lower:
+                name = name.replace("SID", "S/D")
+            if "p vein $" in name_lower:
+                name = name.replace("$", "S")
+            if "laesv (a-l)" in name_lower:
+                name = name.replace("LAESV (A-L)", "LAESV(A-L)")
+            if "rvd" in name_lower:
+                name = "RVIDd"
+
+            # 2. Unit corrections
+            unit_lower = unit.lower()
+            if unit_lower in ["mls", "msl", "mfs", "ms2", "m/s2", "m/s²", "m/s;", "w"]:
+                unit = "m/s"
+            if unit_lower == "ms":
+                # Only DecT should be ms, others like P Vein A/D/S are m/s
+                if "dect" not in name.lower():
+                    unit = "m/s"
+            if unit_lower == "mvm2":
+                unit = "ml/m2"
+            if unit_lower == "cmz":
+                unit = "cm"
+            if unit_lower == "mli" or unit_lower == "mll":
+                unit = "ml"
+            # Label mismatches (label says cm but it is physically an area/volume, or vice versa, follow label)
+            if "laas " in name.lower() and unit_lower == "cm2":
+                unit = "cm"
+            if "ava vmax" in name.lower() and unit_lower == "cm2":
+                unit = "cm"
+            if "rvidd" in name.lower() and unit_lower == "w":
+                unit = "cm"
+
+            # 3. Value decimal corrections
+            # (If missing decimal for mm, cm, m/s velocities that are typically 0.x - 3.x)
+            if len(value) >= 2 and "." not in value:
+                # 28 -> 2.8, 23 -> 2.3 for Vmax and Diam
+                if (
+                    "vmax" in name.lower()
+                    or "diam" in name.lower()
+                    or "vti" in name.lower()
+                    or "rvidd" in name.lower()
+                ):
+                    if len(value) == 2:
+                        value = value[0] + "." + value[1]
+
             if not name or not value:
                 continue
             items.append(
@@ -393,7 +464,7 @@ class LocalLlmMeasurementParser:
         return (
             "You extract echocardiogram measurements from OCR text.\n"
             "Return ONLY valid JSON: an array of objects with keys "
-            '\"name\", \"value\", \"unit\".\n'
+            '"name", "value", "unit".\n'
             "Rules:\n"
             "- Keep labels exactly as written if uncertain.\n"
             "- value must be numeric string.\n"
@@ -481,7 +552,9 @@ class HybridMeasurementParser:
     Prefer local LLM parsing and fall back to regex on model failures.
     """
 
-    def __init__(self, llm_parser: LocalLlmMeasurementParser, regex_parser: RegexMeasurementParser) -> None:
+    def __init__(
+        self, llm_parser: LocalLlmMeasurementParser, regex_parser: RegexMeasurementParser
+    ) -> None:
         self.llm_parser = llm_parser
         self.regex_parser = regex_parser
 

@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import csv
 import json
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable, List
 
 from app.pipeline.echo_ocr_schema import CSV_FIELDS, MeasurementRecord
 
@@ -20,12 +20,12 @@ class SidecarWriter:
         self.write_csv = write_csv
         self.write_jsonl = write_jsonl
 
-    def write(self, study_key: str, records: Iterable[MeasurementRecord]) -> List[Path]:
+    def write(self, study_key: str, records: Iterable[MeasurementRecord]) -> list[Path]:
         items = list(records)
         if not items:
             return []
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        written: List[Path] = []
+        written: list[Path] = []
         if self.write_jsonl:
             jsonl_path = self.output_dir / f"{study_key}.measurements.jsonl"
             with jsonl_path.open("w", encoding="utf-8") as handle:

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Iterable
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Protocol, Tuple
+from typing import Protocol
 
 import numpy as np
 
@@ -13,7 +14,6 @@ from app.pipeline.ai_pipeline import BasePipeline
 from app.pipeline.echo_ocr_box_detector import (
     RoiDetection,
     TopLeftBlueGrayBoxDetector,
-    _color_distance,  # re-export for tests
     _to_gray,
 )
 from app.pipeline.echo_ocr_schema import MeasurementRecord
@@ -23,8 +23,7 @@ from app.pipeline.ocr_engines import OcrEngine, OcrResult, build_engine
 
 
 class MeasurementBoxDetector(Protocol):
-    def detect(self, frame: np.ndarray) -> RoiDetection:
-        ...
+    def detect(self, frame: np.ndarray) -> RoiDetection: ...
 
 
 def _upscale_factor() -> int:
@@ -47,32 +46,53 @@ def preprocess_roi(roi: np.ndarray) -> np.ndarray:
     gray = _to_gray(roi)
     if gray.size == 0:
         return gray
-    p5 = np.percentile(gray, 5)
-    p95 = np.percentile(gray, 95)
-    if p95 <= p5:
-        stretched = gray
-    else:
-        stretched = ((gray.astype(np.float32) - p5) * (255.0 / (p95 - p5))).clip(0, 255).astype(np.uint8)
-    scale = _upscale_factor()
-    if scale <= 1:
-        return stretched
-    interpolation = _upscale_interpolation()
-    if interpolation == "nearest":
-        return np.repeat(np.repeat(stretched, scale, axis=0), scale, axis=1)
+        
     try:
         import cv2  # type: ignore
-
-        interpolation_flag = {
-            "linear": cv2.INTER_LINEAR,
-            "cubic": cv2.INTER_CUBIC,
-            "lanczos": cv2.INTER_LANCZOS4,
-        }.get(interpolation, cv2.INTER_NEAREST)
-        return cv2.resize(
-            stretched,
-            (stretched.shape[1] * scale, stretched.shape[0] * scale),
-            interpolation=interpolation_flag,
-        )
-    except Exception:
+        
+        # 1. CLAHE to normalize lighting differences
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        enhanced = clahe.apply(gray)
+        
+        # 2. Unsharp masking to sharpen text edges
+        gaussian = cv2.GaussianBlur(enhanced, (5, 5), 1.0)
+        unsharp = cv2.addWeighted(enhanced, 1.5, gaussian, -0.5, 0)
+        
+        # 3. Upscale BEFORE thresholding to prevent jagged edges on small text
+        scale = _upscale_factor()
+        if scale > 1:
+            interpolation = _upscale_interpolation()
+            inter_flag = {
+                "linear": cv2.INTER_LINEAR,
+                "cubic": cv2.INTER_CUBIC,
+                "lanczos": cv2.INTER_LANCZOS4,
+            }.get(interpolation, cv2.INTER_CUBIC)
+            
+            w = int(unsharp.shape[1] * scale)
+            h = int(unsharp.shape[0] * scale)
+            unsharp = cv2.resize(unsharp, (w, h), interpolation=inter_flag)
+            
+        # 4. Otsu's thresholding for pure B&W text (creates ideal input for EasyOCR)
+        _, thresh = cv2.threshold(unsharp, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        
+        # 5. Mild morphological closing to bridge gaps in thin fonts
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
+        clean = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
+        
+        return clean
+        
+    except ImportError:
+        # Fallback to pure numpy stretching and basic nearest upscale
+        p5 = np.percentile(gray, 5)
+        p95 = np.percentile(gray, 95)
+        if p95 <= p5:
+            stretched = gray
+        else:
+            stretched = (((gray.astype(np.float32) - p5) * (255.0 / (p95 - p5))).clip(0, 255).astype(np.uint8))
+            
+        scale = _upscale_factor()
+        if scale <= 1:
+            return stretched
         return np.repeat(np.repeat(stretched, scale, axis=0), scale, axis=1)
 
 
@@ -90,17 +110,25 @@ class EchoOcrPipeline(BasePipeline):
     def __init__(
         self,
         *,
-        ocr_engine: Optional[OcrEngine] = None,
-        box_detector: Optional[MeasurementBoxDetector] = None,
-        parser: Optional[MeasurementParser] = None,
+        ocr_engine: OcrEngine | None = None,
+        box_detector: MeasurementBoxDetector | None = None,
+        parser: MeasurementParser | None = None,
         config=None,
     ) -> None:
         super().__init__(config=config)
         parameters = dict(self.config.parameters)
         self._provided_ocr_engine = ocr_engine
         self._provided_parser = parser
-        self._default_engine = str(parameters.get("ocr_engine", os.getenv("ECHO_OCR_ENGINE", "easyocr"))).strip().lower()
-        self._parser_mode = str(parameters.get("parser_mode", os.getenv("ECHO_PARSER_MODE", "regex"))).strip().lower()
+        self._default_engine = (
+            str(parameters.get("ocr_engine", os.getenv("ECHO_OCR_ENGINE", "easyocr")))
+            .strip()
+            .lower()
+        )
+        self._parser_mode = (
+            str(parameters.get("parser_mode", os.getenv("ECHO_PARSER_MODE", "regex")))
+            .strip()
+            .lower()
+        )
         self._parser_parameters = dict(parameters)
         self.ocr_engine: OcrEngine = NoopOcrEngine()
         self.parser: MeasurementParser = RegexMeasurementParser()
@@ -133,7 +161,7 @@ class EchoOcrPipeline(BasePipeline):
                 ai_result=self._to_ai_result(records),
                 error=None,
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             return PipelineResult(
                 dicom_path=request.dicom_path,
                 status="error",
@@ -165,7 +193,9 @@ class EchoOcrPipeline(BasePipeline):
         sop_uid = md.sop_instance_uid or "unknown-sop"
         for frame_index in range(series.frame_count):
             frame = series.get_frame(frame_index)
-            ocr, measurements, bbox = self._extract_measurements_for_frame(frame, self.box_detector.detect(frame))
+            ocr, measurements, bbox = self._extract_measurements_for_frame(
+                frame, self.box_detector.detect(frame)
+            )
             if ocr is None or bbox is None or not measurements:
                 continue
             for measurement in measurements:
@@ -190,7 +220,7 @@ class EchoOcrPipeline(BasePipeline):
         self,
         frame: np.ndarray,
         detection: RoiDetection,
-    ) -> Tuple[Optional[OcrResult], List[AiMeasurement], Optional[Tuple[int, int, int, int]]]:
+    ) -> tuple[OcrResult | None, list[AiMeasurement], tuple[int, int, int, int] | None]:
         if not detection.present or detection.bbox is None:
             return None, [], None
         x, y, bw, bh = detection.bbox
@@ -202,8 +232,8 @@ class EchoOcrPipeline(BasePipeline):
             return None, [], None
         return ocr, measurements, detection.bbox
 
-    def _to_ai_result(self, records: List[MeasurementRecord]) -> AiResult:
-        seen: Dict[tuple, Tuple[AiMeasurement, MeasurementRecord]] = {}
+    def _to_ai_result(self, records: list[MeasurementRecord]) -> AiResult:
+        seen: dict[tuple, tuple[AiMeasurement, MeasurementRecord]] = {}
         for record in records:
             key = (
                 record.measurement_name.lower().strip(),

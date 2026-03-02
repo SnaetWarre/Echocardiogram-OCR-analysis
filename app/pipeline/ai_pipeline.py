@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Protocol, Sequence
+from typing import Any, Protocol
 
 from app.models.types import AiMeasurement, AiResult, OverlayBox, PipelineRequest, PipelineResult
 
@@ -15,27 +16,26 @@ class AiPipelineError(RuntimeError):
 class AiPipeline(Protocol):
     name: str
 
-    def run(self, request: PipelineRequest) -> PipelineResult:
-        ...
+    def run(self, request: PipelineRequest) -> PipelineResult: ...
 
 
 @dataclass
 class PipelineConfig:
     enabled: bool = True
-    output_dir: Optional[Path] = None
-    parameters: Dict[str, Any] = field(default_factory=dict)
+    output_dir: Path | None = None
+    parameters: dict[str, Any] = field(default_factory=dict)
 
 
 class BasePipeline:
     name = "base-pipeline"
 
-    def __init__(self, config: Optional[PipelineConfig] = None) -> None:
+    def __init__(self, config: PipelineConfig | None = None) -> None:
         self.config = config or PipelineConfig()
 
     def run(self, request: PipelineRequest) -> PipelineResult:
         raise NotImplementedError("Pipeline must implement run().")
 
-    def _resolve_output_dir(self, request: PipelineRequest) -> Optional[Path]:
+    def _resolve_output_dir(self, request: PipelineRequest) -> Path | None:
         if request.output_dir is not None:
             return request.output_dir
         return self.config.output_dir
@@ -92,8 +92,8 @@ class PipelineManager:
     """
 
     def __init__(self) -> None:
-        self._pipelines: Dict[str, AiPipeline] = {}
-        self._active_name: Optional[str] = None
+        self._pipelines: dict[str, AiPipeline] = {}
+        self._active_name: str | None = None
 
     def register(self, pipeline: AiPipeline) -> None:
         self._pipelines[pipeline.name] = pipeline
@@ -114,7 +114,7 @@ class PipelineManager:
             raise AiPipelineError(f"Pipeline not found: {name}")
         self._active_name = name
 
-    def active(self) -> Optional[AiPipeline]:
+    def active(self) -> AiPipeline | None:
         if self._active_name is None:
             return None
         return self._pipelines.get(self._active_name)
@@ -131,7 +131,7 @@ class PipelineManager:
         return pipeline.run(request)
 
 
-def build_default_manager(config: Optional[PipelineConfig] = None) -> PipelineManager:
+def build_default_manager(config: PipelineConfig | None = None) -> PipelineManager:
     from app.pipeline.echo_ocr_pipeline import EchoOcrPipeline
 
     manager = PipelineManager()
