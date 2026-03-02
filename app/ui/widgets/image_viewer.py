@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Iterable, List, Optional, Sequence, Tuple
 
-from PySide6 import QtCore, QtGui, QtWidgets, QtOpenGLWidgets
+from PySide6 import QtCore, QtGui, QtOpenGLWidgets, QtWidgets
 
 from app.models.types import OverlayBox
 from app.utils.image import qimage_from_array
@@ -29,7 +29,9 @@ class ImageViewer(QtWidgets.QGraphicsView):
 
     viewChanged = QtCore.Signal(float)
 
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None, use_opengl: bool = False) -> None:
+    def __init__(
+        self, parent: QtWidgets.QWidget | None = None, use_opengl: bool = False
+    ) -> None:
         super().__init__(parent)
         self._scene = QtWidgets.QGraphicsScene(self)
         self.setScene(self._scene)
@@ -37,14 +39,14 @@ class ImageViewer(QtWidgets.QGraphicsView):
         self._pixmap_item = QtWidgets.QGraphicsPixmapItem()
         self._scene.addItem(self._pixmap_item)
 
-        self._overlay_items: List[QtWidgets.QGraphicsItem] = []
+        self._overlay_items: list[QtWidgets.QGraphicsItem] = []
         self._hover_text = QtWidgets.QGraphicsSimpleTextItem("")
         self._hover_text.setZValue(10)
         self._scene.addItem(self._hover_text)
 
         self._overlay_style = OverlayStyle()
-        self._frame_index: Optional[int] = None
-        self._frame_count: Optional[int] = None
+        self._frame_index: int | None = None
+        self._frame_count: int | None = None
 
         self._empty_text = QtWidgets.QGraphicsSimpleTextItem(
             "No DICOM loaded\nOpen a folder or select a DICOM file"
@@ -66,7 +68,7 @@ class ImageViewer(QtWidgets.QGraphicsView):
 
         self.setDragMode(QtWidgets.QGraphicsView.DragMode.NoDrag)
         self._panning = False
-        self._last_mouse_pos: Optional[QtCore.QPoint] = None
+        self._last_mouse_pos: QtCore.QPoint | None = None
 
         self._zoom = 1.0
         self._min_zoom = 0.1
@@ -88,7 +90,7 @@ class ImageViewer(QtWidgets.QGraphicsView):
         image = qimage_from_array(array)
         self.set_image(image)
 
-    def set_empty(self, text: Optional[str] = None) -> None:
+    def set_empty(self, text: str | None = None) -> None:
         self._pixmap_item.setPixmap(QtGui.QPixmap())
         self._empty_text.setVisible(True)
         if text:
@@ -105,7 +107,7 @@ class ImageViewer(QtWidgets.QGraphicsView):
     def clear_overlays(self) -> None:
         self._clear_overlays()
 
-    def set_frame_info(self, index: Optional[int], total: Optional[int]) -> None:
+    def set_frame_info(self, index: int | None, total: int | None) -> None:
         self._frame_index = index
         self._frame_count = total
         self._update_hover_hud()
@@ -182,7 +184,7 @@ class ImageViewer(QtWidgets.QGraphicsView):
         self.viewChanged.emit(self._zoom)
         self._update_hover_hud()
 
-    def _set_zoom(self, value: float, anchor: Optional[QtCore.QPoint] = None) -> None:
+    def _set_zoom(self, value: float, anchor: QtCore.QPoint | None = None) -> None:
         value = max(self._min_zoom, min(self._max_zoom, value))
         if value == self._zoom:
             return
@@ -199,9 +201,7 @@ class ImageViewer(QtWidgets.QGraphicsView):
         self._update_hover_hud()
 
     def _add_box(self, box: OverlayBox) -> None:
-        rect_item = QtWidgets.QGraphicsRectItem(
-            box.x, box.y, box.width, box.height
-        )
+        rect_item = QtWidgets.QGraphicsRectItem(box.x, box.y, box.width, box.height)
         pen = QtGui.QPen(QtGui.QColor(box.color))
         pen.setWidth(self._overlay_style.line_width)
         rect_item.setPen(pen)

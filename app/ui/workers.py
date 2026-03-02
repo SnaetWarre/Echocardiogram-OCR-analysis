@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
-from typing import Callable, Tuple
+from typing import Callable
 
 import numpy as np
 from PySide6 import QtCore
 
-from app.io.dicom_loader import DicomLoadError, load_dicom_series
+from app.io.dicom_loader import load_dicom_series
+from app.io.errors import DicomLoadError
 from app.models.types import PipelineRequest
 from app.pipeline.ai_pipeline import PipelineManager
 from app.utils.cache import LruFrameCache
@@ -97,8 +98,8 @@ class BatchTestWorker(QtCore.QObject):
 class PrefetchTask(QtCore.QRunnable):
     def __init__(
         self,
-        cache: LruFrameCache[Tuple[str, int]],
-        key: Tuple[str, int],
+        cache: LruFrameCache[tuple[str, int]],
+        key: tuple[str, int],
         loader: Callable[[int], np.ndarray],
         index: int,
     ) -> None:

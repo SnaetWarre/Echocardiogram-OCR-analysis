@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from PySide6 import QtWidgets
 
-
 APP_STYLESHEET = """
 QMainWindow {
     background: #F5F7FA;
