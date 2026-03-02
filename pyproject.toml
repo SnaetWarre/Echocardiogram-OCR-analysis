@@ -1,0 +1,43 @@
+[project]
+name = "dicom_viewer"
+version = "0.1.0"
+description = "A fast Python DICOM Viewer with AI support"
+requires-python = ">=3.9"
+dependencies = [
+    "PySide6",
+    "numpy",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "C",   # flake8-comprehensions
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+    "RUF", # ruff-specific rules
+]
+ignore = []
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.pyright]
+include = ["app"]
+exclude = ["**/__pycache__"]
+strict = ["app"]
+reportMissingImports = true
+reportMissingTypeStubs = false
+reportUnknownMemberType = false
+reportUnknownArgumentType = false
+reportUnknownVariableType = false
+reportAttributeAccessIssue = false
+
+
