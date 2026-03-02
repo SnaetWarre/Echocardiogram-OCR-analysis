@@ -5,7 +5,6 @@ import threading
 import traceback
 from datetime import datetime
 from pathlib import Path
-from typing import Type
 
 from PySide6 import QtWidgets
 
@@ -13,7 +12,7 @@ from app.ui.main_window import MainWindow
 
 
 def _log_unhandled_exception(
-    exc_type: Type[BaseException],
+    exc_type: type[BaseException],
     exc: BaseException,
     tb,
 ) -> Path:
@@ -28,7 +27,7 @@ def _log_unhandled_exception(
 
 
 def _excepthook(
-    exc_type: Type[BaseException],
+    exc_type: type[BaseException],
     exc: BaseException,
     tb,
 ) -> None:

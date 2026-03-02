@@ -5,14 +5,14 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import numpy as np
 
 from app.io.dicom_loader import load_dicom_series
 
 
-def _write_json(payload: Dict[str, Any]) -> None:
+def _write_json(payload: dict[str, Any]) -> None:
     sys.stdout.write(json.dumps(payload, ensure_ascii=False) + "\n")
     sys.stdout.flush()
 
@@ -108,7 +108,7 @@ def main() -> int:
         }
         _write_json(payload)
         return 0
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         payload = {"status": "error", "error": str(exc)}
         if args.debug:
             payload["type"] = type(exc).__name__

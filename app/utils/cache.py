@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from collections import OrderedDict
+from collections.abc import Iterator
 from dataclasses import dataclass
 from threading import RLock
-from typing import Generic, Iterator, Optional, Tuple, TypeVar
+from typing import Generic, TypeVar
 
 from PySide6 import QtGui
 
@@ -30,7 +31,7 @@ class LruFrameCache(Generic[K]):
             raise ValueError("capacity must be > 0")
         self._capacity = capacity
         self._lock = RLock()
-        self._data: "OrderedDict[K, QtGui.QImage]" = OrderedDict()
+        self._data: OrderedDict[K, QtGui.QImage] = OrderedDict()
         self._hits = 0
         self._misses = 0
 
@@ -61,7 +62,7 @@ class LruFrameCache(Generic[K]):
         with self._lock:
             return key in self._data
 
-    def get(self, key: K) -> Optional[QtGui.QImage]:
+    def get(self, key: K) -> QtGui.QImage | None:
         with self._lock:
             image = self._data.get(key)
             if image is None:
@@ -78,15 +79,15 @@ class LruFrameCache(Generic[K]):
             self._data[key] = image
             self._evict_if_needed()
 
-    def pop(self, key: K) -> Optional[QtGui.QImage]:
+    def pop(self, key: K) -> QtGui.QImage | None:
         with self._lock:
             return self._data.pop(key, None)
 
-    def peek(self, key: K) -> Optional[QtGui.QImage]:
+    def peek(self, key: K) -> QtGui.QImage | None:
         with self._lock:
             return self._data.get(key)
 
-    def items(self) -> Iterator[Tuple[K, QtGui.QImage]]:
+    def items(self) -> Iterator[tuple[K, QtGui.QImage]]:
         with self._lock:
             return iter(self._data.items())
 
@@ -105,7 +106,7 @@ class LruPixmapCache(Generic[K]):
             raise ValueError("capacity must be > 0")
         self._capacity = capacity
         self._lock = RLock()
-        self._data: "OrderedDict[K, QtGui.QPixmap]" = OrderedDict()
+        self._data: OrderedDict[K, QtGui.QPixmap] = OrderedDict()
 
     @property
     def capacity(self) -> int:
@@ -119,7 +120,7 @@ class LruPixmapCache(Generic[K]):
         with self._lock:
             return len(self._data)
 
-    def get(self, key: K) -> Optional[QtGui.QPixmap]:
+    def get(self, key: K) -> QtGui.QPixmap | None:
         with self._lock:
             pixmap = self._data.get(key)
             if pixmap is None:

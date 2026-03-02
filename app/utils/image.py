@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Optional, Tuple
-
 import numpy as np
 from PySide6 import QtGui
 
@@ -30,9 +28,7 @@ def qimage_from_array(image: np.ndarray) -> QtGui.QImage:
         img = _contiguous(_to_uint8(array))
         h, w = img.shape
         bytes_per_line = img.strides[0]
-        return QtGui.QImage(
-            img.data, w, h, bytes_per_line, QtGui.QImage.Format_Grayscale8
-        ).copy()
+        return QtGui.QImage(img.data, w, h, bytes_per_line, QtGui.QImage.Format_Grayscale8).copy()
 
     if array.ndim == 3 and array.shape[2] in (3, 4):
         img = _contiguous(_to_uint8(array))
@@ -45,6 +41,4 @@ def qimage_from_array(image: np.ndarray) -> QtGui.QImage:
     flat = _contiguous(_to_uint8(array))
     h, w = flat.shape[:2]
     bytes_per_line = flat.strides[0]
-    return QtGui.QImage(
-        flat.data, w, h, bytes_per_line, QtGui.QImage.Format_Grayscale8
-    ).copy()
+    return QtGui.QImage(flat.data, w, h, bytes_per_line, QtGui.QImage.Format_Grayscale8).copy()

@@ -68,7 +68,7 @@ class LabelViewerWindow(QtWidgets.QMainWindow):
         self._info_label = info
 
         hint = QtWidgets.QLabel(
-            "Type measurements, one per line: \"Name Value Unit\" (e.g. TR Vmax 1.9 m/s). "
+            'Type measurements, one per line: "Name Value Unit" (e.g. TR Vmax 1.9 m/s). '
             "Ctrl+Enter: save and next. Ctrl+Shift+S: skip file. Ctrl+Q: quit."
         )
         hint.setWordWrap(True)
@@ -109,7 +109,10 @@ class LabelViewerWindow(QtWidgets.QMainWindow):
         return super().eventFilter(obj, event)
 
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
-        if event.key() == QtCore.Qt.Key.Key_Return and event.modifiers() & QtCore.Qt.KeyboardModifier.ControlModifier:
+        if (
+            event.key() == QtCore.Qt.Key.Key_Return
+            and event.modifiers() & QtCore.Qt.KeyboardModifier.ControlModifier
+        ):
             self._save_and_next()
             return
         if event.matches(QtGui.QKeySequence.StandardKey.Quit):
@@ -188,7 +191,9 @@ def main() -> int:
 
     folder = args.folder
     if folder is None or not folder.is_dir():
-        folder = QtWidgets.QFileDialog.getExistingDirectory(None, "Select DICOM Folder", str(Path.cwd()))
+        folder = QtWidgets.QFileDialog.getExistingDirectory(
+            None, "Select DICOM Folder", str(Path.cwd())
+        )
         if not folder:
             return 0
         folder = Path(folder)

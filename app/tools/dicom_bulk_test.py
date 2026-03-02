@@ -3,15 +3,16 @@ from __future__ import annotations
 import argparse
 import sys
 import time
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, List, Optional, Tuple
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from app.io.dicom_loader import DicomLoadError, load_dicom_series  # noqa: E402
+from app.io.dicom_loader import load_dicom_series  # noqa: E402
+from app.io.errors import DicomLoadError  # noqa: E402
 
 
 @dataclass
@@ -19,9 +20,9 @@ class LoadResult:
     path: Path
     ok: bool
     duration_s: float
-    error: Optional[str] = None
-    frame_count: Optional[int] = None
-    shape: Optional[Tuple[int, ...]] = None
+    error: str | None = None
+    frame_count: int | None = None
+    shape: tuple[int, ...] | None = None
 
 
 def iter_dicom_files(root: Path, pattern: str) -> Iterable[Path]:
@@ -43,12 +44,12 @@ def load_single(
     start = time.perf_counter()
     try:
         series = load_dicom_series(path, load_pixels=load_pixels, force=force)
-        first_frame_shape: Optional[Tuple[int, ...]] = None
+        first_frame_shape: tuple[int, ...] | None = None
         if decode_first_frame:
             frame = series.get_frame(0)
             first_frame_shape = tuple(frame.shape)
         duration = time.perf_counter() - start
-        shape: Optional[Tuple[int, ...]] = None
+        shape: tuple[int, ...] | None = None
         if series.raw_frames is not None:
             shape = tuple(series.raw_frames.shape)
         elif first_frame_shape is not None:
@@ -68,7 +69,7 @@ def load_single(
         return LoadResult(path=path, ok=False, duration_s=duration, error=f"Unhandled error: {exc}")
 
 
-def summarize(results: List[LoadResult]) -> None:
+def summarize(results: list[LoadResult]) -> None:
     total = len(results)
     failures = [r for r in results if not r.ok]
     successes = [r for r in results if r.ok]
@@ -154,7 +155,7 @@ def main() -> int:
     if args.max_files > 0:
         files = files[: args.max_files]
 
-    results: List[LoadResult] = []
+    results: list[LoadResult] = []
     for idx, path in enumerate(files, start=1):
         result = load_single(
             path,
