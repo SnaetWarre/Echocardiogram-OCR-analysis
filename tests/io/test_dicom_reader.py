@@ -5,7 +5,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from app.io.dicom_loader import DicomLoadError, load_dicom_series
+from app.io.dicom_loader import load_dicom_series
+from app.io.errors import DicomLoadError
 from tests.io._helpers import write_dicom
 
 

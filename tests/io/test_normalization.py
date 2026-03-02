@@ -5,8 +5,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from app.io import dicom_loader
-from app.io.dicom_loader import build_lazy_frame_loader
+from app.io import frame_loaders
+from app.io.frame_loaders import build_lazy_frame_loader
 from app.io.normalization import normalize_frames, to_uint8
 
 
@@ -35,8 +35,7 @@ def test_lazy_loader_full_decode_normalizes_uint8(
             return np.array([[0, 1000], [2000, 3000]], dtype=np.uint16)
 
     ds = FakeDS()
-    monkeypatch.setattr(dicom_loader.pydicom, "dcmread", lambda *_a, **_k: ds)
-    monkeypatch.setattr(dicom_loader, "dicom_get_frame", None)
+    monkeypatch.setattr(frame_loaders.pydicom, "dcmread", lambda *_a, **_k: ds)
 
     loader = build_lazy_frame_loader(
         Path("/tmp/fake_norm.dcm"),
@@ -63,8 +62,7 @@ def test_lazy_loader_full_decode_no_cache_redecodes(
             return np.full((2, 2), 500, dtype=np.uint16)
 
     ds = FakeDS()
-    monkeypatch.setattr(dicom_loader.pydicom, "dcmread", lambda *_a, **_k: ds)
-    monkeypatch.setattr(dicom_loader, "dicom_get_frame", None)
+    monkeypatch.setattr(frame_loaders.pydicom, "dcmread", lambda *_a, **_k: ds)
 
     loader = build_lazy_frame_loader(
         Path("/tmp/fake_nocache.dcm"),

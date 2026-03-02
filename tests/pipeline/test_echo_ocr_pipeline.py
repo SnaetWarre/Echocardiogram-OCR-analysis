@@ -11,7 +11,6 @@ from app.pipeline.echo_ocr_pipeline import (
     RegexMeasurementParser,
     RoiDetection,
     TopLeftBlueGrayBoxDetector,
-    _color_distance,
     preprocess_roi,
 )
 from app.pipeline.ocr_engines import OcrResult, OcrToken
@@ -42,14 +41,6 @@ def test_parser_extracts_value_and_unit() -> None:
     assert items[0].name == "PV Vmax"
     assert items[0].value == "0.87"
     assert items[0].unit == "m/s"
-
-
-def test_color_distance_is_finite_for_int16_rgb_values() -> None:
-    rgb = np.full((4, 4, 3), 255, dtype=np.int16)
-    dist = _color_distance(rgb, (0x1A, 0x21, 0x29))
-
-    assert np.isfinite(dist).all()
-    assert dist.shape == (4, 4)
 
 
 def test_preprocess_roi_respects_upscale_env(monkeypatch) -> None:

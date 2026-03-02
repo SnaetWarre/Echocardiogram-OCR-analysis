@@ -7,8 +7,9 @@ import numpy as np
 import pytest
 from pydicom.errors import InvalidDicomError
 
-from app.io import dicom_loader
-from app.io.dicom_loader import DicomLoadError, build_lazy_frame_loader
+from app.io import frame_loaders
+from app.io.errors import DicomLoadError
+from app.io.frame_loaders import build_lazy_frame_loader
 
 
 def test_lazy_loader_uses_get_frame_when_available(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -29,10 +30,9 @@ def test_lazy_loader_uses_get_frame_when_available(monkeypatch: pytest.MonkeyPat
         base = np.array([[0, 1000], [2000, 3000]], dtype=np.uint16)
         return base + index
 
-    monkeypatch.setattr(dicom_loader, "dicom_get_frame", fake_get_frame)
-    monkeypatch.setattr(dicom_loader.pydicom, "dcmread", fake_dcmread)
+    monkeypatch.setattr(frame_loaders.pydicom, "dcmread", fake_dcmread)
 
-    loader = build_lazy_frame_loader(Path("/tmp/fake.dcm"), read_frame_only=True, cache_frames=True)
+    loader = build_lazy_frame_loader(Path("/tmp/fake.dcm"), read_frame_only=True, cache_frames=True, get_frame_fn=fake_get_frame)
     frame = loader(1)
 
     assert frame.shape == (2, 2)
@@ -62,10 +62,9 @@ def test_lazy_loader_caches_full_decode_when_frame_only_disabled(
             )
 
     ds = FakeDS()
-    monkeypatch.setattr(dicom_loader.pydicom, "dcmread", lambda *_a, **_k: ds)
-    monkeypatch.setattr(dicom_loader, "dicom_get_frame", None)
+    monkeypatch.setattr(frame_loaders.pydicom, "dcmread", lambda *_a, **_k: ds)
 
-    loader = build_lazy_frame_loader(Path("/tmp/fake2.dcm"), read_frame_only=False, cache_frames=True)
+    loader = build_lazy_frame_loader(Path("/tmp/fake2.dcm"), read_frame_only=False, cache_frames=True, get_frame_fn=None)
     frame0 = loader(0)
     frame1 = loader(1)
 
@@ -90,10 +89,9 @@ def test_lazy_loader_reuses_dataset_between_calls(monkeypatch: pytest.MonkeyPatc
         calls["count"] += 1
         return ds
 
-    monkeypatch.setattr(dicom_loader.pydicom, "dcmread", fake_dcmread)
-    monkeypatch.setattr(dicom_loader, "dicom_get_frame", None)
+    monkeypatch.setattr(frame_loaders.pydicom, "dcmread", fake_dcmread)
 
-    loader = build_lazy_frame_loader(Path("/tmp/fake4.dcm"), read_frame_only=False, cache_frames=False)
+    loader = build_lazy_frame_loader(Path("/tmp/fake4.dcm"), read_frame_only=False, cache_frames=False, get_frame_fn=None)
     frame0 = loader(0)
     frame1 = loader(0)
 
@@ -113,10 +111,9 @@ def test_lazy_loader_treats_non_positive_frame_count_as_single_frame(
             return np.full((2, 2), 42, dtype=np.uint16)
 
     ds = FakeDS()
-    monkeypatch.setattr(dicom_loader.pydicom, "dcmread", lambda *_a, **_k: ds)
-    monkeypatch.setattr(dicom_loader, "dicom_get_frame", None)
+    monkeypatch.setattr(frame_loaders.pydicom, "dcmread", lambda *_a, **_k: ds)
 
-    loader = build_lazy_frame_loader(Path("/tmp/fake5.dcm"), read_frame_only=False, cache_frames=True)
+    loader = build_lazy_frame_loader(Path("/tmp/fake5.dcm"), read_frame_only=False, cache_frames=True, get_frame_fn=None)
     frame = loader(0)
 
     assert frame.shape == (2, 2)
@@ -139,10 +136,9 @@ def test_lazy_loader_invalid_frame_count_defaults_to_single_frame(
             return np.full((2, 2), 9, dtype=np.uint16)
 
     ds = FakeDS()
-    monkeypatch.setattr(dicom_loader.pydicom, "dcmread", lambda *_a, **_k: ds)
-    monkeypatch.setattr(dicom_loader, "dicom_get_frame", None)
+    monkeypatch.setattr(frame_loaders.pydicom, "dcmread", lambda *_a, **_k: ds)
 
-    loader = build_lazy_frame_loader(Path("/tmp/fake_badcount.dcm"), read_frame_only=False, cache_frames=True)
+    loader = build_lazy_frame_loader(Path("/tmp/fake_badcount.dcm"), read_frame_only=False, cache_frames=True, get_frame_fn=None)
     frame = loader(0)
     assert frame.shape == (2, 2)
 
@@ -163,12 +159,11 @@ def test_lazy_loader_frame_only_uses_pixel_array_for_single_frame(
     ds = FakeDS()
 
     def fake_get_frame(*_a, **_k):
-        raise AssertionError("dicom_get_frame should not be used for single-frame data")
+        raise AssertionError("default_dicom_get_frame should not be used for single-frame data")
 
-    monkeypatch.setattr(dicom_loader.pydicom, "dcmread", lambda *_a, **_k: ds)
-    monkeypatch.setattr(dicom_loader, "dicom_get_frame", fake_get_frame)
+    monkeypatch.setattr(frame_loaders.pydicom, "dcmread", lambda *_a, **_k: ds)
 
-    loader = build_lazy_frame_loader(Path("/tmp/fake_single.dcm"), read_frame_only=True, cache_frames=True)
+    loader = build_lazy_frame_loader(Path("/tmp/fake_single.dcm"), read_frame_only=True, cache_frames=True, get_frame_fn=fake_get_frame)
     frame = loader(0)
     assert frame.shape == (2, 2)
     assert frame.dtype == np.uint8
@@ -193,8 +188,7 @@ def test_lazy_loader_frame_only_fallback_when_get_frame_missing_multi_frame(
             )
 
     ds = FakeDS()
-    monkeypatch.setattr(dicom_loader.pydicom, "dcmread", lambda *_a, **_k: ds)
-    monkeypatch.setattr(dicom_loader, "dicom_get_frame", None)
+    monkeypatch.setattr(frame_loaders.pydicom, "dcmread", lambda *_a, **_k: ds)
 
     loader = build_lazy_frame_loader(
         Path("/tmp/fake_missing_get_frame.dcm"),
@@ -224,10 +218,9 @@ def test_lazy_loader_frame_only_get_frame_error_surfaces_as_dicom_error(
     def fake_get_frame(*_a, **_k):
         raise RuntimeError("decoder failed")
 
-    monkeypatch.setattr(dicom_loader.pydicom, "dcmread", lambda *_a, **_k: ds)
-    monkeypatch.setattr(dicom_loader, "dicom_get_frame", fake_get_frame)
+    monkeypatch.setattr(frame_loaders.pydicom, "dcmread", lambda *_a, **_k: ds)
 
-    loader = build_lazy_frame_loader(Path("/tmp/fake_frame_error.dcm"), read_frame_only=True, cache_frames=True)
+    loader = build_lazy_frame_loader(Path("/tmp/fake_frame_error.dcm"), read_frame_only=True, cache_frames=True, get_frame_fn=fake_get_frame)
     with pytest.raises(DicomLoadError):
         loader(0)
 
@@ -243,9 +236,8 @@ def test_lazy_loader_full_decode_out_of_range_raises(monkeypatch: pytest.MonkeyP
             )
 
     ds = FakeDS()
-    monkeypatch.setattr(dicom_loader.pydicom, "dcmread", lambda *_a, **_k: ds)
-    monkeypatch.setattr(dicom_loader, "dicom_get_frame", None)
-    loader = build_lazy_frame_loader(Path("/tmp/fake_oob.dcm"), read_frame_only=False, cache_frames=True)
+    monkeypatch.setattr(frame_loaders.pydicom, "dcmread", lambda *_a, **_k: ds)
+    loader = build_lazy_frame_loader(Path("/tmp/fake_oob.dcm"), read_frame_only=False, cache_frames=True, get_frame_fn=None)
 
     with pytest.raises(IndexError):
         loader(2)
@@ -262,8 +254,7 @@ def test_lazy_loader_full_decode_pixel_array_error_wrapped(
             raise ValueError("decode failed")
 
     ds = FakeDS()
-    monkeypatch.setattr(dicom_loader.pydicom, "dcmread", lambda *_a, **_k: ds)
-    monkeypatch.setattr(dicom_loader, "dicom_get_frame", None)
+    monkeypatch.setattr(frame_loaders.pydicom, "dcmread", lambda *_a, **_k: ds)
     loader = build_lazy_frame_loader(
         Path("/tmp/fake_decode_fail.dcm"),
         read_frame_only=False,
@@ -278,8 +269,8 @@ def test_lazy_loader_dcmread_runtime_error_wrapped(monkeypatch: pytest.MonkeyPat
     def fake_dcmread(*_a, **_k):
         raise RuntimeError("io failure")
 
-    monkeypatch.setattr(dicom_loader.pydicom, "dcmread", fake_dcmread)
-    loader = build_lazy_frame_loader(Path("/tmp/fake_runtime.dcm"), read_frame_only=False, cache_frames=True)
+    monkeypatch.setattr(frame_loaders.pydicom, "dcmread", fake_dcmread)
+    loader = build_lazy_frame_loader(Path("/tmp/fake_runtime.dcm"), read_frame_only=False, cache_frames=True, get_frame_fn=None)
 
     with pytest.raises(DicomLoadError):
         loader(0)
@@ -291,8 +282,8 @@ def test_lazy_loader_dcmread_invalid_dicom_raises_dicom_error(
     def fake_dcmread(*_a, **_k):
         raise InvalidDicomError("bad")
 
-    monkeypatch.setattr(dicom_loader.pydicom, "dcmread", fake_dcmread)
-    loader = build_lazy_frame_loader(Path("/tmp/fake_invalid.dcm"), read_frame_only=True, cache_frames=True)
+    monkeypatch.setattr(frame_loaders.pydicom, "dcmread", fake_dcmread)
+    loader = build_lazy_frame_loader(Path("/tmp/fake_invalid.dcm"), read_frame_only=True, cache_frames=True, get_frame_fn=None)
 
     with pytest.raises(DicomLoadError):
         loader(0)
@@ -316,10 +307,9 @@ def test_lazy_loader_thread_safety_under_concurrent_access(
             )
 
     ds = FakeDS()
-    monkeypatch.setattr(dicom_loader.pydicom, "dcmread", lambda *_a, **_k: ds)
-    monkeypatch.setattr(dicom_loader, "dicom_get_frame", None)
+    monkeypatch.setattr(frame_loaders.pydicom, "dcmread", lambda *_a, **_k: ds)
 
-    loader = build_lazy_frame_loader(Path("/tmp/fake3.dcm"), read_frame_only=False, cache_frames=True)
+    loader = build_lazy_frame_loader(Path("/tmp/fake3.dcm"), read_frame_only=False, cache_frames=True, get_frame_fn=None)
     barrier = threading.Barrier(8)
     errors: list[Exception] = []
     results: list[int] = []
