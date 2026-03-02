@@ -7,7 +7,7 @@ import sys
 import tempfile
 from pathlib import Path
 from threading import RLock
-from typing import Callable, Dict, Optional
+from typing import Callable
 
 import numpy as np
 import pydicom
@@ -31,8 +31,8 @@ def build_lazy_frame_loader(
     cache_frames: bool = True,
     get_frame_fn=default_dicom_get_frame,
 ) -> Callable[[int], np.ndarray]:
-    ds_cache: Dict[str, Optional[pydicom.Dataset]] = {"ds": None}
-    frames_cache: Dict[str, Optional[np.ndarray]] = {"frames": None}
+    ds_cache: dict[str, pydicom.Dataset | None] = {"ds": None}
+    frames_cache: dict[str, np.ndarray | None] = {"frames": None}
     lock = RLock()
 
     def _load(index: int) -> np.ndarray:

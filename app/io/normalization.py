@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-from typing import Optional
-
 import numpy as np
 
 
 def normalize_frames(
-    frames: np.ndarray, photometric_interpretation: Optional[str] = None
+    frames: np.ndarray, photometric_interpretation: str | None = None
 ) -> np.ndarray:
     """
     Normalize DICOM frames to a consistent shape and dtype uint8.
@@ -19,11 +17,7 @@ def normalize_frames(
     if arr.ndim == 2:
         arr = arr[np.newaxis, ...]
     elif arr.ndim == 3:
-        photometric = (
-            str(photometric_interpretation).upper()
-            if photometric_interpretation
-            else ""
-        )
+        photometric = str(photometric_interpretation).upper() if photometric_interpretation else ""
         color_modes = {
             "RGB",
             "YBR_FULL",

@@ -2,29 +2,27 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Callable, Optional, Tuple
+from typing import Callable
 
 import numpy as np
-import pydicom
 
 from app.io.dicom_reader import (
     extract_pixel_array,
-    get_frame_count,
     read_dataset,
 )
-from app.io.errors import DicomLoadError
 from app.io.frame_loaders import (
     build_lazy_frame_loader as _build_lazy_frame_loader,
+)
+from app.io.frame_loaders import (
     build_subprocess_frame_loader,
     default_dicom_get_frame,
 )
 from app.io.metadata_extractors import (
     extract_metadata,
     extract_patient_info,
-    get_fps_and_frame_time,
 )
-from app.io.normalization import normalize_frames, to_uint8
-from app.models.types import DicomMetadata, DicomSeries, PatientInfo
+from app.io.normalization import normalize_frames
+from app.models.types import DicomSeries
 
 dicom_get_frame = default_dicom_get_frame
 

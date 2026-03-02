@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 import numpy as np
 import pydicom
@@ -14,7 +14,7 @@ def read_dataset(path: Path, *, force: bool = False, load_pixels: bool = True) -
     if not path.exists():
         raise DicomLoadError(f"File not found: {path}")
 
-    read_kwargs: Dict[str, Any] = {"force": force}
+    read_kwargs: dict[str, Any] = {"force": force}
     if not load_pixels:
         read_kwargs["stop_before_pixels"] = True
     try:
@@ -43,5 +43,5 @@ def get_frame_count(ds: pydicom.Dataset) -> int:
         return 1
 
 
-def get_photometric(ds: pydicom.Dataset) -> Optional[str]:
+def get_photometric(ds: pydicom.Dataset) -> str | None:
     return getattr(ds, "PhotometricInterpretation", None)

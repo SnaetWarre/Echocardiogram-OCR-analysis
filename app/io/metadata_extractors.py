@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 import pydicom
 
@@ -10,7 +10,7 @@ from app.models.types import DicomMetadata, PatientInfo
 
 
 def extract_patient_info(ds: pydicom.Dataset) -> PatientInfo:
-    def _get(tag: str) -> Optional[str]:
+    def _get(tag: str) -> str | None:
         value = getattr(ds, tag, None)
         if value is None:
             return None
@@ -33,7 +33,7 @@ def extract_metadata(ds: pydicom.Dataset, path: Path) -> DicomMetadata:
     fps, frame_time = get_fps_and_frame_time(ds)
     frame_count = get_frame_count(ds)
 
-    additional: Dict[str, Any] = {
+    additional: dict[str, Any] = {
         "Manufacturer": getattr(ds, "Manufacturer", None),
         "ModelName": getattr(ds, "ManufacturerModelName", None),
         "BodyPartExamined": getattr(ds, "BodyPartExamined", None),
@@ -68,7 +68,7 @@ def extract_metadata(ds: pydicom.Dataset, path: Path) -> DicomMetadata:
     )
 
 
-def get_fps_and_frame_time(ds: pydicom.Dataset) -> Tuple[float, Optional[float]]:
+def get_fps_and_frame_time(ds: pydicom.Dataset) -> tuple[float, float | None]:
     """
     Return (fps, frame_time_ms) if present, otherwise defaults to 30fps.
     """
