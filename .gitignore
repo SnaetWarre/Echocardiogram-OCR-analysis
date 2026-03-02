@@ -4,3 +4,11 @@ __pycache__/
 *.pyd
 .pytest_cache/
 .cache/
+.venv-ty/
+logs/
+artifacts/
+findings
+session
+.cursor/commands/
+.mypy_cache/
+.ruff_cache/
