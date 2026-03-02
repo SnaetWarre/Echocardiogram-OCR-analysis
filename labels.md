@@ -190,7 +190,7 @@ path: /home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage
 
 path: /home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0074.dcm 
 
--> LVLd A3C 7.76 cm 
+-> LVLd A2C 7.76 cm 
 -> LVEDV MOD A2C 93.58 ml 
 
 --
