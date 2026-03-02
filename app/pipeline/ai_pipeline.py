@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Protocol, Sequence
 
@@ -62,7 +62,7 @@ class DummyEchoPipeline(BasePipeline):
     name = "dummy-echo"
 
     def run(self, request: PipelineRequest) -> PipelineResult:
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         ai_result = AiResult(
             model_name=self.name,
             created_at=now,

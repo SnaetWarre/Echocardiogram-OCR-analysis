@@ -20,6 +20,7 @@ class MeasurementRecord:
     roi_bbox: Tuple[int, int, int, int]
     processed_at: str
     pipeline_version: str
+    ocr_engine: str = ""
 
     def to_dict(self) -> Dict[str, object]:
         payload = asdict(self)
@@ -45,4 +46,5 @@ CSV_FIELDS = [
     "roi_bbox",
     "processed_at",
     "pipeline_version",
+    "ocr_engine",
 ]

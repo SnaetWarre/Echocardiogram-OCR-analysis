@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import os
+from pathlib import Path
+import shutil
+import sys
 from typing import List, Protocol
 
 import numpy as np
@@ -40,6 +43,13 @@ class TesseractEngine:
         try:
             import pytesseract  # type: ignore
 
+            tesseract_cmd = os.getenv("TESSERACT_CMD", "").strip()
+            if tesseract_cmd:
+                pytesseract.pytesseract.tesseract_cmd = tesseract_cmd
+            elif shutil.which("tesseract") is None:
+                local_tesseract = Path(sys.executable).resolve().parent / "tesseract"
+                if local_tesseract.exists():
+                    pytesseract.pytesseract.tesseract_cmd = str(local_tesseract)
             self._pytesseract = pytesseract
         except Exception as exc:  # noqa: BLE001
             raise UnavailableOcrEngineError("pytesseract is not installed") from exc
