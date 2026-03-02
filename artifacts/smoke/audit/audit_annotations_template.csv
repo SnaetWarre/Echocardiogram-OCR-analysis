@@ -1,3 +1,0 @@
-dicom_path,frame_index,box_present,ocr_readable,measurement_name,measurement_value,measurement_unit,notes
-artifacts/smoke/sample_echo.dcm,0,,,,,,
-artifacts/smoke/sample_echo.dcm,1,,,,,,

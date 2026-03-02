@@ -1,3 +1,0 @@
-dicom_path,frame_index,detector_present,detector_confidence,roi_bbox
-artifacts/smoke/sample_echo.dcm,0,True,1.0,"10,8,90,20"
-artifacts/smoke/sample_echo.dcm,1,False,0.0,
