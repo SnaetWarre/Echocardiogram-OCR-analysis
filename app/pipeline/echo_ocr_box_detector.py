@@ -47,6 +47,7 @@ class TopLeftBlueGrayBoxDetector:
         min_presence_confidence: float = 0.04,
         box_color: tuple = _MEASUREMENT_BOX_RGB,
         color_tolerance: float = _MEASUREMENT_BOX_TOLERANCE,
+        crop_mode: str = "loose",
     ) -> None:
         self.top_left_height_ratio = top_left_height_ratio
         self.top_left_width_ratio = top_left_width_ratio
@@ -54,6 +55,7 @@ class TopLeftBlueGrayBoxDetector:
         self.min_presence_confidence = min_presence_confidence
         self.box_color = box_color
         self.color_tolerance = color_tolerance
+        self.crop_mode = crop_mode
 
     def detect(self, frame: np.ndarray) -> RoiDetection:
         h, w = frame.shape[:2]
@@ -89,4 +91,29 @@ class TopLeftBlueGrayBoxDetector:
         confidence = float(min(1.0, fill_ratio))
         if confidence < self.min_presence_confidence:
             return RoiDetection(present=False, bbox=None, confidence=confidence)
+            
+        if self.crop_mode == "tight":
+            try:
+                import cv2
+                roi_gray = _to_gray(search[y1:y2+1, x1:x2+1])
+                # Adaptive threshold to isolate text from background
+                thresh = cv2.adaptiveThreshold(
+                    roi_gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 21, 5
+                )
+                coords = cv2.findNonZero(thresh)
+                if coords is not None:
+                    cx, cy, cw, ch = cv2.boundingRect(coords)
+                    # Add a 2px margin
+                    cx = max(0, cx - 2)
+                    cy = max(0, cy - 2)
+                    cw = min(width - cx, cw + 4)
+                    ch = min(height - cy, ch + 4)
+                    
+                    x1 += cx
+                    y1 += cy
+                    width = cw
+                    height = ch
+            except ImportError:
+                pass
+                
         return RoiDetection(present=True, bbox=(x1, y1, width, height), confidence=confidence)

@@ -11,7 +11,8 @@ The evaluation tool is `app/tools/echo_ocr_eval_labels.py`. It tests against **7
 |--------|-------------|------------|-------|-------|
 | EasyOCR + regex | 91.0% (71/78) | ~83% | ~50s | Baseline after OpenCV morphological enhancements |
 | **Surya OCR** | **91.0% (71/78)** | **83.3% (65/78)** | **~51s** | Best current, same as EasyOCR |
-| GOT-OCR 2.0 | 87.2% (68/78) | 33.3% (26/78) | ~52s | Splits compound abbreviations (`AV Vmax` → `AV V max`) |
+| GOT-OCR 2.0 (raw) | 26.9% (21/78) | 10.3% (8/78) | ~52s | Splits/fuses compound abbreviations |
+| GOT-OCR 2.0 + Normalizer | 76.9% (60/78) | 73.1% (57/78) | ~52s | Massive 7× lift, but still loses to Surya |
 
 ## 🔬 Key Observations
 
@@ -20,14 +21,11 @@ The evaluation tool is `app/tools/echo_ocr_eval_labels.py`. It tests against **7
 - Still misses measurements when the text box is too dark/small or values have unusual decimal formatting
 - Ties on full-match with EasyOCR — both fail on similar fringe cases
 
-### Why GOT-OCR 2.0 = 87.2% value / 33.3% full
-- GOT-OCR reads values almost perfectly (87.2% value accuracy)
-- **The core problem**: it inserts spaces inside compact medical abbreviations:
-  - `AVVmax` → `AV V max` (then our regex can't match `AVVmax`)
-  - `LAESV(A-L)` → `LAES V (A-L)`
-  - `EF Biplane` → `EF Bi plane`
-- **This is a normalizer problem, NOT an OCR problem**
-- If we strip internal spaces from known abbreviations before matching, GOT-OCR accuracy would likely exceed Surya
+### Why GOT-OCR 2.0 = 76.9% value / 73.1% full
+- **Initial finding**: Without normalisation, GOT-OCR scores only 10.3% full match because it outputs all tokens on a single line and frequently splits/fuses medical abbreviations (`AVVmax`, `L VED V`).
+- **After normalisation**: We built `app/pipeline/gotocr_normalizer.py` with 30+ regex rules to fix splits, fuses, and line breaks.
+- **The result**: the normaliser lifted full matches by 7× (10% → 73%).
+- **Conclusion**: Even heavily normalised, GOT-OCR (76.9% value match) performs slightly worse than Surya OCR (91.0%). The root issue isn't just whitespace; GOT-OCR sometimes misreads tiny characters or drops whole measurements when boxes are cluttered. Surya remains the superior engine for this dense medical layout.
 
 ### Shared weaknesses across all engines
 - Measurements printed very small (e.g. `IVC 2.2 cm`, `RVIDd 3.2 cm`) — only 1 label each, text is tiny
@@ -47,13 +45,12 @@ The evaluation tool is `app/tools/echo_ocr_eval_labels.py`. It tests against **7
 
 ## 🔮 Next Steps (Tomorrow)
 
-### Option A — Normalize GOT-OCR output (Recommended 1st try)
-Add a **medical abbreviation normalizer** post-processor that:
-1. Removes unexpected internal spaces in multi-letter tokens (e.g. `LAES V` → `LAESV`)
-2. Applies to GOT-OCR output before regex matching
-3. Expected result: GOT-OCR full match likely jumps from 33% → 90%+
+### ❌ Option A — Normalize GOT-OCR output (COMPLETED)
+- Built `gotocr_normalizer.py` and achieved a massive 7× lift in full match accuracy (from 10% → 73%).
+- However, Surya OCR is still more accurate (83% full / 91% value).
 
-```python
+### ✅ Option B — Integrate Surya into main pipeline (NEXT)
+- Replace `EasyOcrEngine` with a `SuryaOcrEngine` in the main application pipeline.
 # Pseudocode
 def normalize_ocr_text(text: str) -> str:
     # Merge known split acronyms back

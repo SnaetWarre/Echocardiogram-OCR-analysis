@@ -7,6 +7,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
+import json
+import base64
+import subprocess
+import time
+import uuid
+from typing import Protocol, Optional
+
+import cv2
 import numpy as np
 
 
@@ -162,6 +170,129 @@ class PaddleOcrEngine:
         )
 
 
+class SuryaOcrEngine:
+    name = "surya"
+
+    def __init__(self) -> None:
+        self._worker_process: Optional[subprocess.Popen] = None
+        self._start_worker()
+
+    def _start_worker(self) -> None:
+        if self._worker_process is not None:
+            self._stop_worker()
+
+        # Assuming the worker script is in the same directory as this file
+        worker_script = Path(__file__).parent / "surya_worker.py"
+        
+        cmd = [
+            "mamba", "run", "-n", "surya", 
+            "python", str(worker_script)
+        ]
+        
+        # Start process with piped stdin/stdout
+        self._worker_process = subprocess.Popen(
+            cmd,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            text=True,  # Text mode for easier JSON line reading
+            bufsize=1,  # Line buffered
+        )
+        
+        # Wait for readiness signal
+        start_time = time.time()
+        while time.time() - start_time < 30:  # 30 second timeout for model loading
+            line = self._worker_process.stdout.readline()
+            if not line:
+                # Process exited pre-maturely
+                self._check_process()
+                continue
+                
+            try:
+                data = json.loads(line)
+                if data.get("status") == "ready":
+                    return # Worker is ready
+                if "error" in data:
+                    raise UnavailableOcrEngineError(f"Surya worker failed to start: {data['error']}")
+            except json.JSONDecodeError:
+                pass # Ignore non-JSON output during startup warnings
+                
+        raise UnavailableOcrEngineError("Surya worker startup timed out after 30 seconds")
+
+    def _stop_worker(self) -> None:
+        if self._worker_process:
+            if self._worker_process.stdin:
+                self._worker_process.stdin.close()
+            self._worker_process.terminate()
+            try:
+                self._worker_process.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                self._worker_process.kill()
+            self._worker_process = None
+
+    def _check_process(self) -> None:
+        if self._worker_process is None or self._worker_process.poll() is not None:
+            print("Surya worker subprocess died. Restarting...")
+            self._start_worker()
+
+    def extract(self, image: np.ndarray) -> OcrResult:
+        self._check_process()
+        
+        # Encode image to base64 PNG. cv2.imencode handles gray/BGR natively.
+        success, encoded_image = cv2.imencode('.png', image)
+        if not success:
+            raise RuntimeError("Failed to encode image for Surya worker")
+            
+        b64_string = base64.b64encode(encoded_image).decode('utf-8')
+        req_id = str(uuid.uuid4())
+        
+        payload = json.dumps({
+            "id": req_id,
+            "image_base64": b64_string
+        })
+        
+        # Send payload
+        try:
+            self._worker_process.stdin.write(payload + "\n")
+            self._worker_process.stdin.flush()
+        except BrokenPipeError:
+            self._check_process()
+            self._worker_process.stdin.write(payload + "\n")
+            self._worker_process.stdin.flush()
+            
+        # Read response
+        while True:
+            line = self._worker_process.stdout.readline()
+            if not line:
+                self._check_process()
+                raise RuntimeError("Surya worker disconnected unexpectedly")
+                
+            line = line.strip()
+            if not line:
+                continue
+                
+            try:
+                res = json.loads(line)
+                if res.get("id") == req_id:
+                    if "error" in res:
+                        print(f"Surya error: {res['error']}")
+                        print(f"Traceback: {res.get('traceback', '')}")
+                        return OcrResult(text="", confidence=0.0, tokens=[], engine_name=self.name)
+                        
+                    return OcrResult(
+                        text=res.get("text", ""),
+                        confidence=res.get("confidence", 0.0),
+                        tokens=[], # We don't really need token-level confidence for the current architecture
+                        engine_name=self.name
+                    )
+                else:
+                    print(f"Warning: Discarded mismatched Surya response (expected {req_id}, got {res.get('id')})")
+            except json.JSONDecodeError:
+                # Mamba/conda might print warnings to stdout occasionally
+                print(f"Surya worker non-JSON output: {line}")
+
+    def __del__(self):
+        self._stop_worker()
+
 def build_engine(name: str) -> OcrEngine:
     lowered = name.strip().lower()
     if lowered == "tesseract":
@@ -170,4 +301,6 @@ def build_engine(name: str) -> OcrEngine:
         return EasyOcrEngine()
     if lowered == "paddleocr":
         return PaddleOcrEngine()
+    if lowered == "surya":
+        return SuryaOcrEngine()
     raise ValueError(f"Unsupported OCR engine: {name}")

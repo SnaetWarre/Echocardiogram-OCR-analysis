@@ -26,6 +26,7 @@ from app.tools.echo_ocr_eval_labels import (
     run_evaluation,
     _print_summary,
 )
+from app.pipeline.gotocr_normalizer import normalize_gotocr_text
 
 
 # ---------------------------------------------------------------------------
@@ -42,7 +43,7 @@ MODEL_ID = "stepfun-ai/GOT-OCR-2.0-hf"
 
 try:
     import torch
-    from transformers import AutoProcessor, GotOcr2ForConditionalGeneration
+    from transformers import AutoProcessor, AutoModelForImageTextToText
 except ImportError as e:
     print(json.dumps({"error": str(e)}))
     sys.exit(1)
@@ -51,7 +52,7 @@ def load_model():
     import contextlib, sys as _sys
     with contextlib.redirect_stdout(_sys.stderr):
         processor = AutoProcessor.from_pretrained(MODEL_ID)
-        model = GotOcr2ForConditionalGeneration.from_pretrained(
+        model = AutoModelForImageTextToText.from_pretrained(
             MODEL_ID,
             dtype=torch.float16,
             device_map="auto",
@@ -65,10 +66,14 @@ def run_ocr(processor, model, image: Image.Image) -> str:
         inputs = processor(image, return_tensors="pt").to(model.device, torch.float16)
         generated_ids = model.generate(
             **inputs,
-            max_new_tokens=512,
             do_sample=False,
+            tokenizer=processor.tokenizer,
+            stop_strings="<|im_end|>",
+            max_new_tokens=512,
         )
-        return processor.batch_decode(generated_ids, skip_special_tokens=True)[0].strip()
+        # Decode only the newly generated tokens (exclude the input prompt tokens)
+        new_tokens = generated_ids[:, inputs["input_ids"].shape[1]:]
+        return processor.batch_decode(new_tokens, skip_special_tokens=True)[0].strip()
 
 def main():
     if len(sys.argv) < 3:
@@ -125,20 +130,23 @@ class GoTocrBatchWorker:
 # ---------------------------------------------------------------------------
 
 class SequentialGoTocrEngine(OcrEngine):
-    def __init__(self, cache: dict, expected_order: list[str]):
+    def __init__(self, cache: dict, expected_order: list[str], normalize: bool = True):
         super().__init__()
         self.ordered_results = [
             cache.get(f"{name}.png", {}) for name in expected_order
         ]
         self.idx = 0
+        self.normalize = normalize
 
     def extract(self, img) -> OcrResult:
         if self.idx >= len(self.ordered_results):
             return OcrResult(text="", confidence=0.0, tokens=[], engine_name="gotocr")
         res = self.ordered_results[self.idx]
         self.idx += 1
+        raw_text = res.get("text", "")
+        normalized_text = normalize_gotocr_text(raw_text) if self.normalize else raw_text
         return OcrResult(
-            text=res.get("text", ""),
+            text=normalized_text,
             confidence=res.get("confidence", 0.0),
             tokens=[],
             engine_name="gotocr",
@@ -234,6 +242,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--labels", default=str(PROJECT_ROOT / "labels.md"))
     parser.add_argument("--parser", default="local_llm")
+    parser.add_argument("--no-normalize", action="store_true", help="Disable GOT-OCR normalizer (for comparison)")
     args = parser.parse_args()
 
     labels_path = Path(args.labels)
@@ -243,9 +252,11 @@ def main() -> None:
     cache = preload_gotocr_batch(labeled_files)
 
     expected_order = [lf.path.name for lf in labeled_files]
-    seq_engine = SequentialGoTocrEngine(cache, expected_order)
+    normalize = not args.no_normalize
+    seq_engine = SequentialGoTocrEngine(cache, expected_order, normalize=normalize)
 
-    print("\n--- Evaluating with: GOT-OCR 2.0 ---")
+    engine_label = "gotocr-2.0" if normalize else "gotocr-2.0 (raw)"
+    print(f"\n--- Evaluating with: {engine_label} (normalizer={'ON' if normalize else 'OFF'}) ---")
 
     class DummyArgs:
         def __init__(self, p):

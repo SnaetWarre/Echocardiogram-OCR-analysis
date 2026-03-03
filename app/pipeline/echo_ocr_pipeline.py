@@ -26,23 +26,22 @@ class MeasurementBoxDetector(Protocol):
     def detect(self, frame: np.ndarray) -> RoiDetection: ...
 
 
-def _upscale_factor() -> int:
-    raw = str(os.getenv("ECHO_OCR_UPSCALE_FACTOR", "2")).strip()
-    try:
-        factor = int(raw)
-    except Exception:
-        factor = 2
-    return max(1, min(factor, 6))
+def preprocess_roi(
+    roi: np.ndarray,
+    scale_factor: int | None = 3,
+    scale_algo: str | None = "lanczos",
+    contrast_mode: str | None = "none",
+) -> np.ndarray:
+    if scale_factor is None:
+        try:
+            scale_factor = int(os.getenv("ECHO_OCR_UPSCALE_FACTOR", "2"))
+        except:
+            scale_factor = 2
+    if scale_algo is None:
+        scale_algo = os.getenv("ECHO_OCR_UPSCALE_INTERPOLATION", "cubic").lower()
+    if contrast_mode is None:
+        contrast_mode = os.getenv("ECHO_OCR_CONTRAST_MODE", "clahe").lower()
 
-
-def _upscale_interpolation() -> str:
-    method = str(os.getenv("ECHO_OCR_UPSCALE_INTERPOLATION", "nearest")).strip().lower()
-    if method in {"nearest", "linear", "cubic", "lanczos"}:
-        return method
-    return "nearest"
-
-
-def preprocess_roi(roi: np.ndarray) -> np.ndarray:
     gray = _to_gray(roi)
     if gray.size == 0:
         return gray
@@ -50,30 +49,41 @@ def preprocess_roi(roi: np.ndarray) -> np.ndarray:
     try:
         import cv2  # type: ignore
         
-        # 1. CLAHE to normalize lighting differences
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-        enhanced = clahe.apply(gray)
-        
+        # 1. Contrast Adjustment
+        if contrast_mode == "clahe":
+            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+            enhanced = clahe.apply(gray)
+        elif contrast_mode == "adaptive_threshold":
+            # Just mild equalization before the blur
+            enhanced = cv2.equalizeHist(gray)
+        else: # "none" or default
+            enhanced = gray
+            
         # 2. Unsharp masking to sharpen text edges
         gaussian = cv2.GaussianBlur(enhanced, (5, 5), 1.0)
         unsharp = cv2.addWeighted(enhanced, 1.5, gaussian, -0.5, 0)
         
         # 3. Upscale BEFORE thresholding to prevent jagged edges on small text
-        scale = _upscale_factor()
+        scale = max(1, min(scale_factor, 6))
         if scale > 1:
-            interpolation = _upscale_interpolation()
             inter_flag = {
                 "linear": cv2.INTER_LINEAR,
                 "cubic": cv2.INTER_CUBIC,
                 "lanczos": cv2.INTER_LANCZOS4,
-            }.get(interpolation, cv2.INTER_CUBIC)
+            }.get(scale_algo, cv2.INTER_CUBIC)
             
             w = int(unsharp.shape[1] * scale)
             h = int(unsharp.shape[0] * scale)
             unsharp = cv2.resize(unsharp, (w, h), interpolation=inter_flag)
             
-        # 4. Otsu's thresholding for pure B&W text (creates ideal input for EasyOCR)
-        _, thresh = cv2.threshold(unsharp, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        if contrast_mode == "adaptive_threshold":
+            # 4. Adaptive thresholding instead of Otsu's
+            thresh = cv2.adaptiveThreshold(
+                unsharp, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2
+            )
+        else:
+            # 4. Otsu's thresholding for pure B&W text
+            _, thresh = cv2.threshold(unsharp, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
         
         # 5. Mild morphological closing to bridge gaps in thin fonts
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
@@ -90,7 +100,7 @@ def preprocess_roi(roi: np.ndarray) -> np.ndarray:
         else:
             stretched = (((gray.astype(np.float32) - p5) * (255.0 / (p95 - p5))).clip(0, 255).astype(np.uint8))
             
-        scale = _upscale_factor()
+        scale = max(1, min(scale_factor, 6))
         if scale <= 1:
             return stretched
         return np.repeat(np.repeat(stretched, scale, axis=0), scale, axis=1)

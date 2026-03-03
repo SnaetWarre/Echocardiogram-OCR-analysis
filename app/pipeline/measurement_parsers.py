@@ -213,24 +213,22 @@ class RegexMeasurementParser:
         items: List[AiMeasurement] = []
         seen_keys = set()
         for line in text.splitlines():
-            match = self._pattern.search(line.strip())
-            if not match:
-                continue
-            name = _normalize_name(match.group("name"))
-            value = match.group("value").replace(",", ".")
-            unit = _normalize_unit((match.group("unit") or "").strip() or None)
-            key = (name.lower(), value, (unit or "").lower())
-            if key in seen_keys:
-                continue
-            seen_keys.add(key)
-            items.append(
-                AiMeasurement(
-                    name=name,
-                    value=value,
-                    unit=unit,
-                    source=f"regex_parser:{confidence:.2f}",
+            for match in self._pattern.finditer(line.strip()):
+                name = _normalize_name(match.group("name"))
+                value = match.group("value").replace(",", ".")
+                unit = _normalize_unit((match.group("unit") or "").strip() or None)
+                key = (name.lower(), value, (unit or "").lower())
+                if key in seen_keys:
+                    continue
+                seen_keys.add(key)
+                items.append(
+                    AiMeasurement(
+                        name=name,
+                        value=value,
+                        unit=unit,
+                        source=f"regex_parser:{confidence:.2f}",
+                    )
                 )
-            )
 
         # Generic multiline fallback: handles line-split OCR without hardcoded dictionaries.
         lines = [line.strip() for line in text.splitlines() if line.strip()]
@@ -250,11 +248,11 @@ class RegexMeasurementParser:
         def _token_is_plausible_name_part(token: str) -> bool:
             if not re.search(r"[A-Za-z]", token):
                 return False
-            if len(token) > 20:
+            if len(token) > 30: # Relaxed max token length
                 return False
-            if len(token.split()) > 2:
+            if len(token.split()) > 5: # Allow up to 5 words (e.g. 'LVEDV MOD BP')
                 return False
-            return bool(re.fullmatch(r"[A-Za-z0-9'()/\-]+(?:\s+[A-Za-z0-9'()/\-]+)?", token))
+            return bool(re.fullmatch(r"([A-Za-z0-9'()/\-]+(\s+)?)+", token))
 
         def _name_is_plausible(name: str) -> bool:
             parts = name.split()
