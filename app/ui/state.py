@@ -5,7 +5,7 @@ from pathlib import Path
 
 from PySide6 import QtCore
 
-from app.models.types import AiResult, DicomSeries
+from app.models.types import AiMeasurement, AiResult, DicomSeries, ValidationSession
 from app.pipeline.ai_pipeline import PipelineManager, build_default_manager
 
 
@@ -17,6 +17,7 @@ class ViewerState(QtCore.QObject):
     frame_changed = QtCore.Signal(int)
     play_state_changed = QtCore.Signal(bool)
     ai_result_ready = QtCore.Signal(AiResult)
+    validation_stats_changed = QtCore.Signal(int, int, int, float, float)
     error_occurred = QtCore.Signal(str, str)
     loading_state_changed = QtCore.Signal(bool, str)
 
@@ -40,6 +41,7 @@ class ViewerState(QtCore.QObject):
             build_default_manager() if self.ai_enabled else None
         )
         self.last_ai_result: AiResult | None = None
+        self.validation_session = ValidationSession()
 
         # Batch state
         self.ui_batch_running = False
@@ -112,3 +114,34 @@ class ViewerState(QtCore.QObject):
     def apply_ai_result(self, result: AiResult) -> None:
         self.last_ai_result = result
         self.ai_result_ready.emit(result)
+
+    def reset_validation_session(self) -> None:
+        self.validation_session = ValidationSession()
+        self.validation_stats_changed.emit(0, 0, 0, 0.0, 0.0)
+
+    def record_validation(
+        self,
+        dicom_path: Path,
+        approved_count: int,
+        corrected_count: int,
+        measurements: list[AiMeasurement],
+    ) -> tuple[float, bool]:
+        session = self.validation_session
+        session.total_validated_frames += 1
+        session.total_ai_correct += max(0, approved_count)
+        session.total_ai_incorrect += max(0, corrected_count)
+        session.session_labels.append((dicom_path, list(measurements)))
+
+        accuracy = session.accuracy
+        is_new_high = accuracy > session.highest_accuracy
+        if is_new_high:
+            session.highest_accuracy = accuracy
+
+        self.validation_stats_changed.emit(
+            session.total_ai_correct,
+            session.total_reviewed_measurements,
+            session.total_validated_frames,
+            accuracy,
+            session.highest_accuracy,
+        )
+        return accuracy, is_new_high

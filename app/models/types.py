@@ -104,6 +104,26 @@ class AiMeasurement:
 
 
 @dataclass
+class ValidationSession:
+    total_validated_frames: int = 0
+    total_ai_correct: int = 0
+    total_ai_incorrect: int = 0
+    session_labels: list[tuple[Path, list[AiMeasurement]]] = field(default_factory=list)
+    highest_accuracy: float = 0.0
+
+    @property
+    def total_reviewed_measurements(self) -> int:
+        return self.total_ai_correct + self.total_ai_incorrect
+
+    @property
+    def accuracy(self) -> float:
+        reviewed = self.total_reviewed_measurements
+        if reviewed <= 0:
+            return 0.0
+        return self.total_ai_correct / reviewed
+
+
+@dataclass
 class AiResult:
     model_name: str
     created_at: datetime

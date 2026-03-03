@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import sys
 import threading
 import traceback
@@ -8,6 +9,8 @@ from pathlib import Path
 
 from PySide6 import QtWidgets
 
+from app.pipeline.startup_services import ServiceProcessManager, StartupServices
+from app.ui.dialogs.startup_dialog import StartupDialog
 from app.ui.main_window import MainWindow
 
 
@@ -46,6 +49,24 @@ def _thread_excepthook(args: threading.ExceptHookArgs) -> None:
     _excepthook(args.exc_type, args.exc_value, args.exc_traceback)
 
 
+def _run_startup(app: QtWidgets.QApplication) -> StartupServices | None:
+    ai_enabled = os.getenv("DICOM_AI_ENABLED", "0") == "1"
+    if not ai_enabled:
+        return StartupServices()
+    manager = ServiceProcessManager(ai_enabled=ai_enabled)
+    dialog = StartupDialog(manager)
+    if dialog.exec() != int(QtWidgets.QDialog.DialogCode.Accepted):
+        return None
+    services = dialog.services
+    if services is None:
+        return None
+    if services.managed_ollama_process is not None:
+        app.aboutToQuit.connect(
+            lambda: manager.shutdown_managed_ollama(services.managed_ollama_process)
+        )
+    return services
+
+
 def main() -> None:
     sys.excepthook = _excepthook
     try:
@@ -53,7 +74,10 @@ def main() -> None:
     except AttributeError:
         pass
     app = QtWidgets.QApplication(sys.argv)
-    window = MainWindow()
+    startup_services = _run_startup(app)
+    if os.getenv("DICOM_AI_ENABLED", "0") == "1" and startup_services is None:
+        sys.exit(1)
+    window = MainWindow(startup_services=startup_services)
     window.show()
     sys.exit(app.exec())
 

@@ -140,10 +140,21 @@ class EchoOcrPipeline(BasePipeline):
             .lower()
         )
         self._parser_parameters = dict(parameters)
+        self._scale_factor = self._read_int_parameter(parameters, "scale_factor", default=3)
+        self._scale_algo = str(parameters.get("scale_algo", "lanczos")).strip().lower()
+        self._contrast_mode = str(parameters.get("contrast_mode", "none")).strip().lower()
         self.ocr_engine: OcrEngine = NoopOcrEngine()
         self.parser: MeasurementParser = RegexMeasurementParser()
         self._components_ready = False
         self.box_detector = box_detector or TopLeftBlueGrayBoxDetector()
+
+    @staticmethod
+    def _read_int_parameter(parameters: dict[str, object], key: str, *, default: int) -> int:
+        raw = parameters.get(key, default)
+        try:
+            return int(raw)
+        except (TypeError, ValueError):
+            return default
 
     @staticmethod
     def _build_ocr_engine_with_fallback(preferred_engine: str) -> OcrEngine:
@@ -235,7 +246,12 @@ class EchoOcrPipeline(BasePipeline):
             return None, [], None
         x, y, bw, bh = detection.bbox
         roi = frame[y : y + bh, x : x + bw]
-        prepared = preprocess_roi(roi)
+        prepared = preprocess_roi(
+            roi,
+            scale_factor=self._scale_factor,
+            scale_algo=self._scale_algo,
+            contrast_mode=self._contrast_mode,
+        )
         ocr = self.ocr_engine.extract(prepared)
         measurements = self.parser.parse(ocr.text, confidence=ocr.confidence)
         if not measurements:

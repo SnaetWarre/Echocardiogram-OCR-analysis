@@ -163,6 +163,22 @@ class SidebarWidget(QtWidgets.QFrame):
         source_index = self._fs_model.index(str(path))
         self._tree.setRootIndex(self._proxy_model.mapFromSource(source_index))
 
+    def current_root_path(self) -> Path:
+        proxy_index = self._tree.rootIndex()
+        source_index = self._proxy_model.mapToSource(proxy_index)
+        root_text = self._fs_model.filePath(source_index)
+        if root_text:
+            return Path(root_text)
+        return Path.cwd()
+
+    def list_dicom_files(self) -> list[Path]:
+        root = self.current_root_path()
+        if root.is_file():
+            return [root] if root.suffix.lower() == ".dcm" else []
+        if not root.is_dir():
+            return []
+        return sorted(path for path in root.rglob("*.dcm") if path.is_file())
+
     def _tree_double_clicked(self, index: QtCore.QModelIndex) -> None:
         source_index = self._proxy_model.mapToSource(index)
         path = Path(self._fs_model.filePath(source_index))

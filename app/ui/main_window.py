@@ -8,12 +8,19 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 from app.io.dicom_loader import load_dicom_series
 from app.io.errors import DicomLoadError
-from app.models.types import AiResult, DicomSeries
+from app.models.types import AiMeasurement, AiResult, DicomSeries, PipelineRequest, PipelineResult
+from app.pipeline.ai_pipeline import PipelineManager
+from app.pipeline.startup_services import StartupServices
+from app.pipeline.validation_label_writer import ValidationLabelWriter
+from app.pipeline.validation_pipeline import build_validation_manager
 from app.ui.components.controls import ControlsWidget
 from app.ui.components.metadata_tabs import MetadataTabsWidget
 from app.ui.components.sidebar import SidebarWidget
+from app.ui.components.validation_stats import ValidationStatsWidget
+from app.ui.dialogs.validation_dialog import ValidationDialog
 from app.ui.state import ViewerState
 from app.ui.theme import apply_theme
+from app.ui.validation_queue import build_validation_queue
 from app.ui.widgets.image_viewer import ImageViewer
 from app.ui.workers import AiRunWorker, BatchTestWorker, DicomLoadWorker, PrefetchTask
 from app.utils.cache import LruFrameCache
@@ -22,10 +29,11 @@ from app.utils.cache import LruFrameCache
 class MainWindow(QtWidgets.QMainWindow):
     """The main application window for the DICOM viewer."""
 
-    def __init__(self) -> None:
+    def __init__(self, startup_services: StartupServices | None = None) -> None:
         super().__init__()
         self.setWindowTitle("DICOM Cine Viewer")
         self.resize(1400, 900)
+        self._startup_services = startup_services
 
         # 1. Initialize State
         self._state = ViewerState(self)
@@ -40,6 +48,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self._loader: DicomLoadWorker | None = None
         self._ai_thread: QtCore.QThread | None = None
         self._ai_worker: AiRunWorker | None = None
+        self._ai_run_mode = "overlay"
+        self._validation_pipeline_manager: PipelineManager | None = None
+        self._validation_dialog: ValidationDialog | None = None
+        self._validation_writer = ValidationLabelWriter()
+        self._validation_queue: list[Path] = []
+        self._validation_queue_active = False
+        self._pending_validation_path: Path | None = None
+        self._validation_waiting_review = False
         self._batch_thread: QtCore.QThread | None = None
         self._batch_worker: BatchTestWorker | None = None
 
@@ -64,6 +80,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._state.frame_changed.connect(self._on_frame_changed)
         self._state.play_state_changed.connect(self._on_play_state_changed)
         self._state.ai_result_ready.connect(self._on_ai_result_ready)
+        self._state.validation_stats_changed.connect(self._on_validation_stats_changed)
         self._state.error_occurred.connect(self._show_error)
         self._state.loading_state_changed.connect(self._on_loading_state_changed)
 
@@ -140,6 +157,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self._status.addWidget(self._status_frame)
         self._status.addWidget(self._status_fps)
         self._status.addWidget(self._status_cache)
+        self._validation_stats = ValidationStatsWidget()
+        self._validation_stats.setVisible(self._state.ai_enabled)
+        self._status.addPermanentWidget(self._validation_stats)
 
     def _build_toolbar(self) -> None:
         toolbar = QtWidgets.QToolBar("Main")
@@ -178,6 +198,11 @@ class MainWindow(QtWidgets.QMainWindow):
             act_run_ai = QtGui.QAction(self._icon("ai_run"), "Run AI", self)
             act_run_ai.triggered.connect(self._run_ai)
             toolbar.addAction(act_run_ai)
+            act_run_validation = QtGui.QAction(self._icon("ai_run"), "OCR Validation", self)
+            act_run_validation.setShortcut(QtGui.QKeySequence("V"))
+            act_run_validation.triggered.connect(self._run_validation)
+            toolbar.addAction(act_run_validation)
+            self.addAction(act_run_validation)
 
     def _log_event(self, message: str) -> None:
         self._log_dir.mkdir(parents=True, exist_ok=True)
@@ -242,6 +267,9 @@ class MainWindow(QtWidgets.QMainWindow):
     def _load_dicom(self, path: Path) -> None:
         if not path.exists():
             self.statusBar().showMessage(f"File not found: {path}", 3000)
+            if self._validation_queue_active:
+                self._pending_validation_path = None
+                QtCore.QTimer.singleShot(0, self._advance_validation_queue)
             return
 
         self._log_event(f"Load request: {path}")
@@ -253,6 +281,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 self._log_event(f"Load failed (main thread): {path} :: {exc}")
                 self._state.set_loading(False)
                 self._state.report_error("Load Error", str(exc))
+                if self._validation_queue_active:
+                    self._pending_validation_path = None
+                    QtCore.QTimer.singleShot(0, self._advance_validation_queue)
                 return
             except Exception as exc:
                 self._log_event(f"Load failed (unexpected): {path} :: {exc}")
@@ -260,6 +291,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 self._state.report_error(
                     "Load Error", f"Unexpected error while loading file: {exc}"
                 )
+                if self._validation_queue_active:
+                    self._pending_validation_path = None
+                    QtCore.QTimer.singleShot(0, self._advance_validation_queue)
                 return
             self._state.set_loading(False)
             self._log_event(f"Load finished (main thread): {path}")
@@ -290,6 +324,9 @@ class MainWindow(QtWidgets.QMainWindow):
             message = error or "Failed to load DICOM."
             self._log_event(f"Load failed (worker): {message}")
             self._state.report_error("Load Error", message)
+            if self._validation_queue_active:
+                self._pending_validation_path = None
+                QtCore.QTimer.singleShot(0, self._advance_validation_queue)
             return
 
         self._log_event(f"Load finished (worker): {series.metadata.path}")
@@ -302,6 +339,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self._render_frame()
         self._prefetch_around(self._state.frame_index, radius=self._state.prefetch_radius)
         self._update_status()
+        if (
+            self._validation_queue_active
+            and self._pending_validation_path is not None
+            and series.metadata.path == self._pending_validation_path
+        ):
+            QtCore.QTimer.singleShot(0, self._start_pending_validation_run)
 
     def _on_frame_changed(self, frame_index: int) -> None:
         self._render_frame()
@@ -323,46 +366,287 @@ class MainWindow(QtWidgets.QMainWindow):
     def _on_ai_result_ready(self, result: AiResult) -> None:
         self._viewer.set_overlay_boxes(result.boxes)
 
+    @QtCore.Slot(int, int, int, float, float)
+    def _on_validation_stats_changed(
+        self,
+        correct_count: int,
+        total_count: int,
+        validated_frames: int,
+        accuracy: float,
+        high_score: float,
+    ) -> None:
+        _ = correct_count
+        _ = validated_frames
+        _ = high_score
+        self._validation_stats.set_stats(accuracy, total_count)
+
     def _run_ai(self) -> None:
         if not self._state.ai_enabled or self._state.pipeline_manager is None:
             QtWidgets.QMessageBox.information(
                 self, "AI Disabled", "AI pipeline is not enabled in environment."
             )
             return
-        path = self._state.current_path
-        if not path:
+        self._start_ai_run(
+            manager=self._state.pipeline_manager,
+            loading_message="Running AI inference...",
+            mode="overlay",
+        )
+
+    def _run_validation(self) -> None:
+        if not self._state.ai_enabled:
+            QtWidgets.QMessageBox.information(
+                self, "AI Disabled", "Enable AI mode to run OCR validation."
+            )
+            return
+        try:
+            _ = self._ensure_validation_manager()
+        except Exception as exc:
+            self._state.report_error("Validation Setup Error", str(exc))
             return
 
         if self._ai_thread and self._ai_thread.isRunning():
             self.statusBar().showMessage("AI is already running.", 2000)
             return
+        if self._validation_waiting_review:
+            self.statusBar().showMessage("Finish the current validation dialog first.", 2000)
+            return
 
-        self._state.set_loading(True, "Running AI inference...")
-        self._log_event(f"Starting AI run on: {path}")
+        queue = self._build_validation_queue()
+        if not queue:
+            self.statusBar().showMessage("No DICOM files found for validation queue.", 3000)
+            return
 
+        self._state.reset_validation_session()
+        self._validation_queue = queue
+        self._validation_queue_active = True
+        self._pending_validation_path = None
+        self._validation_waiting_review = False
+        self.statusBar().showMessage(
+            f"Validation queue started with {len(self._validation_queue)} files.",
+            3000,
+        )
+        self._advance_validation_queue()
+
+    def _build_validation_queue(self) -> list[Path]:
+        current_path = self._state.current_path
+        candidates = self._sidebar.list_dicom_files()
+        return build_validation_queue(candidates, current_path)
+
+    def _advance_validation_queue(self) -> None:
+        if not self._validation_queue_active:
+            return
+        if self._ai_thread and self._ai_thread.isRunning():
+            return
+        if self._loader_thread and self._loader_thread.isRunning():
+            return
+        if self._validation_waiting_review:
+            return
+        if not self._validation_queue:
+            self._finish_validation_queue()
+            return
+
+        next_path = self._validation_queue.pop(0)
+        self._pending_validation_path = next_path
+        remaining = len(self._validation_queue) + 1
+        self.statusBar().showMessage(f"Preparing {next_path.name} ({remaining} remaining)...")
+        if self._state.current_path == next_path:
+            self._start_pending_validation_run()
+            return
+        self._load_dicom(next_path)
+
+    def _start_pending_validation_run(self) -> None:
+        if not self._validation_queue_active:
+            return
+        path = self._pending_validation_path
+        if path is None:
+            return
+        if self._state.current_path != path:
+            return
+        manager = self._ensure_validation_manager()
+        self._pending_validation_path = None
+        self._start_ai_run(
+            manager=manager,
+            loading_message="Running OCR validation...",
+            mode="validation",
+            dicom_path=path,
+        )
+
+    def _finish_validation_queue(self) -> None:
+        self._validation_queue_active = False
+        self._pending_validation_path = None
+        self._validation_waiting_review = False
+        self._validation_queue = []
+
+        session = self._state.validation_session
+        summary = (
+            "Validation queue complete.\n\n"
+            f"Validated frames: {session.total_validated_frames}\n"
+            f"Verified measurements: {session.total_reviewed_measurements}\n"
+            f"Session accuracy: {session.accuracy * 100:.1f}%\n"
+            f"Highest score seen: {session.highest_accuracy * 100:.1f}%\n"
+            f"Saved to: {self._validation_writer.output_path}"
+        )
+        QtWidgets.QMessageBox.information(self, "Validation Queue Complete", summary)
+
+    def _start_ai_run(
+        self,
+        *,
+        manager: PipelineManager,
+        loading_message: str,
+        mode: str,
+        dicom_path: Path | None = None,
+    ) -> None:
+        path = dicom_path or self._state.current_path
+        if path is None:
+            self.statusBar().showMessage("Select a DICOM file first.", 2000)
+            return
+        if self._ai_thread and self._ai_thread.isRunning():
+            self.statusBar().showMessage("AI is already running.", 2000)
+            return
+
+        self._state.set_loading(True, loading_message)
+        self._ai_run_mode = mode
+        self._log_event(f"Starting {mode} AI run on: {path}")
+
+        request = PipelineRequest(dicom_path=path)
         self._ai_thread = QtCore.QThread(self)
-        self._ai_worker = AiRunWorker(self._state.pipeline_manager, path)
+        self._ai_worker = AiRunWorker(manager, request)
         self._ai_worker.moveToThread(self._ai_thread)
         self._ai_thread.started.connect(self._ai_worker.run)
         self._ai_worker.finished.connect(self._on_ai_finished)
         self._ai_worker.finished.connect(self._ai_thread.quit)
         self._ai_worker.finished.connect(self._ai_worker.deleteLater)
+        self._ai_worker.failed.connect(self._on_ai_failed)
+        self._ai_worker.failed.connect(self._ai_thread.quit)
+        self._ai_worker.failed.connect(self._ai_worker.deleteLater)
         self._ai_thread.finished.connect(self._ai_thread.deleteLater)
         self._ai_thread.start()
 
-    def _on_ai_finished(self, result: AiResult | None, error: str | None) -> None:
+    def _ensure_validation_manager(self) -> PipelineManager:
+        if self._validation_pipeline_manager is not None:
+            return self._validation_pipeline_manager
+        surya_engine = self._startup_services.surya_engine if self._startup_services else None
+        self._validation_pipeline_manager = build_validation_manager(surya_engine=surya_engine)
+        return self._validation_pipeline_manager
+
+    @QtCore.Slot(str)
+    def _on_ai_failed(self, message: str) -> None:
+        self._state.set_loading(False)
+        self._log_event(f"AI failed: {message}")
+        self._ai_worker = None
+        self._ai_thread = None
+        self._state.report_error("AI Error", message)
+        if self._validation_queue_active and self._ai_run_mode == "validation":
+            QtCore.QTimer.singleShot(0, self._advance_validation_queue)
+
+    @QtCore.Slot(object)
+    def _on_ai_finished(self, result_obj: object) -> None:
         self._state.set_loading(False)
         self._ai_worker = None
         self._ai_thread = None
 
-        if error or result is None:
-            message = error or "Failed to run AI."
+        if not isinstance(result_obj, PipelineResult):
+            self._state.report_error("AI Error", "AI worker returned an invalid result payload.")
+            return
+        result = result_obj
+
+        if result.status != "ok" or result.ai_result is None:
+            message = result.error or "Failed to run AI."
             self._log_event(f"AI failed: {message}")
             self._state.report_error("AI Error", message)
+            if self._validation_queue_active and self._ai_run_mode == "validation":
+                QtCore.QTimer.singleShot(0, self._advance_validation_queue)
             return
 
-        self._log_event(f"AI completed with {len(result.measurements)} measurements.")
-        self._state.apply_ai_result(result)
+        ai_result = result.ai_result
+        self._log_event(f"AI completed with {len(ai_result.measurements)} measurements.")
+        self._state.apply_ai_result(ai_result)
+        if self._ai_run_mode == "validation":
+            self._open_validation_dialog(result.dicom_path, ai_result)
+
+    def _open_validation_dialog(self, dicom_path: Path, ai_result: AiResult) -> None:
+        if self._validation_dialog is not None:
+            self._validation_dialog.close()
+        dialog = ValidationDialog(dicom_path=dicom_path, ai_result=ai_result, parent=self)
+        dialog.submitted.connect(self._on_validation_submitted)
+        dialog.finished.connect(self._on_validation_dialog_closed)
+        anchor = self.mapToGlobal(QtCore.QPoint(self.width() - dialog.width() - 30, 70))
+        dialog.move(anchor)
+        dialog.show()
+        dialog.raise_()
+        self._validation_dialog = dialog
+        self._validation_waiting_review = True
+
+    @QtCore.Slot(int)
+    def _on_validation_dialog_closed(self, _result: int) -> None:
+        if self._validation_queue_active and self._validation_waiting_review:
+            self._validation_queue_active = False
+            self._validation_queue = []
+            self._pending_validation_path = None
+            self.statusBar().showMessage("Validation queue stopped.", 3000)
+        self._validation_waiting_review = False
+        self._validation_dialog = None
+
+    @QtCore.Slot(object, object, int, int)
+    def _on_validation_submitted(
+        self,
+        dicom_path_obj: object,
+        measurements_obj: object,
+        approved_count: int,
+        incorrect_count: int,
+    ) -> None:
+        self._validation_waiting_review = False
+        if not isinstance(dicom_path_obj, Path):
+            self._state.report_error("Validation Error", "Validation submission contained no path.")
+            return
+        measurements = [
+            m for m in measurements_obj if isinstance(m, AiMeasurement)
+        ] if isinstance(measurements_obj, list) else []
+
+        try:
+            output_path = self._validation_writer.append(dicom_path_obj, measurements)
+        except Exception as exc:
+            self._state.report_error("Validation Save Error", str(exc))
+            return
+
+        accuracy, is_new_high = self._state.record_validation(
+            dicom_path_obj,
+            approved_count=approved_count,
+            corrected_count=incorrect_count,
+            measurements=measurements,
+        )
+        if self._state.last_ai_result is not None:
+            base = self._state.last_ai_result
+            self._state.apply_ai_result(
+                AiResult(
+                    model_name=base.model_name,
+                    created_at=base.created_at,
+                    boxes=base.boxes,
+                    measurements=measurements,
+                    raw={**base.raw, "validated": True},
+                )
+            )
+
+        if self._validation_queue_active:
+            remaining = len(self._validation_queue)
+            self.statusBar().showMessage(
+                f"Saved {len(measurements)} measurements for {dicom_path_obj.name}. "
+                f"{remaining} files remaining.",
+                2500,
+            )
+            QtCore.QTimer.singleShot(0, self._advance_validation_queue)
+            return
+
+        session = self._state.validation_session
+        summary = (
+            f"Saved {len(measurements)} measurements to:\n{output_path}\n\n"
+            f"Session accuracy: {accuracy * 100:.1f}%\n"
+            f"Highest score seen: {session.highest_accuracy * 100:.1f}%\n"
+            f"Validated frames: {session.total_validated_frames}"
+        )
+        if is_new_high:
+            summary += "\n\nNew highest score this session."
+        QtWidgets.QMessageBox.information(self, "Validation Summary", summary)
 
     # --- Frame Handling ---
     def _render_frame(self) -> None:
