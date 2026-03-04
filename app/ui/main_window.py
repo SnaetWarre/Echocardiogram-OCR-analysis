@@ -54,8 +54,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self._validation_writer = ValidationLabelWriter()
         self._validation_queue: list[Path] = []
         self._validation_queue_active = False
+        self._validation_queue_mode = "review"
         self._pending_validation_path: Path | None = None
         self._validation_waiting_review = False
+        self._batch_export_files = 0
+        self._batch_export_measurements = 0
         self._batch_thread: QtCore.QThread | None = None
         self._batch_worker: BatchTestWorker | None = None
 
@@ -111,6 +114,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # Left: Sidebar
         self._sidebar = SidebarWidget(self._state)
         self._sidebar.file_selected.connect(self._load_dicom)
+        self._sidebar.folder_selected.connect(self._on_folder_selected)
         splitter.addWidget(self._sidebar)
 
         # Right: Main content area
@@ -203,6 +207,9 @@ class MainWindow(QtWidgets.QMainWindow):
             act_run_validation.triggered.connect(self._run_validation)
             toolbar.addAction(act_run_validation)
             self.addAction(act_run_validation)
+            act_run_export = QtGui.QAction(self._icon("ai_run"), "OCR Batch Export", self)
+            act_run_export.triggered.connect(self._run_ocr_batch_export)
+            toolbar.addAction(act_run_export)
 
     def _log_event(self, message: str) -> None:
         self._log_dir.mkdir(parents=True, exist_ok=True)
@@ -263,6 +270,18 @@ class MainWindow(QtWidgets.QMainWindow):
             QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.CursorShape.WaitCursor)
         else:
             QtWidgets.QApplication.restoreOverrideCursor()
+
+    def _on_folder_selected(self, folder: Path) -> None:
+        if not folder.exists() or not folder.is_dir():
+            self.statusBar().showMessage(f"Folder not found: {folder}", 3000)
+            return
+        self._sidebar.set_tree_root(folder)
+        dicom_files = self._sidebar.list_dicom_files()
+        if not dicom_files:
+            self.statusBar().showMessage("No DICOM files found in this folder tree.", 3000)
+            return
+        self.statusBar().showMessage(f"Found {len(dicom_files)} DICOM files.", 2500)
+        self._load_dicom(dicom_files[0])
 
     def _load_dicom(self, path: Path) -> None:
         if not path.exists():
@@ -419,10 +438,59 @@ class MainWindow(QtWidgets.QMainWindow):
         self._state.reset_validation_session()
         self._validation_queue = queue
         self._validation_queue_active = True
+        self._validation_queue_mode = "review"
         self._pending_validation_path = None
         self._validation_waiting_review = False
         self.statusBar().showMessage(
             f"Validation queue started with {len(self._validation_queue)} files.",
+            3000,
+        )
+        self._advance_validation_queue()
+
+    def _run_ocr_batch_export(self) -> None:
+        if not self._state.ai_enabled:
+            QtWidgets.QMessageBox.information(
+                self, "AI Disabled", "Enable AI mode to run OCR batch export."
+            )
+            return
+        try:
+            _ = self._ensure_validation_manager()
+        except Exception as exc:
+            self._state.report_error("OCR Export Setup Error", str(exc))
+            return
+        if self._ai_thread and self._ai_thread.isRunning():
+            self.statusBar().showMessage("AI is already running.", 2000)
+            return
+        if self._validation_waiting_review:
+            self.statusBar().showMessage("Finish the current validation dialog first.", 2000)
+            return
+
+        queue = self._build_validation_queue()
+        if not queue:
+            self.statusBar().showMessage("No DICOM files found for OCR export queue.", 3000)
+            return
+
+        default_name = datetime.now().strftime("ocr_labels_%Y%m%d_%H%M%S.md")
+        default_path = str(Path.cwd() / default_name)
+        selected_path, _ = QtWidgets.QFileDialog.getSaveFileName(
+            self,
+            "Save OCR Labels As",
+            default_path,
+            "Markdown Files (*.md);;Text Files (*.txt);;All Files (*.*)",
+        )
+        if not selected_path:
+            return
+
+        self._validation_writer = ValidationLabelWriter(output_path=Path(selected_path))
+        self._validation_queue = queue
+        self._validation_queue_active = True
+        self._validation_queue_mode = "export"
+        self._pending_validation_path = None
+        self._validation_waiting_review = False
+        self._batch_export_files = 0
+        self._batch_export_measurements = 0
+        self.statusBar().showMessage(
+            f"OCR export started with {len(self._validation_queue)} files.",
             3000,
         )
         self._advance_validation_queue()
@@ -464,18 +532,40 @@ class MainWindow(QtWidgets.QMainWindow):
             return
         manager = self._ensure_validation_manager()
         self._pending_validation_path = None
+        if self._validation_queue_mode == "export":
+            loading_message = "Running OCR export..."
+            mode = "export"
+        else:
+            loading_message = "Running OCR validation..."
+            mode = "validation"
         self._start_ai_run(
             manager=manager,
-            loading_message="Running OCR validation...",
-            mode="validation",
+            loading_message=loading_message,
+            mode=mode,
             dicom_path=path,
         )
 
     def _finish_validation_queue(self) -> None:
+        queue_mode = self._validation_queue_mode
+        exported_files = self._batch_export_files
+        exported_measurements = self._batch_export_measurements
         self._validation_queue_active = False
+        self._validation_queue_mode = "review"
         self._pending_validation_path = None
         self._validation_waiting_review = False
         self._validation_queue = []
+        self._batch_export_files = 0
+        self._batch_export_measurements = 0
+
+        if queue_mode == "export":
+            summary = (
+                "OCR export complete.\n\n"
+                f"Processed files: {exported_files}\n"
+                f"Saved measurements: {exported_measurements}\n"
+                f"Saved to: {self._validation_writer.output_path}"
+            )
+            QtWidgets.QMessageBox.information(self, "OCR Export Complete", summary)
+            return
 
         session = self._state.validation_session
         summary = (
@@ -536,7 +626,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._ai_worker = None
         self._ai_thread = None
         self._state.report_error("AI Error", message)
-        if self._validation_queue_active and self._ai_run_mode == "validation":
+        if self._validation_queue_active and self._ai_run_mode in {"validation", "export"}:
             QtCore.QTimer.singleShot(0, self._advance_validation_queue)
 
     @QtCore.Slot(object)
@@ -554,7 +644,7 @@ class MainWindow(QtWidgets.QMainWindow):
             message = result.error or "Failed to run AI."
             self._log_event(f"AI failed: {message}")
             self._state.report_error("AI Error", message)
-            if self._validation_queue_active and self._ai_run_mode == "validation":
+            if self._validation_queue_active and self._ai_run_mode in {"validation", "export"}:
                 QtCore.QTimer.singleShot(0, self._advance_validation_queue)
             return
 
@@ -563,6 +653,28 @@ class MainWindow(QtWidgets.QMainWindow):
         self._state.apply_ai_result(ai_result)
         if self._ai_run_mode == "validation":
             self._open_validation_dialog(result.dicom_path, ai_result)
+            return
+        if self._ai_run_mode == "export":
+            try:
+                _ = self._validation_writer.append(result.dicom_path, ai_result.measurements)
+            except Exception as exc:
+                self._validation_queue_active = False
+                self._validation_queue_mode = "review"
+                self._validation_queue = []
+                self._pending_validation_path = None
+                self._state.report_error("OCR Export Save Error", str(exc))
+                return
+            self._batch_export_files += 1
+            self._batch_export_measurements += len(ai_result.measurements)
+            if self._validation_queue_active:
+                remaining = len(self._validation_queue)
+                self.statusBar().showMessage(
+                    f"Exported {len(ai_result.measurements)} measurements "
+                    f"for {result.dicom_path.name}. "
+                    f"{remaining} files remaining.",
+                    2500,
+                )
+                QtCore.QTimer.singleShot(0, self._advance_validation_queue)
 
     def _open_validation_dialog(self, dicom_path: Path, ai_result: AiResult) -> None:
         if self._validation_dialog is not None:
@@ -581,6 +693,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def _on_validation_dialog_closed(self, _result: int) -> None:
         if self._validation_queue_active and self._validation_waiting_review:
             self._validation_queue_active = False
+            self._validation_queue_mode = "review"
             self._validation_queue = []
             self._pending_validation_path = None
             self.statusBar().showMessage("Validation queue stopped.", 3000)

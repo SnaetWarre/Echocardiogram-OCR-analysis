@@ -6,6 +6,12 @@ from app.models.types import AiMeasurement
 from app.ui.state import ViewerState
 
 
+def test_viewer_state_ai_enabled_by_default(monkeypatch) -> None:
+    monkeypatch.delenv("DICOM_AI_ENABLED", raising=False)
+    state = ViewerState()
+    assert state.ai_enabled is True
+
+
 def test_viewer_state_records_validation_metrics(monkeypatch) -> None:
     monkeypatch.setenv("DICOM_AI_ENABLED", "0")
     state = ViewerState()

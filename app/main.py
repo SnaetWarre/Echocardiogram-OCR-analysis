@@ -50,7 +50,7 @@ def _thread_excepthook(args: threading.ExceptHookArgs) -> None:
 
 
 def _run_startup(app: QtWidgets.QApplication) -> StartupServices | None:
-    ai_enabled = os.getenv("DICOM_AI_ENABLED", "0") == "1"
+    ai_enabled = os.getenv("DICOM_AI_ENABLED", "1") == "1"
     if not ai_enabled:
         return StartupServices()
     manager = ServiceProcessManager(ai_enabled=ai_enabled)
@@ -75,7 +75,7 @@ def main() -> None:
         pass
     app = QtWidgets.QApplication(sys.argv)
     startup_services = _run_startup(app)
-    if os.getenv("DICOM_AI_ENABLED", "0") == "1" and startup_services is None:
+    if os.getenv("DICOM_AI_ENABLED", "1") == "1" and startup_services is None:
         sys.exit(1)
     window = MainWindow(startup_services=startup_services)
     window.show()

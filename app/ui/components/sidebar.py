@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
+from app.ui.validation_queue import collect_dicom_files
 from app.ui.widgets.file_browser import FileFilterProxyModel
 
 if TYPE_CHECKING:
@@ -172,12 +173,7 @@ class SidebarWidget(QtWidgets.QFrame):
         return Path.cwd()
 
     def list_dicom_files(self) -> list[Path]:
-        root = self.current_root_path()
-        if root.is_file():
-            return [root] if root.suffix.lower() == ".dcm" else []
-        if not root.is_dir():
-            return []
-        return sorted(path for path in root.rglob("*.dcm") if path.is_file())
+        return collect_dicom_files(self.current_root_path())
 
     def _tree_double_clicked(self, index: QtCore.QModelIndex) -> None:
         source_index = self._proxy_model.mapToSource(index)

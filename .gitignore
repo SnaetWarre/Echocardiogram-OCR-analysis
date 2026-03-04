@@ -12,3 +12,5 @@ session
 .cursor/commands/
 .mypy_cache/
 .ruff_cache/
+*.pyc
+

@@ -35,7 +35,7 @@ class ViewerState(QtCore.QObject):
         self.prefetch_enabled = os.getenv("DICOM_PREFETCH", "0") == "1"
         self.prefetch_radius = int(os.getenv("DICOM_PREFETCH_RADIUS", "0"))
         self.prefetch_threads = int(os.getenv("DICOM_PREFETCH_THREADS", "1"))
-        self.ai_enabled = os.getenv("DICOM_AI_ENABLED", "0") == "1"
+        self.ai_enabled = os.getenv("DICOM_AI_ENABLED", "1") == "1"
 
         self.pipeline_manager: PipelineManager | None = (
             build_default_manager() if self.ai_enabled else None

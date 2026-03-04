@@ -11,6 +11,7 @@ from app.io.dicom_loader import load_dicom_series
 from app.io.errors import DicomLoadError
 from app.models.types import PipelineRequest
 from app.pipeline.ai_pipeline import PipelineManager
+from app.ui.validation_queue import collect_dicom_files
 from app.utils.cache import LruFrameCache
 from app.utils.image import qimage_from_array
 
@@ -68,12 +69,7 @@ class BatchTestWorker(QtCore.QObject):
     @QtCore.Slot()
     def run(self) -> None:
         start_all = time.perf_counter()
-        if self._root.is_dir():
-            files = sorted(self._root.rglob("*.dcm"))
-        elif self._root.is_file() and self._root.suffix.lower() == ".dcm":
-            files = [self._root]
-        else:
-            files = []
+        files = collect_dicom_files(self._root)
 
         total = len(files)
         ok = 0
