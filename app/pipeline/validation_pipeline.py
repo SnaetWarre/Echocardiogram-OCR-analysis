@@ -30,6 +30,7 @@ def build_validation_manager(
                 "scale_factor": 3,
                 "scale_algo": "lanczos",
                 "contrast_mode": "none",
+                "max_frames": 1,
             }
         ),
     )

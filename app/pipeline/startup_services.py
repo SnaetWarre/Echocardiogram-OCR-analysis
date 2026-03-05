@@ -96,7 +96,8 @@ class ServiceProcessManager:
         except FileNotFoundError as exc:
             raise RuntimeError(
                 "Surya startup failed because the required executable was not found. "
-                "Ensure `mamba` is installed and the `surya` environment exists."
+                "Ensure mamba/conda is installed and the surya environment exists, "
+                "or set SURYA_RUNNER=python to use the current Python."
             ) from exc
         except Exception as exc:
             raise RuntimeError(f"Surya startup failed: {exc}") from exc
@@ -122,7 +123,7 @@ class ServiceProcessManager:
         return (
             "Troubleshooting:\n"
             "1) Confirm `ollama` is installed and `ollama serve` runs.\n"
-            "2) Confirm the Surya conda environment exists (`mamba env list`).\n"
-            "3) Ensure the worker command can run:\n"
-            "   mamba run -n surya python app/pipeline/surya_worker.py\n"
+            "2) Confirm the Surya environment exists (mamba/conda env list).\n"
+            "3) Ensure the worker can run. Auto-detects mamba, conda, micromamba;\n"
+            "   else uses current Python. Override with SURYA_RUNNER, SURYA_ENV.\n"
         )

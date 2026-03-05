@@ -156,6 +156,21 @@ class EchoOcrPipeline(BasePipeline):
         except (TypeError, ValueError):
             return default
 
+    def _resolve_max_frames(self, request: PipelineRequest) -> int | None:
+        raw_limit = request.parameters.get("max_frames")
+        if raw_limit is None:
+            raw_limit = self.config.parameters.get("max_frames")
+        env_limit = os.getenv("ECHO_OCR_MAX_FRAMES", "").strip()
+        if env_limit:
+            raw_limit = env_limit
+        if raw_limit is None:
+            return None
+        try:
+            parsed = int(raw_limit)
+        except (TypeError, ValueError):
+            return None
+        return parsed if parsed > 0 else None
+
     @staticmethod
     def _build_ocr_engine_with_fallback(preferred_engine: str) -> OcrEngine:
         for name in (preferred_engine, "easyocr", "paddleocr", "tesseract"):
@@ -170,7 +185,10 @@ class EchoOcrPipeline(BasePipeline):
             self._ensure_components()
             series = load_dicom_series(request.dicom_path, load_pixels=False)
             output_dir = self._resolve_output_dir(request)
-            records = list(self._extract_records(series, request.dicom_path))
+            max_frames = self._resolve_max_frames(request)
+            records = list(
+                self._extract_records(series, request.dicom_path, max_frames=max_frames)
+            )
             if output_dir is not None and records:
                 SidecarWriter(output_dir=output_dir, write_csv=True, write_jsonl=True).write(
                     request.dicom_path.stem,
@@ -207,12 +225,21 @@ class EchoOcrPipeline(BasePipeline):
                 self.parser = RegexMeasurementParser()
         self._components_ready = True
 
-    def _extract_records(self, series, _path: Path) -> Iterable[MeasurementRecord]:
+    def _extract_records(
+        self,
+        series,
+        _path: Path,
+        *,
+        max_frames: int | None = None,
+    ) -> Iterable[MeasurementRecord]:
         md = series.metadata
         study_uid = md.study_instance_uid or "unknown-study"
         series_uid = md.series_instance_uid or "unknown-series"
         sop_uid = md.sop_instance_uid or "unknown-sop"
-        for frame_index in range(series.frame_count):
+        frame_count = series.frame_count
+        if max_frames is not None:
+            frame_count = min(frame_count, max_frames)
+        for frame_index in range(frame_count):
             frame = series.get_frame(frame_index)
             ocr, measurements, bbox = self._extract_measurements_for_frame(
                 frame, self.box_detector.detect(frame)

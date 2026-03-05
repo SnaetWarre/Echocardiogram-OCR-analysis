@@ -1,21 +1,48 @@
 from __future__ import annotations
 
+import base64
+import json
 import os
 import shutil
-import sys
-from dataclasses import dataclass
-from pathlib import Path
-from typing import Protocol
-
-import json
-import base64
 import subprocess
+import sys
 import time
 import uuid
-from typing import Protocol, Optional
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Optional, Protocol
 
 import cv2
 import numpy as np
+
+
+def _resolve_surya_worker_cmd(worker_script: Path) -> list[str]:
+    """
+    Build the command to run the Surya worker, auto-detecting the environment runner.
+    Prefers mamba, then conda, then falls back to the current Python interpreter.
+    """
+    env_name = os.getenv("SURYA_ENV", "surya").strip()
+    runner_override = os.getenv("SURYA_RUNNER", "").strip().lower()
+
+    if runner_override == "python":
+        return [sys.executable, str(worker_script)]
+
+    if runner_override in ("mamba", "conda", "micromamba"):
+        runner = shutil.which(runner_override)
+        if runner:
+            return [runner, "run", "-n", env_name, "python", str(worker_script)]
+        raise UnavailableOcrEngineError(
+            f"SURYA_RUNNER={runner_override} but '{runner_override}' not found in PATH."
+        )
+
+    # Auto-detect: mamba first, then conda
+    for runner_name in ("mamba", "conda", "micromamba"):
+        runner = shutil.which(runner_name)
+        if runner:
+            return [runner, "run", "-n", env_name, "python", str(worker_script)]
+
+    # Fallback: run with current Python (surya must be installed in this env)
+    return [sys.executable, str(worker_script)]
 
 
 @dataclass(frozen=True)
@@ -181,14 +208,9 @@ class SuryaOcrEngine:
         if self._worker_process is not None:
             self._stop_worker()
 
-        # Assuming the worker script is in the same directory as this file
         worker_script = Path(__file__).parent / "surya_worker.py"
-        
-        cmd = [
-            "mamba", "run", "-n", "surya", 
-            "python", str(worker_script)
-        ]
-        
+        cmd = _resolve_surya_worker_cmd(worker_script)
+
         # Start process with piped stdin/stdout
         self._worker_process = subprocess.Popen(
             cmd,

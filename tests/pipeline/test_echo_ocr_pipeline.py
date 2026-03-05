@@ -124,3 +124,36 @@ def test_extract_records_persists_single_engine_metadata() -> None:
 
     assert records
     assert records[0].ocr_engine == "engine-a"
+
+
+def test_extract_records_respects_max_frames_limit() -> None:
+    frame = np.zeros((120, 200, 3), dtype=np.uint8)
+    frame[:24, :64, 0] = 0x1A
+    frame[:24, :64, 1] = 0x21
+    frame[:24, :64, 2] = 0x29
+
+    parser = _FixedParser([AiMeasurement(name="TR Vmax", value="2.1", unit="m/s", source="test")])
+    pipeline = EchoOcrPipeline(
+        ocr_engine=_FakeOcrEngine("TR Vmax 2.1 m/s", name="engine-a", confidence=0.9),
+        parser=parser,
+        config=PipelineConfig(parameters={"max_frames": 1}),
+    )
+    pipeline._ensure_components()
+
+    class _SeriesMetadata:
+        study_instance_uid = "study"
+        series_instance_uid = "series"
+        sop_instance_uid = "sop"
+
+    class _Series:
+        metadata = _SeriesMetadata()
+        frame_count = 3
+
+        def get_frame(self, index: int) -> np.ndarray:
+            _ = index
+            return frame
+
+    records = list(pipeline._extract_records(_Series(), Path("example.dcm"), max_frames=1))
+
+    assert len(records) == 1
+    assert records[0].frame_index == 0

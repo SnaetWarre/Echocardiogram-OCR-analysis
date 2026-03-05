@@ -2,8 +2,13 @@ import sys
 import json
 import base64
 import io
+import os
 import traceback
+import contextlib
 from PIL import Image
+
+os.environ.setdefault("TQDM_DISABLE", "1")
+os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
 
 def load_surya_models():
     """Load the Surya models. This happens once on startup."""
@@ -11,9 +16,12 @@ def load_surya_models():
         from surya.foundation import FoundationPredictor
         from surya.detection import DetectionPredictor
         from surya.recognition import RecognitionPredictor
-        
-        import contextlib
-        with contextlib.redirect_stdout(sys.stderr):
+
+        with (
+            open(os.devnull, "w", encoding="utf-8") as devnull,
+            contextlib.redirect_stdout(devnull),
+            contextlib.redirect_stderr(devnull),
+        ):
             foundation_predictor = FoundationPredictor()
             det_predictor = DetectionPredictor()
             rec_predictor = RecognitionPredictor(foundation_predictor)
@@ -56,9 +64,16 @@ def main():
             image_bytes = base64.b64decode(image_b64)
             image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
             
-            import contextlib
-            with contextlib.redirect_stdout(sys.stderr):
-                predictions = rec_predictor([image], [TaskNames.ocr_with_boxes], det_predictor=det_predictor)
+            with (
+                open(os.devnull, "w", encoding="utf-8") as devnull,
+                contextlib.redirect_stdout(devnull),
+                contextlib.redirect_stderr(devnull),
+            ):
+                predictions = rec_predictor(
+                    [image],
+                    [TaskNames.ocr_with_boxes],
+                    det_predictor=det_predictor,
+                )
                 
             texts = []
             if predictions[0].text_lines:

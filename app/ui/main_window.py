@@ -538,6 +538,28 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             loading_message = "Running OCR validation..."
             mode = "validation"
+        series = self._state.series
+        frame_count = series.frame_count if series is not None else 0
+        frame_limit: int | None = None
+        active_pipeline = manager.active()
+        if active_pipeline is not None:
+            config = getattr(active_pipeline, "config", None)
+            parameters = getattr(config, "parameters", {}) if config is not None else {}
+            raw_limit = parameters.get("max_frames")
+            try:
+                parsed_limit = int(raw_limit)
+            except (TypeError, ValueError):
+                parsed_limit = 0
+            if parsed_limit > 0:
+                frame_limit = parsed_limit
+        if frame_count > 0:
+            if frame_limit is not None and frame_count > frame_limit:
+                loading_message = (
+                    f"{loading_message} ({path.name}: scanning {frame_limit}/{frame_count} frames)"
+                )
+            else:
+                suffix = "frame" if frame_count == 1 else "frames"
+                loading_message = f"{loading_message} ({path.name}: {frame_count} {suffix})"
         self._start_ai_run(
             manager=manager,
             loading_message=loading_message,
