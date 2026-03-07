@@ -172,9 +172,39 @@ class PaddleOcrEngine:
             raise UnavailableOcrEngineError(f"paddleocr unavailable: {exc}") from exc
 
     def extract(self, image: np.ndarray) -> OcrResult:
-        rows = self._ocr.ocr(image, cls=False)
+        input_image = image
+        if isinstance(input_image, np.ndarray) and input_image.ndim == 2:
+            input_image = cv2.cvtColor(input_image, cv2.COLOR_GRAY2BGR)
+
+        rows = self._ocr.ocr(input_image, cls=False)
         tokens: list[OcrToken] = []
         lines: list[str] = []
+
+        if rows and isinstance(rows, list) and rows and isinstance(rows[0], dict):
+            for row in rows:
+                rec_texts = row.get("rec_texts")
+                rec_scores = row.get("rec_scores")
+                if not isinstance(rec_texts, list) or not isinstance(rec_scores, list):
+                    continue
+                for text_raw, score_raw in zip(rec_texts, rec_scores):
+                    text = str(text_raw).strip()
+                    if not text:
+                        continue
+                    try:
+                        conf = float(max(min(float(score_raw), 1.0), 0.0))
+                    except Exception:
+                        conf = 0.0
+                    tokens.append(OcrToken(text=text, confidence=conf))
+                    lines.append(text)
+
+            confidence = float(sum(t.confidence for t in tokens) / len(tokens)) if tokens else 0.0
+            return OcrResult(
+                text="\n".join(lines),
+                confidence=confidence,
+                tokens=tokens,
+                engine_name=self.name,
+            )
+
         for group in rows or []:
             for item in group or []:
                 if not isinstance(item, list) or len(item) < 2:
