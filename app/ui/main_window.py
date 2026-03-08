@@ -22,7 +22,7 @@ from app.ui.state import ViewerState
 from app.ui.theme import apply_theme
 from app.ui.validation_queue import build_validation_queue
 from app.ui.widgets.image_viewer import ImageViewer
-from app.ui.workers import AiRunWorker, BatchTestWorker, DicomLoadWorker, PrefetchTask
+from app.ui.workers import AiRunWorker, BatchTestWorker, DicomLoadWorker, PrefetchTask, ValidationPrefetchWorker
 from app.utils.cache import LruFrameCache
 
 
@@ -61,6 +61,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self._batch_export_measurements = 0
         self._batch_thread: QtCore.QThread | None = None
         self._batch_worker: BatchTestWorker | None = None
+        self._prefetch_validation_thread: QtCore.QThread | None = None
+        self._prefetch_validation_worker: ValidationPrefetchWorker | None = None
+        self._prefetched_validation_items: dict[Path, tuple[DicomSeries, PipelineResult]] = {}
+        self._prefetch_validation_active_path: Path | None = None
+        self._validation_prefetch_limit = 1
 
         # Logs & Error state
         self._log_dir = Path.cwd() / "logs"
@@ -331,13 +336,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self._loader.finished.connect(self._on_load_finished)
         self._loader.finished.connect(self._loader_thread.quit)
         self._loader.finished.connect(self._loader.deleteLater)
+        self._loader_thread.finished.connect(self._on_loader_thread_finished)
         self._loader_thread.finished.connect(self._loader_thread.deleteLater)
         self._loader_thread.start()
 
     def _on_load_finished(self, series: DicomSeries | None, error: str | None) -> None:
         self._state.set_loading(False)
-        self._loader = None
-        self._loader_thread = None
 
         if error or series is None:
             message = error or "Failed to load DICOM."
@@ -345,7 +349,6 @@ class MainWindow(QtWidgets.QMainWindow):
             self._state.report_error("Load Error", message)
             if self._validation_queue_active:
                 self._pending_validation_path = None
-                QtCore.QTimer.singleShot(0, self._advance_validation_queue)
             return
 
         self._log_event(f"Load finished (worker): {series.metadata.path}")
@@ -364,6 +367,9 @@ class MainWindow(QtWidgets.QMainWindow):
             and series.metadata.path == self._pending_validation_path
         ):
             QtCore.QTimer.singleShot(0, self._start_pending_validation_run)
+            return
+        if self._validation_queue_active and self._validation_queue_mode == "review":
+            QtCore.QTimer.singleShot(0, self._start_validation_prefetch)
 
     def _on_frame_changed(self, frame_index: int) -> None:
         self._render_frame()
@@ -500,6 +506,73 @@ class MainWindow(QtWidgets.QMainWindow):
         candidates = self._sidebar.list_dicom_files()
         return build_validation_queue(candidates, current_path)
 
+    def _clear_prefetched_validation(self) -> None:
+        self._prefetched_validation_items.clear()
+        self._prefetch_validation_active_path = None
+
+    def _start_validation_prefetch(self) -> None:
+        if not self._validation_queue_active or self._validation_queue_mode != "review":
+            return
+        if self._validation_waiting_review:
+            return
+        if not self._validation_queue:
+            return
+        if self._prefetch_validation_thread and self._prefetch_validation_thread.isRunning():
+            return
+
+        path: Path | None = None
+        for candidate in self._validation_queue[: self._validation_prefetch_limit]:
+            if candidate in self._prefetched_validation_items:
+                continue
+            path = candidate
+            break
+        if path is None:
+            return
+
+        manager = self._ensure_validation_manager()
+        self._prefetch_validation_active_path = path
+        self._prefetch_validation_thread = QtCore.QThread(self)
+        self._prefetch_validation_worker = ValidationPrefetchWorker(
+            manager,
+            path,
+            not self._state.lazy_decode_enabled,
+        )
+        self._prefetch_validation_worker.moveToThread(self._prefetch_validation_thread)
+        self._prefetch_validation_thread.started.connect(self._prefetch_validation_worker.run)
+        self._prefetch_validation_worker.finished.connect(self._deliver_validation_prefetch_result)
+        self._prefetch_validation_worker.finished.connect(self._prefetch_validation_thread.quit)
+        self._prefetch_validation_worker.finished.connect(self._prefetch_validation_worker.deleteLater)
+        self._prefetch_validation_thread.finished.connect(self._on_validation_prefetch_thread_finished)
+        self._prefetch_validation_thread.finished.connect(self._prefetch_validation_thread.deleteLater)
+        self._prefetch_validation_thread.start()
+
+    @QtCore.Slot(object, object, object, object)
+    def _deliver_validation_prefetch_result(
+        self,
+        path_obj: object,
+        series_obj: object,
+        result_obj: object,
+        error_obj: object,
+    ) -> None:
+        if not isinstance(path_obj, Path):
+            return
+        if error_obj is not None:
+            return
+        if not isinstance(series_obj, DicomSeries):
+            return
+        if not isinstance(result_obj, PipelineResult):
+            return
+
+        self._prefetched_validation_items[path_obj] = (series_obj, result_obj)
+
+    @QtCore.Slot()
+    def _on_validation_prefetch_thread_finished(self) -> None:
+        self._prefetch_validation_worker = None
+        self._prefetch_validation_thread = None
+        self._prefetch_validation_active_path = None
+        if self._validation_queue_active and self._validation_queue_mode == "review":
+            QtCore.QTimer.singleShot(0, self._start_validation_prefetch)
+
     def _advance_validation_queue(self) -> None:
         if not self._validation_queue_active:
             return
@@ -517,6 +590,16 @@ class MainWindow(QtWidgets.QMainWindow):
         self._pending_validation_path = next_path
         remaining = len(self._validation_queue) + 1
         self.statusBar().showMessage(f"Preparing {next_path.name} ({remaining} remaining)...")
+        if (
+            self._validation_queue_mode == "review"
+            and next_path in self._prefetched_validation_items
+        ):
+            series, result = self._prefetched_validation_items.pop(next_path)
+            self._pending_validation_path = None
+            self._state.set_series(series)
+            self._state.set_loading(False)
+            self._on_ai_finished(result)
+            return
         if self._state.current_path == next_path:
             self._start_pending_validation_run()
             return
@@ -576,6 +659,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._pending_validation_path = None
         self._validation_waiting_review = False
         self._validation_queue = []
+        self._clear_prefetched_validation()
         self._batch_export_files = 0
         self._batch_export_measurements = 0
 
@@ -631,6 +715,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._ai_worker.failed.connect(self._on_ai_failed)
         self._ai_worker.failed.connect(self._ai_thread.quit)
         self._ai_worker.failed.connect(self._ai_worker.deleteLater)
+        self._ai_thread.finished.connect(self._on_ai_thread_finished)
         self._ai_thread.finished.connect(self._ai_thread.deleteLater)
         self._ai_thread.start()
 
@@ -645,17 +730,11 @@ class MainWindow(QtWidgets.QMainWindow):
     def _on_ai_failed(self, message: str) -> None:
         self._state.set_loading(False)
         self._log_event(f"AI failed: {message}")
-        self._ai_worker = None
-        self._ai_thread = None
         self._state.report_error("AI Error", message)
-        if self._validation_queue_active and self._ai_run_mode in {"validation", "export"}:
-            QtCore.QTimer.singleShot(0, self._advance_validation_queue)
 
     @QtCore.Slot(object)
     def _on_ai_finished(self, result_obj: object) -> None:
         self._state.set_loading(False)
-        self._ai_worker = None
-        self._ai_thread = None
 
         if not isinstance(result_obj, PipelineResult):
             self._state.report_error("AI Error", "AI worker returned an invalid result payload.")
@@ -666,8 +745,6 @@ class MainWindow(QtWidgets.QMainWindow):
             message = result.error or "Failed to run AI."
             self._log_event(f"AI failed: {message}")
             self._state.report_error("AI Error", message)
-            if self._validation_queue_active and self._ai_run_mode in {"validation", "export"}:
-                QtCore.QTimer.singleShot(0, self._advance_validation_queue)
             return
 
         ai_result = result.ai_result
@@ -696,7 +773,24 @@ class MainWindow(QtWidgets.QMainWindow):
                     f"{remaining} files remaining.",
                     2500,
                 )
-                QtCore.QTimer.singleShot(0, self._advance_validation_queue)
+
+    @QtCore.Slot()
+    def _on_loader_thread_finished(self) -> None:
+        self._loader = None
+        self._loader_thread = None
+        if self._validation_queue_active and self._pending_validation_path is None:
+            QtCore.QTimer.singleShot(0, self._advance_validation_queue)
+
+    @QtCore.Slot()
+    def _on_ai_thread_finished(self) -> None:
+        self._ai_worker = None
+        self._ai_thread = None
+        if (
+            self._validation_queue_active
+            and self._ai_run_mode in {"validation", "export"}
+            and not self._validation_waiting_review
+        ):
+            QtCore.QTimer.singleShot(0, self._advance_validation_queue)
 
     def _open_validation_dialog(self, dicom_path: Path, ai_result: AiResult) -> None:
         if self._validation_dialog is not None:
@@ -710,6 +804,7 @@ class MainWindow(QtWidgets.QMainWindow):
         dialog.raise_()
         self._validation_dialog = dialog
         self._validation_waiting_review = True
+        QtCore.QTimer.singleShot(0, self._start_validation_prefetch)
 
     @QtCore.Slot(int)
     def _on_validation_dialog_closed(self, _result: int) -> None:
@@ -722,13 +817,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self._validation_waiting_review = False
         self._validation_dialog = None
 
-    @QtCore.Slot(object, object, int, int)
+    @QtCore.Slot(object, object, int, int, bool)
     def _on_validation_submitted(
         self,
         dicom_path_obj: object,
         measurements_obj: object,
         approved_count: int,
         incorrect_count: int,
+        skip_output: bool,
     ) -> None:
         self._validation_waiting_review = False
         if not isinstance(dicom_path_obj, Path):
@@ -738,11 +834,13 @@ class MainWindow(QtWidgets.QMainWindow):
             m for m in measurements_obj if isinstance(m, AiMeasurement)
         ] if isinstance(measurements_obj, list) else []
 
-        try:
-            output_path = self._validation_writer.append(dicom_path_obj, measurements)
-        except Exception as exc:
-            self._state.report_error("Validation Save Error", str(exc))
-            return
+        output_path: Path | None = None
+        if not skip_output:
+            try:
+                output_path = self._validation_writer.append(dicom_path_obj, measurements)
+            except Exception as exc:
+                self._state.report_error("Validation Save Error", str(exc))
+                return
 
         accuracy, is_new_high = self._state.record_validation(
             dicom_path_obj,
@@ -764,8 +862,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
         if self._validation_queue_active:
             remaining = len(self._validation_queue)
+            if skip_output:
+                action = "Skipped false positive"
+            else:
+                action = f"Saved {len(measurements)} measurements"
             self.statusBar().showMessage(
-                f"Saved {len(measurements)} measurements for {dicom_path_obj.name}. "
+                f"{action} for {dicom_path_obj.name}. "
                 f"{remaining} files remaining.",
                 2500,
             )
@@ -773,12 +875,20 @@ class MainWindow(QtWidgets.QMainWindow):
             return
 
         session = self._state.validation_session
-        summary = (
-            f"Saved {len(measurements)} measurements to:\n{output_path}\n\n"
-            f"Session accuracy: {accuracy * 100:.1f}%\n"
-            f"Highest score seen: {session.highest_accuracy * 100:.1f}%\n"
-            f"Validated frames: {session.total_validated_frames}"
-        )
+        if skip_output:
+            summary = (
+                f"Marked {dicom_path_obj.name} as false positive / no measurement box.\n\n"
+                f"Session accuracy: {accuracy * 100:.1f}%\n"
+                f"Highest score seen: {session.highest_accuracy * 100:.1f}%\n"
+                f"Validated frames: {session.total_validated_frames}"
+            )
+        else:
+            summary = (
+                f"Saved {len(measurements)} measurements to:\n{output_path}\n\n"
+                f"Session accuracy: {accuracy * 100:.1f}%\n"
+                f"Highest score seen: {session.highest_accuracy * 100:.1f}%\n"
+                f"Validated frames: {session.total_validated_frames}"
+            )
         if is_new_high:
             summary += "\n\nNew highest score this session."
         QtWidgets.QMessageBox.information(self, "Validation Summary", summary)

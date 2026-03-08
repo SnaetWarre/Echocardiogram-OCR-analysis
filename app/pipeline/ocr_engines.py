@@ -49,6 +49,7 @@ def _resolve_surya_worker_cmd(worker_script: Path) -> list[str]:
 class OcrToken:
     text: str
     confidence: float
+    bbox: tuple[float, float, float, float] | None = None
 
 
 @dataclass(frozen=True)
@@ -333,7 +334,15 @@ class SuryaOcrEngine:
                     return OcrResult(
                         text=res.get("text", ""),
                         confidence=res.get("confidence", 0.0),
-                        tokens=[], # We don't really need token-level confidence for the current architecture
+                        tokens=[
+                            OcrToken(
+                                text=str(token.get("text", "")).strip(),
+                                confidence=float(token.get("confidence", 0.0) or 0.0),
+                                bbox=tuple(token.get("bbox")) if isinstance(token.get("bbox"), list) and len(token.get("bbox")) == 4 else None,
+                            )
+                            for token in res.get("tokens", [])
+                            if str(token.get("text", "")).strip()
+                        ],
                         engine_name=self.name
                     )
                 else:

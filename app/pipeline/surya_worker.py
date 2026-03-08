@@ -76,18 +76,35 @@ def main():
                 )
                 
             texts = []
+            tokens = []
             if predictions[0].text_lines:
                 for tline in predictions[0].text_lines:
                     # Strip HTML formatting tags (like <b>, <i>) that Surya adds
                     clean_text = re.sub(r"<[^>]+>", "", tline.text)
                     texts.append(clean_text)
+                    bbox = getattr(tline, "bbox", None)
+                    if isinstance(bbox, list) and len(bbox) == 4:
+                        try:
+                            tokens.append(
+                                {
+                                    "text": clean_text,
+                                    "confidence": float(getattr(tline, "confidence", 0.0) or 0.0),
+                                    "bbox": [float(v) for v in bbox],
+                                }
+                            )
+                        except Exception:
+                            pass
+            if tokens:
+                tokens.sort(key=lambda item: (item["bbox"][1], item["bbox"][0]))
+                texts = [token["text"] for token in tokens]
                     
             full_text = "\n".join(texts)
             
             res = {
                 "id": req_id,
                 "text": full_text,
-                "confidence": 0.99
+                "confidence": 0.99,
+                "tokens": tokens,
             }
             print(json.dumps(res), flush=True)
             

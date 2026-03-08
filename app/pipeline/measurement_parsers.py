@@ -227,6 +227,7 @@ class RegexMeasurementParser:
                         value=value,
                         unit=unit,
                         source=f"regex_parser:{confidence:.2f}",
+                        order_hint=len(items),
                     )
                 )
 
@@ -332,6 +333,7 @@ class RegexMeasurementParser:
                             value=value,
                             unit=unit,
                             source=f"regex_multiline:{confidence:.2f}",
+                            order_hint=len(items),
                         )
                     )
             idx = max(j, idx + 1)
@@ -446,6 +448,7 @@ class LocalLlmMeasurementParser:
                     value=value,
                     unit=unit or None,
                     source=f"local_llm:{self.config.model}:{confidence:.2f}",
+                    order_hint=len(items),
                 )
             )
         return _postprocess_measurements(items)
@@ -566,6 +569,27 @@ class HybridMeasurementParser:
         return self.regex_parser.parse(text, confidence=confidence)
 
 
+class RegexThenLlmMeasurementParser:
+    """
+    Prefer fast regex parsing and only call the local LLM if regex finds nothing.
+    Useful for human-in-the-loop review where speed matters more than squeezing out
+    the absolute best parser score on every file.
+    """
+
+    def __init__(self, regex_parser: RegexMeasurementParser, llm_parser: MeasurementParser) -> None:
+        self.regex_parser = regex_parser
+        self.llm_parser = llm_parser
+
+    def parse(self, text: str, *, confidence: float) -> List[AiMeasurement]:
+        regex_items = self.regex_parser.parse(text, confidence=confidence)
+        if regex_items:
+            return regex_items
+        try:
+            return self.llm_parser.parse(text, confidence=confidence)
+        except Exception:
+            return []
+
+
 def build_parser(mode: str, parameters: Optional[Dict[str, object]] = None) -> MeasurementParser:
     params = parameters or {}
     parser_mode = (mode or "regex").strip().lower()
@@ -587,4 +611,6 @@ def build_parser(mode: str, parameters: Optional[Dict[str, object]] = None) -> M
         return llm_parser
     if parser_mode == "hybrid":
         return HybridMeasurementParser(llm_parser=llm_parser, regex_parser=regex_parser)
+    if parser_mode in {"regex_then_llm", "fast_hybrid"}:
+        return RegexThenLlmMeasurementParser(regex_parser=regex_parser, llm_parser=llm_parser)
     raise ValueError(f"Unsupported parser mode: {mode}")

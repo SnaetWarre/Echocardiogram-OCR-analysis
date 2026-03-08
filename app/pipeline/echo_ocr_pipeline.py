@@ -246,7 +246,8 @@ class EchoOcrPipeline(BasePipeline):
             )
             if ocr is None or bbox is None or not measurements:
                 continue
-            for measurement in measurements:
+            for order_idx, measurement in enumerate(measurements):
+                effective_order = measurement.order_hint if measurement.order_hint is not None else order_idx
                 yield MeasurementRecord(
                     study_uid=study_uid,
                     series_uid=series_uid,
@@ -259,6 +260,7 @@ class EchoOcrPipeline(BasePipeline):
                     ocr_confidence=ocr.confidence,
                     parser_confidence=ocr.confidence,
                     roi_bbox=bbox,
+                    text_order=effective_order,
                     processed_at=MeasurementRecord.now_iso(),
                     pipeline_version=self.version,
                     ocr_engine=ocr.engine_name,
@@ -303,6 +305,16 @@ class EchoOcrPipeline(BasePipeline):
                     ),
                     record,
                 )
+        ordered = sorted(
+            seen.values(),
+            key=lambda item: (
+                item[1].frame_index,
+                item[1].text_order,
+                item[1].roi_bbox[1],
+                item[1].roi_bbox[0],
+            ),
+        )
+
         return AiResult(
             model_name=f"{self.name}:{self.ocr_engine.name}",
             created_at=datetime.now(timezone.utc),
@@ -315,8 +327,8 @@ class EchoOcrPipeline(BasePipeline):
                     label="measurement_box",
                     confidence=r.parser_confidence,
                 )
-                for _, r in seen.values()
+                for _, r in ordered
             ],
-            measurements=[m for m, _ in seen.values()],
+            measurements=[m for m, _ in ordered],
             raw={"record_count": len(records), "pipeline_version": self.version},
         )

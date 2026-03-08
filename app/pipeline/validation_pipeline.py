@@ -11,6 +11,7 @@ def build_validation_manager(
     surya_engine: OcrEngine | None = None,
     llm_model: str = "qwen2.5:7b-instruct-q4_K_M",
     llm_command: str = "ollama",
+    parser_mode: str = "regex_then_llm",
 ) -> PipelineManager:
     engine = surya_engine if surya_engine is not None else build_engine("surya")
     parser = LocalLlmMeasurementParser(
@@ -20,13 +21,20 @@ def build_validation_manager(
             timeout_s=30.0,
         )
     )
+    if parser_mode == "regex_then_llm":
+        from app.pipeline.measurement_parsers import RegexMeasurementParser, RegexThenLlmMeasurementParser
+
+        parser = RegexThenLlmMeasurementParser(
+            regex_parser=RegexMeasurementParser(),
+            llm_parser=parser,
+        )
     pipeline = EchoOcrPipeline(
         ocr_engine=engine,
         parser=parser,
         config=PipelineConfig(
             parameters={
                 "ocr_engine": "surya",
-                "parser_mode": "local_llm",
+                "parser_mode": parser_mode,
                 "scale_factor": 3,
                 "scale_algo": "lanczos",
                 "contrast_mode": "none",

@@ -17,8 +17,9 @@ class MeasurementRecord:
     ocr_confidence: float
     parser_confidence: float
     roi_bbox: tuple[int, int, int, int]
-    processed_at: str
-    pipeline_version: str
+    text_order: int = 0
+    processed_at: str = ""
+    pipeline_version: str = ""
     ocr_engine: str = ""
 
     def to_dict(self) -> dict[str, object]:
@@ -43,6 +44,7 @@ CSV_FIELDS = [
     "ocr_confidence",
     "parser_confidence",
     "roi_bbox",
+    "text_order",
     "processed_at",
     "pipeline_version",
     "ocr_engine",

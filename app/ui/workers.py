@@ -56,6 +56,56 @@ class AiRunWorker(QtCore.QObject):
         self.finished.emit(result)
 
 
+class ValidationPrefetchWorker(QtCore.QObject):
+    finished = QtCore.Signal(object, object, object, object)  # path, series, result, error
+
+    def __init__(self, manager: PipelineManager, path: Path, load_pixels: bool) -> None:
+        super().__init__()
+        self._manager = manager
+        self._path = path
+        self._load_pixels = load_pixels
+
+    @QtCore.Slot()
+    def run(self) -> None:
+        try:
+            series = load_dicom_series(self._path, load_pixels=self._load_pixels)
+        except Exception as exc:
+            self.finished.emit(self._path, None, None, f"Failed to load DICOM: {exc}")
+            return
+
+        try:
+            result = self._manager.run(PipelineRequest(dicom_path=self._path))
+        except Exception as exc:
+            self.finished.emit(self._path, series, None, f"Failed to run OCR: {exc}")
+            return
+
+        self.finished.emit(self._path, series, result, None)
+
+
+class ValidationPrefetchTask(QtCore.QRunnable):
+    def __init__(self, manager: PipelineManager, path: Path, load_pixels: bool, callback) -> None:
+        super().__init__()
+        self._manager = manager
+        self._path = path
+        self._load_pixels = load_pixels
+        self._callback = callback
+
+    def run(self) -> None:
+        try:
+            series = load_dicom_series(self._path, load_pixels=self._load_pixels)
+        except Exception as exc:
+            self._callback(self._path, None, None, f"Failed to load DICOM: {exc}")
+            return
+
+        try:
+            result = self._manager.run(PipelineRequest(dicom_path=self._path))
+        except Exception as exc:
+            self._callback(self._path, series, None, f"Failed to run OCR: {exc}")
+            return
+
+        self._callback(self._path, series, result, None)
+
+
 class BatchTestWorker(QtCore.QObject):
     progress = QtCore.Signal(int, int, str, bool, str, float)
     finished = QtCore.Signal(int, int, float)

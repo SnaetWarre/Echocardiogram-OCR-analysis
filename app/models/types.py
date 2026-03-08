@@ -101,6 +101,7 @@ class AiMeasurement:
     value: str
     unit: str | None = None
     source: str | None = None
+    order_hint: int | None = None
 
 
 @dataclass
