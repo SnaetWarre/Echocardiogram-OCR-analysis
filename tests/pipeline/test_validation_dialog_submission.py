@@ -28,7 +28,7 @@ def test_validation_dialog_prefills_full_measurement_text() -> None:
     )
     dialog = ValidationDialog(Path("/tmp/example.dcm"), result)
 
-    assert dialog._rows[0]._correct_input.text() == "TR Vmax 1.9 m/s"
+    assert dialog._rows[0]._editor.toPlainText() == "TR Vmax 1.9 m/s"
 
 
 def test_validation_dialog_false_positive_submission_emits_skip_flag() -> None:
@@ -54,7 +54,7 @@ def test_validation_dialog_false_positive_submission_emits_skip_flag() -> None:
     assert payload[4] is True
 
 
-def test_validation_dialog_accepts_escaped_newlines_for_multiple_measurements() -> None:
+def test_validation_dialog_accepts_newlines_for_multiple_measurements() -> None:
     _ = _get_app()
     result = AiResult(
         model_name="demo",
@@ -64,17 +64,16 @@ def test_validation_dialog_accepts_escaped_newlines_for_multiple_measurements() 
     dialog = ValidationDialog(Path("/tmp/example.dcm"), result)
 
     row = dialog._rows[0]
-    row._btn_wrong.click()
-    row._correct_input.setPlainText("TR Vmax 1.9 m/s\nTR maxPG 14 mmHg")
+    row._editor.setPlainText("TR Vmax 1.9 m/s\nTR maxPG 14 mmHg")
 
     measurements = row.collect()
 
     assert len(measurements) == 2
-    assert measurements[0].name == "TR Vmax"
-    assert measurements[1].name == "TR maxPG"
+    assert measurements[0] == "TR Vmax 1.9 m/s"
+    assert measurements[1] == "TR maxPG 14 mmHg"
 
 
-def test_validation_dialog_remove_last_row_clears_it_instead_of_deleting() -> None:
+def test_validation_dialog_remove_last_row_clears_it() -> None:
     _ = _get_app()
     result = AiResult(
         model_name="demo",
@@ -86,5 +85,92 @@ def test_validation_dialog_remove_last_row_clears_it_instead_of_deleting() -> No
     dialog._remove_row(dialog._rows[0])
 
     assert len(dialog._rows) == 1
-    assert dialog._rows[0]._btn_wrong.isChecked()
-    assert dialog._rows[0]._correct_input.toPlainText() == ""
+    assert dialog._rows[0]._editor.toPlainText() == ""
+
+
+def test_validation_dialog_editing_text_marks_row_as_edited() -> None:
+    _ = _get_app()
+    result = AiResult(
+        model_name="demo",
+        created_at=datetime.now(),
+        measurements=[AiMeasurement(name="L", value="1.81", unit="cm")],
+    )
+    dialog = ValidationDialog(Path("/tmp/example.dcm"), result)
+
+    row = dialog._rows[0]
+    assert not row.is_edited
+
+    row._editor.setPlainText("L 3.00 cm")
+
+    assert row.is_edited
+
+
+def test_validation_dialog_collect_uses_edited_text() -> None:
+    _ = _get_app()
+    result = AiResult(
+        model_name="demo",
+        created_at=datetime.now(),
+        measurements=[AiMeasurement(name="L", value="1.81", unit="cm")],
+    )
+    dialog = ValidationDialog(Path("/tmp/example.dcm"), result)
+
+    row = dialog._rows[0]
+    row._editor.setPlainText("L 3.00 cm")
+
+    measurements = row.collect()
+
+    assert len(measurements) == 1
+    assert measurements[0] == "L 3.00 cm"
+
+
+def test_validation_dialog_collect_preserves_literal_edited_line() -> None:
+    _ = _get_app()
+    result = AiResult(
+        model_name="demo",
+        created_at=datetime.now(),
+        measurements=[AiMeasurement(name="Ao Desc Diam", value="2.0", unit="cm")],
+    )
+    dialog = ValidationDialog(Path("/tmp/example.dcm"), result)
+
+    row = dialog._rows[0]
+    row._editor.setPlainText("Ao Desc Diam 2.0 cm2")
+
+    measurements = row.collect()
+
+    assert len(measurements) == 1
+    assert measurements[0] == "Ao Desc Diam 2.0 cm2"
+
+
+def test_validation_dialog_collect_returns_original_when_unedited() -> None:
+    _ = _get_app()
+    result = AiResult(
+        model_name="demo",
+        created_at=datetime.now(),
+        measurements=[AiMeasurement(name="L", value="1.81", unit="cm")],
+    )
+    dialog = ValidationDialog(Path("/tmp/example.dcm"), result)
+
+    row = dialog._rows[0]
+    measurements = row.collect()
+
+    assert len(measurements) == 1
+    assert measurements[0] == "L 1.81 cm"
+
+
+def test_validation_dialog_reset_to_ai_restores_original() -> None:
+    _ = _get_app()
+    result = AiResult(
+        model_name="demo",
+        created_at=datetime.now(),
+        measurements=[AiMeasurement(name="TR Vmax", value="1.9", unit="m/s")],
+    )
+    dialog = ValidationDialog(Path("/tmp/example.dcm"), result)
+
+    row = dialog._rows[0]
+    row._editor.setPlainText("TR Vmax 2.5 m/s")
+    assert row.is_edited
+
+    row._reset_to_ai()
+
+    assert not row.is_edited
+    assert row._editor.toPlainText() == "TR Vmax 1.9 m/s"

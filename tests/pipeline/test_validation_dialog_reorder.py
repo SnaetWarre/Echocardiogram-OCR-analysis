@@ -32,8 +32,10 @@ def test_validation_dialog_allows_manual_reorder() -> None:
     )
     dialog = ValidationDialog(Path("/tmp/example.dcm"), result)
 
+    widget_to_move = dialog._rows[2]
     item = dialog._list.takeItem(2)
     dialog._list.insertItem(0, item)
+    dialog._list.setItemWidget(item, widget_to_move)
     dialog._sync_rows_from_list()
 
     assert [row._measurement.name for row in dialog._rows] == ["Third", "First", "Second"]
@@ -52,4 +54,15 @@ def test_validation_dialog_can_duplicate_row() -> None:
 
     assert len(dialog._rows) == 2
     assert dialog._rows[1]._measurement.name == "Only"
-    assert dialog._rows[1]._btn_wrong.isChecked()
+
+
+def test_validation_dialog_shows_ocr_line_hint_when_available() -> None:
+    _ = _get_app()
+    result = AiResult(
+        model_name="demo",
+        created_at=datetime.now(),
+        measurements=[AiMeasurement(name="Only", value="1", source="ocr_line:Only 1 cm")],
+    )
+    dialog = ValidationDialog(Path("/tmp/example.dcm"), result)
+
+    assert "OCR line: Only 1 cm" in dialog._rows[0]._raw_ocr_label.text()

@@ -831,7 +831,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self._state.report_error("Validation Error", "Validation submission contained no path.")
             return
         measurements = [
-            m for m in measurements_obj if isinstance(m, AiMeasurement)
+            line for line in measurements_obj if isinstance(line, str)
         ] if isinstance(measurements_obj, list) else []
 
         output_path: Path | None = None
@@ -855,8 +855,8 @@ class MainWindow(QtWidgets.QMainWindow):
                     model_name=base.model_name,
                     created_at=base.created_at,
                     boxes=base.boxes,
-                    measurements=measurements,
-                    raw={**base.raw, "validated": True},
+                    measurements=[],
+                    raw={**base.raw, "validated": True, "validated_lines": measurements},
                 )
             )
 

@@ -8,7 +8,6 @@ os.environ.setdefault("DICOM_AI_ENABLED", "0")
 
 from PySide6 import QtWidgets
 
-from app.models.types import AiMeasurement
 from app.ui.main_window import MainWindow
 
 
@@ -27,7 +26,7 @@ def test_validation_submit_skips_output_when_false_positive(tmp_path: Path) -> N
 
     window._on_validation_submitted(
         Path("/tmp/example.dcm"),
-        [AiMeasurement(name="TR Vmax", value="1.9", unit="m/s")],
+        ["TR Vmax 1.9 m/s"],
         0,
         1,
         True,

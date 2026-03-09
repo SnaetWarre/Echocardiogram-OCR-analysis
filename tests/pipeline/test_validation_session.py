@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
 
-from app.models.types import AiMeasurement, ValidationSession
+from app.models.types import ValidatedLabelRecord, ValidationSession
 
 
 def test_validation_session_tracks_accuracy_and_labels() -> None:
@@ -13,7 +14,11 @@ def test_validation_session_tracks_accuracy_and_labels() -> None:
     session.total_ai_correct += 2
     session.total_ai_incorrect += 1
     session.session_labels.append(
-        (Path("/tmp/example.dcm"), [AiMeasurement(name="TR Vmax", value="2.1", unit="m/s")])
+        ValidatedLabelRecord(
+            path=Path("/tmp/example.dcm"),
+            validated_at=datetime.now(),
+            measurements=["TR Vmax 2.1 m/s"],
+        )
     )
 
     assert session.total_reviewed_measurements == 3

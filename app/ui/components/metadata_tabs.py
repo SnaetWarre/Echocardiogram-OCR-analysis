@@ -77,12 +77,21 @@ class MetadataTabsWidget(QtWidgets.QTabWidget):
         self._ai_raw.setPlainText("")
 
     def _update_ai_result(self, result: AiResult) -> None:
-        self._ai_table.setRowCount(len(result.measurements))
-        for row, measurement in enumerate(result.measurements):
-            self._ai_table.setItem(row, 0, QtWidgets.QTableWidgetItem(measurement.name))
-            self._ai_table.setItem(row, 1, QtWidgets.QTableWidgetItem(str(measurement.value)))
-            unit_str = measurement.unit if measurement.unit else ""
-            self._ai_table.setItem(row, 2, QtWidgets.QTableWidgetItem(unit_str))
+        validated_lines = result.raw.get("validated_lines")
+        if isinstance(validated_lines, list):
+            self._ai_table.setRowCount(len(validated_lines))
+            for row, line in enumerate(validated_lines):
+                text = line if isinstance(line, str) else str(line)
+                self._ai_table.setItem(row, 0, QtWidgets.QTableWidgetItem(text))
+                self._ai_table.setItem(row, 1, QtWidgets.QTableWidgetItem(""))
+                self._ai_table.setItem(row, 2, QtWidgets.QTableWidgetItem(""))
+        else:
+            self._ai_table.setRowCount(len(result.measurements))
+            for row, measurement in enumerate(result.measurements):
+                self._ai_table.setItem(row, 0, QtWidgets.QTableWidgetItem(measurement.name))
+                self._ai_table.setItem(row, 1, QtWidgets.QTableWidgetItem(str(measurement.value)))
+                unit_str = measurement.unit if measurement.unit else ""
+                self._ai_table.setItem(row, 2, QtWidgets.QTableWidgetItem(unit_str))
         self._ai_raw.setPlainText(str(result.raw))
 
     def _export_ai_csv(self) -> None:
@@ -103,8 +112,13 @@ class MetadataTabsWidget(QtWidgets.QTabWidget):
                 with open(path, "w", newline="", encoding="utf-8") as f:
                     writer = csv.writer(f)
                     writer.writerow(["Measurement", "Value", "Unit"])
-                    for meas in result.measurements:
-                        writer.writerow([meas.name, meas.value, meas.unit])
+                    validated_lines = result.raw.get("validated_lines")
+                    if isinstance(validated_lines, list):
+                        for line in validated_lines:
+                            writer.writerow([line, "", ""])
+                    else:
+                        for meas in result.measurements:
+                            writer.writerow([meas.name, meas.value, meas.unit])
             except Exception as e:
                 QtWidgets.QMessageBox.critical(self, "Export Error", str(e))
 
@@ -140,7 +154,14 @@ class MetadataTabsWidget(QtWidgets.QTabWidget):
                     buffer.write("-" * 40 + "\n\n")
 
                 buffer.write("Measurements:\n")
-                if not result.measurements:
+                validated_lines = result.raw.get("validated_lines")
+                if isinstance(validated_lines, list):
+                    if not validated_lines:
+                        buffer.write("  No measurements found.\n")
+                    else:
+                        for line in validated_lines:
+                            buffer.write(f"  {line}\n")
+                elif not result.measurements:
                     buffer.write("  No measurements found.\n")
                 else:
                     for meas in result.measurements:

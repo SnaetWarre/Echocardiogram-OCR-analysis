@@ -22,3 +22,16 @@ def test_validation_label_writer_appends_records(tmp_path: Path) -> None:
     assert "-> TR Vmax 2.1 m/s" in text
     assert "path: /tmp/example_b.dcm" in text
     assert "# no measurements retained" in text
+
+
+def test_validation_label_writer_preserves_literal_string_line(tmp_path: Path) -> None:
+    output_path = tmp_path / "validation_labels.md"
+    writer = ValidationLabelWriter(output_path=output_path)
+
+    writer.append(
+        Path("/tmp/example_a.dcm"),
+        ["Ao Desc Diam 2.0 cm2"],
+    )
+
+    text = output_path.read_text(encoding="utf-8")
+    assert "-> Ao Desc Diam 2.0 cm2" in text

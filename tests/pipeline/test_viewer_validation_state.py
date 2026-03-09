@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from app.models.types import AiMeasurement
 from app.ui.state import ViewerState
 
 
@@ -20,7 +19,7 @@ def test_viewer_state_records_validation_metrics(monkeypatch) -> None:
         Path("/tmp/example-a.dcm"),
         approved_count=2,
         corrected_count=1,
-        measurements=[AiMeasurement(name="TR Vmax", value="2.1", unit="m/s")],
+        measurements=["TR Vmax 2.1 m/s"],
     )
     assert is_new_high is True
     assert accuracy == 2 / 3

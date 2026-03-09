@@ -205,7 +205,7 @@ class RegexMeasurementParser:
     _pattern = re.compile(
         r"(?P<name>[A-Za-z][A-Za-z0-9\s/\-()']+?)\s+"
         r"(?P<value>[-+]?\d+(?:[.,]\d+)?)\s*"
-        r"(?P<unit>%|mmHg|cm/s|m/s|cm|mm|ms|s|bpm|ml/m2|cm2|ml|m/s2)?",
+        r"(?P<unit>%|mmHg|ml/m2|m/s2|cm2|cm/s|m/s|bpm|cm|mm|ms|ml|s)?",
         flags=re.IGNORECASE,
     )
 
@@ -235,7 +235,7 @@ class RegexMeasurementParser:
         lines = [line.strip() for line in text.splitlines() if line.strip()]
         number_re = re.compile(r"[-+]?\d+(?:[.,]\d+)?$")
         unit_re = re.compile(
-            r"^(%|mmhg|cm/s|m/s|cm|mm|ms|s|bpm|ml/m2|cm2|ml|m/s2|mis|m1s|mls)$", re.I
+            r"^(%|mmhg|ml/m2|m/s2|cm2|cm/s|m/s|bpm|cm|mm|ms|ml|s|mis|m1s|mls)$", re.I
         )
         alpha_re = re.compile(r"[A-Za-z]")
         inline_value_re = re.compile(r"^([-+]?\d+(?:[.,]\d+)?)\s*([A-Za-z/%0-9]+)?$")

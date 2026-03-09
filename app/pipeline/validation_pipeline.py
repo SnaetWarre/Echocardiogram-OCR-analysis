@@ -11,7 +11,7 @@ def build_validation_manager(
     surya_engine: OcrEngine | None = None,
     llm_model: str = "qwen2.5:7b-instruct-q4_K_M",
     llm_command: str = "ollama",
-    parser_mode: str = "regex_then_llm",
+    parser_mode: str = "local_llm",
 ) -> PipelineManager:
     engine = surya_engine if surya_engine is not None else build_engine("surya")
     parser = LocalLlmMeasurementParser(

@@ -301,7 +301,8 @@ class EchoOcrPipeline(BasePipeline):
                         name=record.measurement_name,
                         value=record.measurement_value,
                         unit=record.measurement_unit or None,
-                        source="echo_ocr_pipeline",
+                        source=f"ocr_line:{self._extract_matching_ocr_line(record.ocr_text_raw, record.measurement_name, record.measurement_value)}",
+                        order_hint=record.text_order,
                     ),
                     record,
                 )
@@ -332,3 +333,17 @@ class EchoOcrPipeline(BasePipeline):
             measurements=[m for m, _ in ordered],
             raw={"record_count": len(records), "pipeline_version": self.version},
         )
+
+    @staticmethod
+    def _extract_matching_ocr_line(raw_text: str, name: str, value: str) -> str:
+        lines = [line.strip() for line in raw_text.splitlines() if line.strip()]
+        lowered_name = name.lower().strip()
+        lowered_value = value.lower().strip()
+        for line in lines:
+            lowered = line.lower()
+            if lowered_name in lowered and lowered_value in lowered:
+                return line
+        for line in lines:
+            if lowered_value in line.lower():
+                return line
+        return lines[0] if lines else raw_text.strip()

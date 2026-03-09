@@ -104,12 +104,19 @@ class AiMeasurement:
     order_hint: int | None = None
 
 
+@dataclass(frozen=True)
+class ValidatedLabelRecord:
+    path: Path
+    validated_at: datetime
+    measurements: list[str]
+
+
 @dataclass
 class ValidationSession:
     total_validated_frames: int = 0
     total_ai_correct: int = 0
     total_ai_incorrect: int = 0
-    session_labels: list[tuple[Path, list[AiMeasurement]]] = field(default_factory=list)
+    session_labels: list[ValidatedLabelRecord] = field(default_factory=list)
     highest_accuracy: float = 0.0
 
     @property

@@ -43,6 +43,16 @@ def test_parser_extracts_value_and_unit() -> None:
     assert items[0].unit == "m/s"
 
 
+def test_parser_preserves_compound_unit_without_truncation() -> None:
+    parser = RegexMeasurementParser()
+    items = parser.parse("Ao Desc Diam 2.0 cm2", confidence=0.9)
+
+    assert len(items) == 1
+    assert items[0].name == "Ao Desc Diam"
+    assert items[0].value == "2.0"
+    assert items[0].unit == "cm2"
+
+
 def test_preprocess_roi_respects_upscale_env(monkeypatch) -> None:
     roi = np.zeros((8, 12, 3), dtype=np.uint8)
     roi[:, :, 0] = np.tile(np.arange(12, dtype=np.uint8), (8, 1)) + 20

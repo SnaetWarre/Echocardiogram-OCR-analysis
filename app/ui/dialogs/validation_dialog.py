@@ -1,14 +1,18 @@
 from __future__ import annotations
 
-import re
-from pathlib import Path
-
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from app.models.types import AiMeasurement, AiResult
-from app.pipeline.measurement_parsers import RegexMeasurementParser
 
-_VALUE_UNIT_RE = re.compile(r"^\s*(?P<value>[-+]?\d+(?:[.,]\d+)?)\s*(?P<unit>\S+)?\s*$")
+_STYLE_UNMODIFIED = (
+    "QFrame#rowFrame { border: 2px solid #1E8E3E; border-radius: 6px; background: #F4FBF6; }"
+)
+_STYLE_EDITED = (
+    "QFrame#rowFrame { border: 2px solid #0055AA; border-radius: 6px; background: #F0F6FC; }"
+)
+_STYLE_EMPTY = (
+    "QFrame#rowFrame { border: 2px solid #C44; border-radius: 6px; background: #FFF5F5; }"
+)
 
 
 class DragHandleLabel(QtWidgets.QLabel):
@@ -17,11 +21,11 @@ class DragHandleLabel(QtWidgets.QLabel):
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
         self._drag_start_pos: QtCore.QPoint | None = None
-        self.setText("Drag")
+        self.setText("\u2630")
         self.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        self.setFixedWidth(52)
+        self.setFixedWidth(36)
         self.setCursor(QtCore.Qt.CursorShape.OpenHandCursor)
-        self.setToolTip("Grab here and drag this measurement row to reorder it.")
+        self.setToolTip("Drag to reorder")
         self.setStyleSheet(
             "QLabel {"
             " background-color: #D8E7F6;"
@@ -29,6 +33,7 @@ class DragHandleLabel(QtWidgets.QLabel):
             " border: 1px solid #8FB4D8;"
             " border-radius: 4px;"
             " font-weight: 600;"
+            " font-size: 16px;"
             " padding: 6px 4px;"
             "}"
         )
@@ -64,15 +69,17 @@ class ValidationFeedbackWidget(QtWidgets.QFrame):
 
     def __init__(self, measurement: AiMeasurement, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
+        self.setObjectName("rowFrame")
         self._measurement = measurement
-        self._parser = RegexMeasurementParser()
+
+        unit = f" {measurement.unit}" if measurement.unit else ""
+        self._ai_text = f"{measurement.name} {measurement.value}{unit}".strip()
 
         self.setFrameShape(QtWidgets.QFrame.Shape.StyledPanel)
-        self.setStyleSheet("QFrame { border: 1px solid #C8D4E3; border-radius: 6px; }")
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(8)
+        layout.setSpacing(6)
 
         top = QtWidgets.QHBoxLayout()
         top.setSpacing(10)
@@ -81,123 +88,131 @@ class ValidationFeedbackWidget(QtWidgets.QFrame):
 
         body = QtWidgets.QVBoxLayout()
         body.setContentsMargins(0, 0, 0, 0)
-        body.setSpacing(8)
+        body.setSpacing(6)
 
-        unit = f" {measurement.unit}" if measurement.unit else ""
-        self._title = QtWidgets.QLabel(f"AI Prediction: {measurement.name} {measurement.value}{unit}")
-        self._title.setWordWrap(True)
+        ai_label = QtWidgets.QLabel(f"AI detected:  <b>{self._ai_text}</b>")
+        ai_label.setWordWrap(True)
+        ai_label.setStyleSheet("color: #4B5D70; font-size: 12px; border: none;")
+        body.addWidget(ai_label)
+
+        self._raw_ocr_label = QtWidgets.QLabel("")
+        self._raw_ocr_label.setWordWrap(True)
+        self._raw_ocr_label.setStyleSheet("color: #6B7D90; font-style: italic; font-size: 11px; border: none;")
+        if measurement.source and measurement.source.startswith("ocr_line:"):
+            self._raw_ocr_label.setText(f"OCR line: {measurement.source.split(':', 1)[1]}")
+            body.addWidget(self._raw_ocr_label)
+
+        editor_label = QtWidgets.QLabel("Final value (edit if needed):")
+        editor_label.setStyleSheet("color: #333; font-weight: 600; font-size: 12px; border: none; margin-top: 2px;")
+        body.addWidget(editor_label)
+
+        self._editor = QtWidgets.QPlainTextEdit(self._ai_text)
+        self._editor.setTabChangesFocus(True)
+        self._editor.setFixedHeight(60)
+        self._editor.setPlaceholderText(
+            "Type the correct measurement here. One per line.\n"
+            "Example: TR Vmax 2.1 m/s"
+        )
+        self._editor.setStyleSheet(
+            "QPlainTextEdit { border: 1px solid #AAA; border-radius: 4px; padding: 4px; font-size: 13px; }"
+        )
+        self._editor.textChanged.connect(self._on_text_changed)
+        body.addWidget(self._editor)
+
+        self._status_label = QtWidgets.QLabel()
+        self._status_label.setStyleSheet("border: none;")
+        body.addWidget(self._status_label)
 
         toolbar = QtWidgets.QHBoxLayout()
-        self._btn_approve = QtWidgets.QPushButton("Approve")
-        self._btn_wrong = QtWidgets.QPushButton("Wrong / Correct")
+        toolbar.setSpacing(6)
+
+        self._btn_reset = QtWidgets.QPushButton("Reset to AI")
+        self._btn_reset.setToolTip("Undo your edits and restore the AI prediction.")
+        self._btn_reset.setStyleSheet(
+            "QPushButton { background: #E8E8E8; color: #333; border: 1px solid #BBB; border-radius: 4px; padding: 4px 10px; }"
+            "QPushButton:hover { background: #D0D0D0; }"
+        )
+        self._btn_reset.clicked.connect(self._reset_to_ai)
+
         self._btn_duplicate = QtWidgets.QToolButton()
         self._btn_duplicate.setText("Duplicate")
-        self._btn_duplicate.setToolTip("Duplicate this row so you can split one OCR result into multiple labels.")
+        self._btn_duplicate.setToolTip("Duplicate this row (for splitting one OCR result into multiple labels).")
+        self._btn_duplicate.setStyleSheet(
+            "QToolButton { background: #E8E8E8; border: 1px solid #BBB; border-radius: 4px; padding: 4px 10px; }"
+            "QToolButton:hover { background: #D0D0D0; }"
+        )
+        self._btn_duplicate.clicked.connect(lambda: self.duplicate_requested.emit(self))
+
         self._btn_remove = QtWidgets.QToolButton()
         self._btn_remove.setText("Remove")
-        self._btn_remove.setToolTip("Remove this row from the review list.")
-
-        self._btn_approve.setCheckable(True)
-        self._btn_wrong.setCheckable(True)
-        self._btn_approve.setChecked(True)
-        self._btn_approve.setStyleSheet("QPushButton { background-color: #1E8E3E; color: white; }")
-        self._btn_wrong.setStyleSheet("QPushButton { background-color: #995700; color: white; }")
-
-        self._mode_group = QtWidgets.QButtonGroup(self)
-        self._mode_group.setExclusive(True)
-        self._mode_group.addButton(self._btn_approve)
-        self._mode_group.addButton(self._btn_wrong)
-        self._mode_group.buttonToggled.connect(self._on_mode_toggled)
-
-        self._btn_duplicate.clicked.connect(lambda: self.duplicate_requested.emit(self))
+        self._btn_remove.setToolTip("Remove this row entirely.")
+        self._btn_remove.setStyleSheet(
+            "QToolButton { background: #FDECEA; color: #C44; border: 1px solid #E8A; border-radius: 4px; padding: 4px 10px; }"
+            "QToolButton:hover { background: #FBDBD8; }"
+        )
         self._btn_remove.clicked.connect(lambda: self.remove_requested.emit(self))
 
-        toolbar.addWidget(self._btn_approve)
-        toolbar.addWidget(self._btn_wrong)
+        toolbar.addWidget(self._btn_reset)
         toolbar.addWidget(self._btn_duplicate)
         toolbar.addWidget(self._btn_remove)
         toolbar.addStretch(1)
-
-        base_value = f"{measurement.name} {measurement.value}{unit}".strip()
-        self._correct_input = QtWidgets.QPlainTextEdit(base_value)
-        self._correct_input.setTabChangesFocus(True)
-        self._correct_input.setFixedHeight(92)
-        self._correct_input.setEnabled(False)
-        self._correct_input.setPlaceholderText(
-            "Use one line per measurement. Example:\nTR Vmax 2.1 m/s\nTR maxPG 18 mmHg"
-        )
-        self._correct_input.textChanged.connect(self.state_changed)
-
-        body.addWidget(self._title)
         body.addLayout(toolbar)
-        body.addWidget(self._correct_input)
+
         top.addLayout(body, stretch=1)
         layout.addLayout(top)
 
+        self._update_status()
+
     @property
-    def is_approved(self) -> bool:
-        return self._btn_approve.isChecked()
+    def is_edited(self) -> bool:
+        return self._editor.toPlainText().strip() != self._ai_text
+
+    @property
+    def is_empty(self) -> bool:
+        return not self._editor.toPlainText().strip()
 
     def has_unsaved_edits(self) -> bool:
-        if self.is_approved:
-            return False
-        current = self._correct_input.toPlainText().strip()
-        unit = f" {self._measurement.unit}" if self._measurement.unit else ""
-        original = f"{self._measurement.name} {self._measurement.value}{unit}".strip()
-        return current != original
+        return self.is_edited
 
     def clone(self) -> ValidationFeedbackWidget:
         clone = ValidationFeedbackWidget(self._measurement)
-        clone._btn_approve.setChecked(self._btn_approve.isChecked())
-        clone._btn_wrong.setChecked(self._btn_wrong.isChecked())
-        clone._correct_input.setPlainText(self._correct_input.toPlainText())
-        clone._correct_input.setEnabled(self._correct_input.isEnabled())
+        clone._editor.setPlainText(self._editor.toPlainText())
         return clone
 
-    def _on_mode_toggled(self, button: QtWidgets.QAbstractButton, checked: bool) -> None:
-        if button is self._btn_wrong:
-            self._correct_input.setEnabled(checked)
+    def _reset_to_ai(self) -> None:
+        self._editor.setPlainText(self._ai_text)
+
+    def _on_text_changed(self) -> None:
+        self._update_status()
         self.state_changed.emit()
 
-    def collect(self) -> list[AiMeasurement]:
-        if self.is_approved:
-            return [self._measurement]
-        corrected_text = self._correct_input.toPlainText().strip()
-        if not corrected_text:
+    def _update_status(self) -> None:
+        if self.is_empty:
+            self._status_label.setText("\u26A0 Empty — this row will be skipped")
+            self._status_label.setStyleSheet("color: #C44; font-weight: bold; font-size: 12px; border: none;")
+            self._btn_reset.setVisible(True)
+            self.setStyleSheet(_STYLE_EMPTY)
+        elif self.is_edited:
+            self._status_label.setText("\u270F Your edit will be saved")
+            self._status_label.setStyleSheet("color: #0055AA; font-weight: bold; font-size: 12px; border: none;")
+            self._btn_reset.setVisible(True)
+            self.setStyleSheet(_STYLE_EDITED)
+        else:
+            self._status_label.setText("\u2713 AI prediction accepted — saved as-is")
+            self._status_label.setStyleSheet("color: #1E8E3E; font-weight: bold; font-size: 12px; border: none;")
+            self._btn_reset.setVisible(False)
+            self.setStyleSheet(_STYLE_UNMODIFIED)
+
+    def collect(self) -> list[str]:
+        text = self._editor.toPlainText().strip()
+        if not text:
             return []
 
-        normalized_text = corrected_text.replace("\\n", "\n")
-        parsed = self._parser.parse(normalized_text, confidence=1.0)
-        if parsed:
-            return [
-                AiMeasurement(
-                    name=item.name,
-                    value=item.value,
-                    unit=item.unit,
-                    source="human_validated",
-                    order_hint=item.order_hint,
-                )
-                for item in parsed
-            ]
+        if text == self._ai_text:
+            return [self._ai_text]
 
-        single_line = normalized_text.replace("\n", " ").strip()
-        match = _VALUE_UNIT_RE.fullmatch(single_line)
-        if match is None:
-            raise ValueError(
-                f"Invalid correction for '{self._measurement.name}'. "
-                "Use '<value> <unit>', '<name> <value> <unit>', or multiple entries on separate lines."
-            )
-        value = match.group("value").replace(",", ".")
-        unit = (match.group("unit") or "").strip() or None
-        return [
-            AiMeasurement(
-                name=self._measurement.name,
-                value=value,
-                unit=unit,
-                source="human_validated",
-                order_hint=self._measurement.order_hint,
-            )
-        ]
+        normalized_text = text.replace("\\n", "\n")
+        return [line for line in normalized_text.splitlines() if line.strip()]
 
 
 class ValidationListWidget(QtWidgets.QListWidget):
@@ -235,7 +250,7 @@ class ValidationListWidget(QtWidgets.QListWidget):
 
 
 class ValidationDialog(QtWidgets.QDialog):
-    submitted = QtCore.Signal(object, object, int, int, bool)  # path, measurements, approved, incorrect, skip_output
+    submitted = QtCore.Signal(object, object, int, int, bool)
 
     def __init__(
         self,
@@ -247,7 +262,7 @@ class ValidationDialog(QtWidgets.QDialog):
         self._dicom_path = dicom_path
         self._rows: list[ValidationFeedbackWidget] = []
 
-        self.setWindowTitle("OCR Validation")
+        self.setWindowTitle("OCR Validation[*]")
         self.setWindowModality(QtCore.Qt.WindowModality.NonModal)
         self.setWindowFlag(QtCore.Qt.WindowType.Tool, True)
         self.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose, True)
@@ -258,19 +273,33 @@ class ValidationDialog(QtWidgets.QDialog):
         layout.setSpacing(10)
 
         title = QtWidgets.QLabel(
-            "Review AI measurements while keeping the DICOM image visible. "
-            "Drag rows to reorder, duplicate rows to split OCR output, and write one measurement per line when correcting."
+            "<b>Review each measurement below.</b> "
+            "The text in each box is exactly what will be saved. "
+            "Edit it directly if the AI got it wrong."
         )
         title.setWordWrap(True)
+        title.setStyleSheet("font-size: 13px;")
         layout.addWidget(title)
 
-        hint = QtWidgets.QLabel(
-            "Workflow: 1) Drag into order. 2) Approve good rows. 3) Use Wrong / Correct for edits. "
-            "4) Use Duplicate to split one OCR row into multiple labels."
-        )
-        hint.setWordWrap(True)
-        hint.setStyleSheet("color: #335C85;")
-        layout.addWidget(hint)
+        legend = QtWidgets.QFrame()
+        legend.setFrameShape(QtWidgets.QFrame.Shape.StyledPanel)
+        legend.setStyleSheet("QFrame { background: #F8F9FA; border: 1px solid #DDD; border-radius: 6px; padding: 8px; }")
+        legend_layout = QtWidgets.QVBoxLayout(legend)
+        legend_layout.setContentsMargins(10, 6, 10, 6)
+        legend_layout.setSpacing(2)
+        legend_layout.addWidget(QtWidgets.QLabel(
+            '<span style="color: #1E8E3E; font-weight: bold;">\u2713 Green border</span>'
+            ' = AI prediction accepted (you didn\'t change it)'
+        ))
+        legend_layout.addWidget(QtWidgets.QLabel(
+            '<span style="color: #0055AA; font-weight: bold;">\u270F Blue border</span>'
+            " = You edited it (your text will be saved)"
+        ))
+        legend_layout.addWidget(QtWidgets.QLabel(
+            '<span style="color: #C44; font-weight: bold;">\u26A0 Red border</span>'
+            " = Empty (row will be skipped)"
+        ))
+        layout.addWidget(legend)
 
         if not ai_result.boxes:
             warning = QtWidgets.QLabel(
@@ -278,7 +307,7 @@ class ValidationDialog(QtWidgets.QDialog):
                 "If the OCR result is a false positive, use 'No Measurement Box / Skip File'."
             )
             warning.setWordWrap(True)
-            warning.setStyleSheet("color: #995700;")
+            warning.setStyleSheet("color: #995700; font-weight: bold;")
             layout.addWidget(warning)
 
         self._list = ValidationListWidget(self)
@@ -297,8 +326,13 @@ class ValidationDialog(QtWidgets.QDialog):
         button_row = QtWidgets.QHBoxLayout()
         self._skip_false_positive_button = QtWidgets.QPushButton("No Measurement Box / Skip File")
         self._skip_false_positive_button.clicked.connect(self._submit_false_positive)
-        self._submit_button = QtWidgets.QPushButton("Submit & Next")
+        self._submit_button = QtWidgets.QPushButton("Submit && Next")
         self._submit_button.setDefault(True)
+        self._submit_button.setStyleSheet(
+            "QPushButton { background-color: #1E8E3E; color: white; font-weight: bold;"
+            " padding: 8px 20px; border-radius: 6px; font-size: 14px; }"
+            "QPushButton:hover { background-color: #177332; }"
+        )
         self._submit_button.clicked.connect(self._submit)
         button_row.addWidget(self._skip_false_positive_button)
         button_row.addStretch(1)
@@ -307,6 +341,10 @@ class ValidationDialog(QtWidgets.QDialog):
 
         submit_shortcut = QtGui.QShortcut(QtGui.QKeySequence("Ctrl+Return"), self)
         submit_shortcut.activated.connect(self._submit)
+        duplicate_shortcut = QtGui.QShortcut(QtGui.QKeySequence("Ctrl+D"), self)
+        duplicate_shortcut.activated.connect(self._duplicate_selected_row)
+        remove_shortcut = QtGui.QShortcut(QtGui.QKeySequence("Ctrl+Backspace"), self)
+        remove_shortcut.activated.connect(self._remove_selected_row)
 
     def _append_row(self, row: ValidationFeedbackWidget, index: int | None = None) -> None:
         row._drag_handle.drag_requested.connect(lambda current=row: self._list.start_drag_for_widget(current))
@@ -328,6 +366,23 @@ class ValidationDialog(QtWidgets.QDialog):
     def _mark_dialog_dirty(self) -> None:
         self.setWindowModified(True)
 
+    def _selected_row(self) -> ValidationFeedbackWidget | None:
+        item = self._list.currentItem()
+        if item is None:
+            return self._rows[0] if self._rows else None
+        widget = self._list.itemWidget(item)
+        return widget if isinstance(widget, ValidationFeedbackWidget) else None
+
+    def _duplicate_selected_row(self) -> None:
+        row = self._selected_row()
+        if row is not None:
+            self._duplicate_row(row)
+
+    def _remove_selected_row(self) -> None:
+        row = self._selected_row()
+        if row is not None:
+            self._remove_row(row)
+
     def _duplicate_row(self, row_obj: object) -> None:
         if not isinstance(row_obj, ValidationFeedbackWidget):
             return
@@ -337,7 +392,6 @@ class ValidationDialog(QtWidgets.QDialog):
         except ValueError:
             index = len(self._rows) - 1
         clone = row_obj.clone()
-        clone._btn_wrong.setChecked(True)
         self._append_row(clone, index + 1)
         self._mark_dialog_dirty()
 
@@ -345,8 +399,7 @@ class ValidationDialog(QtWidgets.QDialog):
         if not isinstance(row_obj, ValidationFeedbackWidget):
             return
         if len(self._rows) <= 1:
-            row_obj._btn_wrong.setChecked(True)
-            row_obj._correct_input.setPlainText("")
+            row_obj._editor.setPlainText("")
             self._mark_dialog_dirty()
             return
 
@@ -370,14 +423,15 @@ class ValidationDialog(QtWidgets.QDialog):
             self._rows = new_rows
 
     def _has_unsaved_changes(self) -> bool:
-        return any(row.has_unsaved_edits() for row in self._rows)
+        return any(row.is_edited for row in self._rows)
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         if self._has_unsaved_changes():
             answer = QtWidgets.QMessageBox.question(
                 self,
-                "Discard unsaved review changes?",
-                "You have unsaved corrections in this review dialog. Close anyway?",
+                "Discard unsaved changes?",
+                "You have edited measurements that haven't been submitted yet.\n\n"
+                "Close and LOSE your edits?",
                 QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
                 QtWidgets.QMessageBox.StandardButton.No,
             )
@@ -388,24 +442,59 @@ class ValidationDialog(QtWidgets.QDialog):
 
     def _submit(self) -> None:
         self._sync_rows_from_list()
-        validated: list[AiMeasurement] = []
+
+        validated: list[str] = []
         approved_count = 0
-        incorrect_count = 0
+        edited_count = 0
+        edits_detail: list[tuple[str, str]] = []
 
         for row in self._rows:
-            approved = row.is_approved
-            if approved:
-                approved_count += 1
-            else:
-                incorrect_count += 1
             try:
                 measurements = row.collect()
             except ValueError as exc:
-                QtWidgets.QMessageBox.warning(self, "Invalid correction", str(exc))
+                QtWidgets.QMessageBox.warning(self, "Invalid measurement", str(exc))
                 return
+
+            if row.is_edited:
+                edited_count += 1
+                edits_detail.append((row._ai_text, row._editor.toPlainText().strip()))
+            else:
+                approved_count += 1
+
             validated.extend(measurements)
 
-        self.submitted.emit(self._dicom_path, validated, approved_count, incorrect_count, False)
+        summary_lines = [
+            f"<b>{approved_count}</b> measurement(s) accepted from AI (unchanged)",
+            f"<b>{edited_count}</b> measurement(s) edited by you",
+        ]
+
+        if edits_detail:
+            summary_lines.append("")
+            summary_lines.append("<b>Your edits:</b>")
+            for ai_text, your_text in edits_detail:
+                summary_lines.append(
+                    f'&nbsp;&nbsp;AI: <span style="color:#888">{ai_text}</span><br>'
+                    f'&nbsp;&nbsp;You: <span style="color:#0055AA; font-weight:bold">{your_text}</span>'
+                )
+
+        summary_lines.append("")
+        summary_lines.append(f"<b>Total measurements to save: {len(validated)}</b>")
+
+        confirm = QtWidgets.QMessageBox(self)
+        confirm.setWindowTitle("Confirm Submission")
+        confirm.setTextFormat(QtCore.Qt.TextFormat.RichText)
+        confirm.setText("<br>".join(summary_lines))
+        confirm.setStandardButtons(
+            QtWidgets.QMessageBox.StandardButton.Ok | QtWidgets.QMessageBox.StandardButton.Cancel
+        )
+        confirm.setDefaultButton(QtWidgets.QMessageBox.StandardButton.Ok)
+        confirm.button(QtWidgets.QMessageBox.StandardButton.Ok).setText("Save && Next")
+        confirm.button(QtWidgets.QMessageBox.StandardButton.Cancel).setText("Go Back")
+
+        if confirm.exec() != QtWidgets.QMessageBox.StandardButton.Ok:
+            return
+
+        self.submitted.emit(self._dicom_path, validated, approved_count, edited_count, False)
         self.setWindowModified(False)
         self.accept()
 

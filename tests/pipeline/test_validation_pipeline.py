@@ -25,7 +25,7 @@ def test_build_validation_manager_forces_expected_configuration() -> None:
 
     assert isinstance(pipeline, EchoOcrPipeline)
     assert pipeline.config.parameters["ocr_engine"] == "surya"
-    assert pipeline.config.parameters["parser_mode"] == "regex_then_llm"
+    assert pipeline.config.parameters["parser_mode"] == "local_llm"
     assert pipeline.config.parameters["scale_factor"] == 3
     assert pipeline.config.parameters["scale_algo"] == "lanczos"
     assert pipeline.config.parameters["contrast_mode"] == "none"
@@ -33,4 +33,4 @@ def test_build_validation_manager_forces_expected_configuration() -> None:
 
     pipeline._ensure_components()
     assert pipeline.ocr_engine.name == "surya-fake"
-    assert pipeline.parser.__class__.__name__ == "RegexThenLlmMeasurementParser"
+    assert pipeline.parser.__class__.__name__ == "LocalLlmMeasurementParser"

@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 
 from PySide6 import QtCore
 
-from app.models.types import AiMeasurement, AiResult, DicomSeries, ValidationSession
+from app.models.types import AiResult, DicomSeries, ValidatedLabelRecord, ValidationSession
 from app.pipeline.ai_pipeline import PipelineManager, build_default_manager
 
 
@@ -124,13 +125,19 @@ class ViewerState(QtCore.QObject):
         dicom_path: Path,
         approved_count: int,
         corrected_count: int,
-        measurements: list[AiMeasurement],
+        measurements: list[str],
     ) -> tuple[float, bool]:
         session = self.validation_session
         session.total_validated_frames += 1
         session.total_ai_correct += max(0, approved_count)
         session.total_ai_incorrect += max(0, corrected_count)
-        session.session_labels.append((dicom_path, list(measurements)))
+        session.session_labels.append(
+            ValidatedLabelRecord(
+                path=dicom_path,
+                validated_at=datetime.now(timezone.utc),
+                measurements=list(measurements),
+            )
+        )
 
         accuracy = session.accuracy
         is_new_high = accuracy > session.highest_accuracy

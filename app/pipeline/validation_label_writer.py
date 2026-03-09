@@ -15,7 +15,7 @@ class ValidationLabelWriter:
     def output_path(self) -> Path:
         return self._output_path
 
-    def append(self, dicom_path: Path, measurements: Sequence[AiMeasurement]) -> Path:
+    def append(self, dicom_path: Path, measurements: Sequence[str | AiMeasurement]) -> Path:
         block = self._format_block(dicom_path, measurements)
         self._output_path.parent.mkdir(parents=True, exist_ok=True)
         prefix = "\n" if self._output_path.exists() and self._output_path.stat().st_size > 0 else ""
@@ -25,7 +25,7 @@ class ValidationLabelWriter:
         return self._output_path
 
     @staticmethod
-    def _format_block(dicom_path: Path, measurements: Sequence[AiMeasurement]) -> str:
+    def _format_block(dicom_path: Path, measurements: Sequence[str | AiMeasurement]) -> str:
         timestamp = datetime.now(timezone.utc).isoformat()
         lines = [
             "--",
@@ -34,6 +34,9 @@ class ValidationLabelWriter:
             "measurements:",
         ]
         for measurement in measurements:
+            if isinstance(measurement, str):
+                lines.append(f"-> {measurement}")
+                continue
             name = " ".join(measurement.name.split())
             value = str(measurement.value).strip()
             unit = (measurement.unit or "").strip()
