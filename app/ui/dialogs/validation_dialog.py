@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from app.models.types import AiMeasurement, AiResult
+from app.models.types import AiMeasurement, AiResult, OverlayBox
 
 _STYLE_UNMODIFIED = (
     "QFrame#rowFrame { border: 2px solid #1E8E3E; border-radius: 6px; background: #F4FBF6; }"
@@ -261,6 +263,7 @@ class ValidationDialog(QtWidgets.QDialog):
         super().__init__(parent)
         self._dicom_path = dicom_path
         self._rows: list[ValidationFeedbackWidget] = []
+        self._roi_box = self._find_roi_box(ai_result)
 
         self.setWindowTitle("OCR Validation[*]")
         self.setWindowModality(QtCore.Qt.WindowModality.NonModal)
@@ -280,6 +283,10 @@ class ValidationDialog(QtWidgets.QDialog):
         title.setWordWrap(True)
         title.setStyleSheet("font-size: 13px;")
         layout.addWidget(title)
+
+        roi_summary = self._build_roi_summary()
+        if roi_summary is not None:
+            layout.addWidget(roi_summary)
 
         legend = QtWidgets.QFrame()
         legend.setFrameShape(QtWidgets.QFrame.Shape.StyledPanel)
@@ -411,6 +418,49 @@ class ValidationDialog(QtWidgets.QDialog):
                 break
         self._sync_rows_from_list()
         self._mark_dialog_dirty()
+
+    def _find_roi_box(self, ai_result: AiResult) -> OverlayBox | None:
+        for box in ai_result.boxes:
+            if box.label == "measurement_roi":
+                return box
+        return ai_result.boxes[0] if ai_result.boxes else None
+
+    def _build_roi_summary(self) -> QtWidgets.QFrame | None:
+        if self._roi_box is None:
+            return None
+
+        box = self._roi_box
+        frame = QtWidgets.QFrame()
+        frame.setFrameShape(QtWidgets.QFrame.Shape.StyledPanel)
+        frame.setStyleSheet(
+            "QFrame { background: #F4F8FC; border: 1px solid #C9D7E6; border-radius: 6px; padding: 8px; }"
+            "QLabel { color: #1D2A36; }"
+        )
+
+        layout = QtWidgets.QVBoxLayout(frame)
+        layout.setContentsMargins(10, 8, 10, 8)
+        layout.setSpacing(3)
+
+        title = QtWidgets.QLabel("<b>Detected ROI</b>")
+        layout.addWidget(title)
+
+        summary = (
+            f"x={int(box.x)}, y={int(box.y)}, "
+            f"width={int(box.width)}, height={int(box.height)}"
+        )
+        layout.addWidget(QtWidgets.QLabel(summary))
+
+        if box.confidence is not None:
+            layout.addWidget(QtWidgets.QLabel(f"confidence={box.confidence:.3f}"))
+
+        hint = QtWidgets.QLabel(
+            "Use this ROI summary to verify that the OCR was taken from the correct measurement box."
+        )
+        hint.setWordWrap(True)
+        hint.setStyleSheet("color: #4B5B6B;")
+        layout.addWidget(hint)
+
+        return frame
 
     def _sync_rows_from_list(self) -> None:
         new_rows: list[ValidationFeedbackWidget] = []

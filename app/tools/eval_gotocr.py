@@ -21,11 +21,10 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from app.tools.echo_ocr_eval_labels import (
     parse_labels,
-    OcrEngine,
-    OcrResult,
     run_evaluation,
     _print_summary,
 )
+from app.pipeline.ocr_engines import OcrEngine, OcrResult
 from app.pipeline.gotocr_normalizer import normalize_gotocr_text
 
 
@@ -138,7 +137,7 @@ class SequentialGoTocrEngine(OcrEngine):
         self.idx = 0
         self.normalize = normalize
 
-    def extract(self, img) -> OcrResult:
+    def extract(self, image) -> OcrResult:
         if self.idx >= len(self.ordered_results):
             return OcrResult(text="", confidence=0.0, tokens=[], engine_name="gotocr")
         res = self.ordered_results[self.idx]
@@ -158,13 +157,14 @@ class SequentialGoTocrEngine(OcrEngine):
 # ---------------------------------------------------------------------------
 
 def preload_gotocr_batch(labeled_files) -> dict:
-    """Pre-runs GOT-OCR on the entire dataset in ONE subprocess call."""
+    """Pre-runs GOT-OCR on the entire dataset in ONE subprocess call using the strict measurement ROI detector."""
     from app.pipeline.echo_ocr_pipeline import preprocess_roi
     from app.pipeline.echo_ocr_box_detector import TopLeftBlueGrayBoxDetector
     from app.io.dicom_loader import load_dicom_series
     import cv2
 
     worker = GoTocrBatchWorker()
+    # Uses the strict color-thresholded measurement ROI detector, not the old broad top-left heuristic.
     detector = TopLeftBlueGrayBoxDetector()
     results_cache: dict = {}
 
@@ -182,6 +182,9 @@ def preload_gotocr_batch(labeled_files) -> dict:
                     if detection.present and detection.bbox is not None:
                         x, y, bw, bh = detection.bbox
                         roi = frame[y : y + bh, x : x + bw]
+                        header_trim_px = 14
+                        if roi.shape[0] > header_trim_px:
+                            roi = roi[header_trim_px:, :]
                         img_np = preprocess_roi(roi)
                         if img_np is not None and img_np.size > 0:
                             break
@@ -240,13 +243,19 @@ def preload_gotocr_batch(labeled_files) -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--labels", default=str(PROJECT_ROOT / "labels.md"))
+    parser.add_argument("--labels", default=str(PROJECT_ROOT / "labels" / "exact_lines.json"))
+    parser.add_argument("--split", default="validation")
     parser.add_argument("--parser", default="local_llm")
     parser.add_argument("--no-normalize", action="store_true", help="Disable GOT-OCR normalizer (for comparison)")
     args = parser.parse_args()
 
     labels_path = Path(args.labels)
-    labeled_files = parse_labels(labels_path)
+    split_filter = {
+        item.strip().lower()
+        for item in args.split.split(",")
+        if item.strip()
+    }
+    labeled_files = parse_labels(labels_path, split_filter=split_filter)
     print(f"Parsed {len(labeled_files)} labeled files\n")
 
     cache = preload_gotocr_batch(labeled_files)

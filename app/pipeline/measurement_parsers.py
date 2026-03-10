@@ -19,7 +19,26 @@ _UNIT_ALIASES = {
     "m1s": "m/s",
     "mhg": "mmHg",
     "mmhg": "mmHg",
+    "m/s;": "m/s",
+    "m/s.": "m/s",
+    "m/s,": "m/s",
+    "mmhg,": "mmHg",
+    "mmhg.": "mmHg",
 }
+
+_LATEX_NOISE_RE = re.compile(r"\\(?:text|mathrm)\{([^}]*)\}")
+_LATEX_SPACING_RE = re.compile(r"\\[,;! ]")
+_COMPACT_VALUE_UNIT_RE = re.compile(
+    r"(?P<value>[-+]?\d+(?:[.,]\d+)?)(?P<unit>%|mmHg|ml/m2|m/s2|cm2|cm/s|m/s|bpm|cm|mm|ms|ml|s)\b",
+    re.IGNORECASE,
+)
+_INDEXED_NAME_RE = re.compile(
+    r"^(?P<prefix>\d{1,2})\s+(?P<label>[A-Za-z%][A-Za-z0-9\s/\-()']*)$"
+)
+_VALUE_ONLY_RE = re.compile(
+    r"^(?P<value>[-+]?\d+(?:[.,]\d+)?)\s*(?P<unit>%|mmHg|ml/m2|m/s2|cm2|cm/s|m/s|bpm|cm|mm|ms|ml|s|mis|m1s|mls)?$",
+    re.IGNORECASE,
+)
 
 _TELEMETRY_KEYWORDS = {
     "fps",
@@ -41,6 +60,9 @@ _PG_HINT_RE = re.compile(r"(?:^|\s)(pg|maxpg|meanpg)\b", re.IGNORECASE)
 
 def _normalize_name(raw: str) -> str:
     text = raw.replace("|", " ").replace("_", " ").replace("¥", "V").replace("’", "'")
+    text = _LATEX_NOISE_RE.sub(r"\1", text)
+    text = _LATEX_SPACING_RE.sub(" ", text)
+    text = text.replace("{", " ").replace("}", " ").replace("\\", " ")
     text = " ".join(text.split()).strip()
     if not text:
         return text
@@ -112,13 +134,19 @@ def _normalize_name(raw: str) -> str:
 
 
 def _normalize_value(raw: str) -> str:
-    return raw.replace(",", ".").strip()
+    text = _LATEX_NOISE_RE.sub(r"\1", raw)
+    text = _LATEX_SPACING_RE.sub(" ", text)
+    text = text.replace("{", " ").replace("}", " ").replace("\\", " ")
+    return text.replace(",", ".").strip()
 
 
 def _normalize_unit(raw: Optional[str]) -> Optional[str]:
     if raw is None:
         return None
-    unit = raw.strip()
+    unit = _LATEX_NOISE_RE.sub(r"\1", raw)
+    unit = _LATEX_SPACING_RE.sub(" ", unit)
+    unit = unit.replace("{", " ").replace("}", " ").replace("\\", " ")
+    unit = unit.strip()
     if not unit:
         return None
     lowered = unit.lower()
@@ -165,7 +193,15 @@ def _postprocess_measurements(items: List[AiMeasurement]) -> List[AiMeasurement]
         if not re.match(r"^[-+]?\d+(?:\.\d+)?$", value):
             continue
         unit = _complete_unit(name, unit)
-        normalized.append(AiMeasurement(name=name, value=value, unit=unit, source=item.source))
+        normalized.append(
+            AiMeasurement(
+                name=name,
+                value=value,
+                unit=unit,
+                source=item.source,
+                order_hint=item.order_hint,
+            )
+        )
 
     # Conservative unit completion: same semantic label + value gets unit from any duplicate.
     best_unit_by_key: Dict[str, str] = {}
@@ -181,7 +217,13 @@ def _postprocess_measurements(items: List[AiMeasurement]) -> List[AiMeasurement]
             key = f"{_name_key(item.name)}|{item.value}"
             unit = best_unit_by_key.get(key)
         enriched.append(
-            AiMeasurement(name=item.name, value=item.value, unit=unit, source=item.source)
+            AiMeasurement(
+                name=item.name,
+                value=item.value,
+                unit=unit,
+                source=item.source,
+                order_hint=item.order_hint,
+            )
         )
 
     # Deduplicate near-identical variants; keep longest label and filled unit.
@@ -203,7 +245,7 @@ def _postprocess_measurements(items: List[AiMeasurement]) -> List[AiMeasurement]
 
 class RegexMeasurementParser:
     _pattern = re.compile(
-        r"(?P<name>[A-Za-z][A-Za-z0-9\s/\-()']+?)\s+"
+        r"(?P<name>[A-Za-z0-9%][A-Za-z0-9\s/\-()']+?)\s+"
         r"(?P<value>[-+]?\d+(?:[.,]\d+)?)\s*"
         r"(?P<unit>%|mmHg|ml/m2|m/s2|cm2|cm/s|m/s|bpm|cm|mm|ms|ml|s)?",
         flags=re.IGNORECASE,
@@ -212,131 +254,117 @@ class RegexMeasurementParser:
     def parse(self, text: str, *, confidence: float) -> List[AiMeasurement]:
         items: List[AiMeasurement] = []
         seen_keys = set()
-        for line in text.splitlines():
+
+        def _clean_ocr_text(raw: str) -> str:
+            cleaned = _LATEX_NOISE_RE.sub(r"\1", raw)
+            cleaned = _LATEX_SPACING_RE.sub(" ", cleaned)
+            cleaned = cleaned.replace("{", " ").replace("}", " ").replace("\\", " ")
+            cleaned = _COMPACT_VALUE_UNIT_RE.sub(r"\g<value> \g<unit>", cleaned)
+            cleaned = re.sub(r"\s+", " ", cleaned)
+            cleaned = cleaned.replace(" \n", "\n").replace("\n ", "\n")
+            return cleaned.strip()
+
+        def _clean_line(raw: str) -> str:
+            line = _clean_ocr_text(raw)
+            line = line.replace("|", " ").replace("_", " ")
+            line = re.sub(r"\s+", " ", line)
+            return line.strip()
+
+        def _extract_label_prefix(line: str) -> tuple[str | None, str]:
+            cleaned = _clean_line(line)
+            match = _INDEXED_NAME_RE.match(cleaned)
+            if match:
+                return match.group("prefix"), match.group("label").strip()
+            return None, cleaned
+
+        def _is_value_only_line(line: str) -> tuple[str, str | None] | None:
+            cleaned = _clean_line(line)
+            match = _VALUE_ONLY_RE.match(cleaned)
+            if match is None:
+                return None
+            value = _normalize_value(match.group("value"))
+            unit = _normalize_unit(match.group("unit"))
+            if not value:
+                return None
+            return value, unit
+
+        def _add_item(name: str, value: str, unit: str | None, source: str) -> None:
+            normalized_name = _normalize_name(name)
+            normalized_value = _normalize_value(value)
+            normalized_unit = _normalize_unit(unit)
+            key = (normalized_name.lower(), normalized_value, (normalized_unit or "").lower())
+            if key in seen_keys:
+                return
+            seen_keys.add(key)
+            items.append(
+                AiMeasurement(
+                    name=normalized_name,
+                    value=normalized_value,
+                    unit=normalized_unit,
+                    source=source,
+                    order_hint=len(items),
+                )
+            )
+
+        cleaned_text = "\n".join(_clean_line(line) for line in text.splitlines() if _clean_line(line))
+        for line in cleaned_text.splitlines():
             for match in self._pattern.finditer(line.strip()):
-                name = _normalize_name(match.group("name"))
-                value = match.group("value").replace(",", ".")
-                unit = _normalize_unit((match.group("unit") or "").strip() or None)
-                key = (name.lower(), value, (unit or "").lower())
-                if key in seen_keys:
-                    continue
-                seen_keys.add(key)
-                items.append(
-                    AiMeasurement(
-                        name=name,
-                        value=value,
-                        unit=unit,
-                        source=f"regex_parser:{confidence:.2f}",
-                        order_hint=len(items),
-                    )
+                _add_item(
+                    match.group("name"),
+                    match.group("value"),
+                    (match.group("unit") or "").strip() or None,
+                    f"regex_parser:{confidence:.2f}",
                 )
 
-        # Generic multiline fallback: handles line-split OCR without hardcoded dictionaries.
-        lines = [line.strip() for line in text.splitlines() if line.strip()]
-        number_re = re.compile(r"[-+]?\d+(?:[.,]\d+)?$")
-        unit_re = re.compile(
-            r"^(%|mmhg|ml/m2|m/s2|cm2|cm/s|m/s|bpm|cm|mm|ms|ml|s|mis|m1s|mls)$", re.I
-        )
-        alpha_re = re.compile(r"[A-Za-z]")
-        inline_value_re = re.compile(r"^([-+]?\d+(?:[.,]\d+)?)\s*([A-Za-z/%0-9]+)?$")
-
-        def _is_alpha_token(token: str) -> bool:
-            return bool(alpha_re.search(token)) and not number_re.match(token)
-
-        def _clean_token(raw: str) -> str:
-            return " ".join(raw.replace("|", " ").replace("_", " ").split())
-
-        def _token_is_plausible_name_part(token: str) -> bool:
-            if not re.search(r"[A-Za-z]", token):
-                return False
-            if len(token) > 30: # Relaxed max token length
-                return False
-            if len(token.split()) > 5: # Allow up to 5 words (e.g. 'LVEDV MOD BP')
-                return False
-            return bool(re.fullmatch(r"([A-Za-z0-9'()/\-]+(\s+)?)+", token))
-
-        def _name_is_plausible(name: str) -> bool:
-            parts = name.split()
-            if not (1 <= len(parts) <= 4):
-                return False
-            if len(name) > 28:
-                return False
-            return any(len(part) <= 6 for part in parts)
-
+        # Reassemble split OCR lines such as:
+        #   "1 IVSd"
+        #   "0.9 cm"
+        # into:
+        #   "1 IVSd 0.9 cm"
+        lines = [line for line in cleaned_text.splitlines() if line.strip()]
         idx = 0
         while idx < len(lines):
-            token = _clean_token(lines[idx])
-            if not token:
-                idx += 1
-                continue
-            if not _is_alpha_token(token):
-                idx += 1
-                continue
+            prefix, label = _extract_label_prefix(lines[idx])
+            value_only = _is_value_only_line(lines[idx])
 
-            # Build name from consecutive alpha tokens until the first numeric token.
-            name_parts: List[str] = []
-            j = idx
-            while j < len(lines):
-                part = _clean_token(lines[j])
-                if not part:
-                    j += 1
-                    continue
-                if number_re.match(part):
-                    break
-                if inline_value_re.match(part):
-                    break
-                if _is_alpha_token(part) and _token_is_plausible_name_part(part):
-                    name_parts.append(part)
-                    if len(name_parts) >= 4:
-                        j += 1
-                        break
-                    j += 1
-                    continue
-                break
-
-            if not name_parts:
-                idx += 1
-                continue
-
-            name = " ".join(name_parts)
-            if not _name_is_plausible(name):
-                idx += max(1, len(name_parts))
-                continue
-            value = None
-            unit = None
-            value_idx = j
-            for probe_idx in range(value_idx, min(len(lines), value_idx + 4)):
-                candidate = _clean_token(lines[probe_idx]).replace(",", ".").strip()
-                if not candidate:
-                    continue
-                if value is None and number_re.match(candidate):
-                    value = candidate
-                    if probe_idx + 1 < len(lines):
-                        next_u = _clean_token(lines[probe_idx + 1]).strip()
-                        if unit_re.match(next_u):
-                            unit = _normalize_unit(next_u)
-                    break
-                # Handle inline value+unit on one line.
-                m_inline = inline_value_re.match(candidate)
-                if m_inline and value is None:
-                    value = m_inline.group(1).replace(",", ".")
-                    unit = _normalize_unit((m_inline.group(2) or "").strip() or None)
-                    break
-
-            if value is not None:
-                key = (name.lower(), value, (unit or "").lower())
-                if key not in seen_keys:
-                    seen_keys.add(key)
-                    items.append(
-                        AiMeasurement(
-                            name=name,
-                            value=value,
-                            unit=unit,
-                            source=f"regex_multiline:{confidence:.2f}",
-                            order_hint=len(items),
+            if value_only is None and re.search(r"[A-Za-z%]", label):
+                if idx + 1 < len(lines):
+                    next_value = _is_value_only_line(lines[idx + 1])
+                    if next_value is not None:
+                        value, unit = next_value
+                        merged_name = f"{prefix} {label}".strip() if prefix else label
+                        _add_item(
+                            merged_name,
+                            value,
+                            unit,
+                            f"regex_reassembled:{confidence:.2f}",
                         )
-                    )
-            idx = max(j, idx + 1)
+                        idx += 2
+                        continue
+
+                if idx + 2 < len(lines):
+                    next_prefix, next_label = _extract_label_prefix(lines[idx + 1])
+                    next_next_value = _is_value_only_line(lines[idx + 2])
+                    if (
+                        next_next_value is not None
+                        and re.search(r"[A-Za-z%]", next_label)
+                        and prefix is None
+                    ):
+                        merged_name = f"{label} {next_label}".strip()
+                        value, unit = next_next_value
+                        if next_prefix:
+                            merged_name = f"{next_prefix} {merged_name}".strip()
+                        _add_item(
+                            merged_name,
+                            value,
+                            unit,
+                            f"regex_reassembled:{confidence:.2f}",
+                        )
+                        idx += 3
+                        continue
+
+            idx += 1
+
         return _postprocess_measurements(items)
 
 
@@ -467,8 +495,12 @@ class LocalLlmMeasurementParser:
             "Return ONLY valid JSON: an array of objects with keys "
             '"name", "value", "unit".\n'
             "Rules:\n"
-            "- Keep labels exactly as written if uncertain.\n"
-            "- value must be numeric string.\n"
+            "- Keep labels exactly as written if uncertain, including a real leading row number like 1 or 2 when it belongs to the measurement label.\n"
+            "- Measurements may be split across adjacent OCR lines; merge them into one final measurement.\n"
+            "- If one line is mostly a label and the next line is mostly a value/unit, combine them.\n"
+            "- Ignore non-measurement UI noise, decorative symbols, and telemetry.\n"
+            "- Normalize units to canonical forms when obvious: m/s, mmHg, cm, mm, ms, %, ml, ml/m2, cm2, bpm, m/s2.\n"
+            "- value must be numeric string only.\n"
             "- unit can be empty string when missing.\n"
             "- Do not include commentary.\n\n"
             "OCR text:\n"

@@ -14,6 +14,7 @@ from app.pipeline.ai_pipeline import BasePipeline
 from app.pipeline.echo_ocr_box_detector import (
     RoiDetection,
     TopLeftBlueGrayBoxDetector,
+    _MEASUREMENT_BOX_RGB,
     _to_gray,
 )
 from app.pipeline.echo_ocr_schema import MeasurementRecord
@@ -45,10 +46,10 @@ def preprocess_roi(
     gray = _to_gray(roi)
     if gray.size == 0:
         return gray
-        
+
     try:
         import cv2  # type: ignore
-        
+
         # 1. Contrast Adjustment
         if contrast_mode == "clahe":
             clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
@@ -58,11 +59,11 @@ def preprocess_roi(
             enhanced = cv2.equalizeHist(gray)
         else: # "none" or default
             enhanced = gray
-            
+
         # 2. Unsharp masking to sharpen text edges
         gaussian = cv2.GaussianBlur(enhanced, (5, 5), 1.0)
         unsharp = cv2.addWeighted(enhanced, 1.5, gaussian, -0.5, 0)
-        
+
         # 3. Upscale BEFORE thresholding to prevent jagged edges on small text
         scale = max(1, min(scale_factor, 6))
         if scale > 1:
@@ -71,11 +72,11 @@ def preprocess_roi(
                 "cubic": cv2.INTER_CUBIC,
                 "lanczos": cv2.INTER_LANCZOS4,
             }.get(scale_algo, cv2.INTER_CUBIC)
-            
+
             w = int(unsharp.shape[1] * scale)
             h = int(unsharp.shape[0] * scale)
             unsharp = cv2.resize(unsharp, (w, h), interpolation=inter_flag)
-            
+
         if contrast_mode == "adaptive_threshold":
             # 4. Adaptive thresholding instead of Otsu's
             thresh = cv2.adaptiveThreshold(
@@ -84,13 +85,13 @@ def preprocess_roi(
         else:
             # 4. Otsu's thresholding for pure B&W text
             _, thresh = cv2.threshold(unsharp, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        
+
         # 5. Mild morphological closing to bridge gaps in thin fonts
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
         clean = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
-        
+
         return clean
-        
+
     except ImportError:
         # Fallback to pure numpy stretching and basic nearest upscale
         p5 = np.percentile(gray, 5)
@@ -99,7 +100,7 @@ def preprocess_roi(
             stretched = gray
         else:
             stretched = (((gray.astype(np.float32) - p5) * (255.0 / (p95 - p5))).clip(0, 255).astype(np.uint8))
-            
+
         scale = max(1, min(scale_factor, 6))
         if scale <= 1:
             return stretched
@@ -151,10 +152,14 @@ class EchoOcrPipeline(BasePipeline):
     @staticmethod
     def _read_int_parameter(parameters: dict[str, object], key: str, *, default: int) -> int:
         raw = parameters.get(key, default)
-        try:
+        if isinstance(raw, bool):
             return int(raw)
-        except (TypeError, ValueError):
-            return default
+        if isinstance(raw, (int, float, str, bytes, bytearray)):
+            try:
+                return int(raw)
+            except (TypeError, ValueError):
+                return default
+        return default
 
     def _resolve_max_frames(self, request: PipelineRequest) -> int | None:
         raw_limit = request.parameters.get("max_frames")
@@ -275,6 +280,9 @@ class EchoOcrPipeline(BasePipeline):
             return None, [], None
         x, y, bw, bh = detection.bbox
         roi = frame[y : y + bh, x : x + bw]
+        header_trim_px = 14
+        if roi.shape[0] > header_trim_px:
+            roi = roi[header_trim_px:, :]
         prepared = preprocess_roi(
             roi,
             scale_factor=self._scale_factor,
@@ -325,8 +333,9 @@ class EchoOcrPipeline(BasePipeline):
                     y=float(r.roi_bbox[1]),
                     width=float(r.roi_bbox[2]),
                     height=float(r.roi_bbox[3]),
-                    label="measurement_box",
+                    label="measurement_roi",
                     confidence=r.parser_confidence,
+                    color=f"#{_MEASUREMENT_BOX_RGB[0]:02X}{_MEASUREMENT_BOX_RGB[1]:02X}{_MEASUREMENT_BOX_RGB[2]:02X}",
                 )
                 for _, r in ordered
             ],

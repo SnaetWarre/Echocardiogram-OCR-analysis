@@ -21,7 +21,7 @@ def _get_app() -> QtWidgets.QApplication:
 def test_validation_submit_skips_output_when_false_positive(tmp_path: Path) -> None:
     _ = _get_app()
     window = MainWindow()
-    output_path = tmp_path / "validation_labels.md"
+    output_path = tmp_path / "exact_lines.json"
     window._validation_writer._output_path = output_path
 
     window._on_validation_submitted(

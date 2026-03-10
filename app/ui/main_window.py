@@ -476,18 +476,22 @@ class MainWindow(QtWidgets.QMainWindow):
             self.statusBar().showMessage("No DICOM files found for OCR export queue.", 3000)
             return
 
-        default_name = datetime.now().strftime("ocr_labels_%Y%m%d_%H%M%S.md")
-        default_path = str(Path.cwd() / default_name)
+        default_name = datetime.now().strftime("ocr_labels_%Y%m%d_%H%M%S.json")
+        default_path = str(Path.cwd() / "labels" / default_name)
         selected_path, _ = QtWidgets.QFileDialog.getSaveFileName(
             self,
             "Save OCR Labels As",
             default_path,
-            "Markdown Files (*.md);;Text Files (*.txt);;All Files (*.*)",
+            "JSON Files (*.json);;All Files (*.*)",
         )
         if not selected_path:
             return
 
-        self._validation_writer = ValidationLabelWriter(output_path=Path(selected_path))
+        selected_output = Path(selected_path)
+        if selected_output.suffix.lower() != ".json":
+            selected_output = selected_output.with_suffix(".json")
+
+        self._validation_writer = ValidationLabelWriter(output_path=selected_output)
         self._validation_queue = queue
         self._validation_queue_active = True
         self._validation_queue_mode = "export"
@@ -628,9 +632,14 @@ class MainWindow(QtWidgets.QMainWindow):
         if active_pipeline is not None:
             config = getattr(active_pipeline, "config", None)
             parameters = getattr(config, "parameters", {}) if config is not None else {}
-            raw_limit = parameters.get("max_frames")
+            raw_limit_obj = parameters.get("max_frames")
+            raw_limit: int | str | float | None
+            if isinstance(raw_limit_obj, (int, str, float)) or raw_limit_obj is None:
+                raw_limit = raw_limit_obj
+            else:
+                raw_limit = None
             try:
-                parsed_limit = int(raw_limit)
+                parsed_limit = int(raw_limit) if raw_limit is not None else 0
             except (TypeError, ValueError):
                 parsed_limit = 0
             if parsed_limit > 0:

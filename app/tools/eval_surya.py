@@ -9,46 +9,75 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from app.tools.echo_ocr_eval_labels import (
     parse_labels,
-    OcrEngine,
-    OcrResult,
     run_evaluation,
     _print_summary,
 )
-from app.pipeline.ocr_engines import SuryaOcrEngine
+from app.pipeline.ocr_engines import OcrResult, SuryaOcrEngine
 from app.pipeline.gotocr_normalizer import normalize_gotocr_text
 
+
 class NormalizedSuryaEngine:
-    def __init__(self):
+    def __init__(self) -> None:
         self._engine = SuryaOcrEngine()
         self.name = "surya (normalized)"
-        
+
     def extract(self, image) -> OcrResult:
-        res = self._engine.extract(image)
-        norm_text = normalize_gotocr_text(res.text)
-        return OcrResult(text=norm_text, confidence=res.confidence, tokens=res.tokens, engine_name=self.name)
+        result = self._engine.extract(image)
+        normalized_text = normalize_gotocr_text(result.text)
+        return OcrResult(
+            text=normalized_text,
+            confidence=result.confidence,
+            tokens=result.tokens,
+            engine_name=self.name,
+        )
+
+
+def _parse_split_filter(raw: str) -> set[str]:
+    return {
+        item.strip().lower()
+        for item in raw.split(",")
+        if item.strip()
+    }
+
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--labels", default=str(PROJECT_ROOT / "labels.md"))
+    parser.add_argument(
+        "--labels",
+        default=str(PROJECT_ROOT / "labels" / "exact_lines.json"),
+    )
+    parser.add_argument(
+        "--split",
+        default="validation",
+        help="Optional comma separated split filter (e.g. train,validation)",
+    )
     parser.add_argument("--parser", default="regex")
     args = parser.parse_args()
 
     labels_path = Path(args.labels)
-    labeled_files = parse_labels(labels_path)
+    split_filter = _parse_split_filter(args.split)
+    labeled_files = parse_labels(labels_path, split_filter=split_filter)
+
+    if split_filter:
+        print(f"Using split filter: {', '.join(sorted(split_filter))}")
     print(f"Parsed {len(labeled_files)} labeled files\n")
 
-    # The engine now handles its own persistent subprocess!
     engine = NormalizedSuryaEngine()
 
     print("\n--- Evaluating with: surya ---")
-    
-    # We need a dummy class with parser attribute for run_evaluation
+
     class DummyArgs:
-        def __init__(self, p):
-            self.parser = p
-            
-    scores = run_evaluation(labeled_files, engine, verbose=True, args=DummyArgs(args.parser))
+        def __init__(self, parser_name: str) -> None:
+            self.parser = parser_name
+
+    scores = run_evaluation(
+        labeled_files,
+        engine,
+        verbose=True,
+        args=DummyArgs(args.parser),
+    )
     _print_summary("surya", scores)
+
 
 if __name__ == "__main__":
     main()

@@ -16,21 +16,54 @@ from app.pipeline.echo_ocr_pipeline import (
 from app.pipeline.ocr_engines import OcrResult, OcrToken
 
 
-def test_detector_finds_top_left_box() -> None:
+def test_detector_finds_measurement_roi_from_strict_color_mask() -> None:
     frame = np.zeros((120, 200, 3), dtype=np.uint8)
-    frame[8:30, 10:90, 0] = 95
-    frame[8:30, 10:90, 1] = 115
-    frame[8:30, 10:90, 2] = 135
+    frame[:, :, 0] = 200
+    frame[:, :, 1] = 200
+    frame[:, :, 2] = 200
+
+    frame[8:30, 10:90, 0] = 0x1A
+    frame[8:30, 10:90, 1] = 0x21
+    frame[8:30, 10:90, 2] = 0x29
 
     detection = TopLeftBlueGrayBoxDetector(min_pixels=100).detect(frame)
 
     assert detection.present is True
     assert detection.bbox is not None
     x, y, width, height = detection.bbox
-    assert x <= 12
-    assert y <= 10
-    assert width >= 70
-    assert height >= 18
+    assert 8 <= x <= 12
+    assert 8 <= y <= 10
+    assert 78 <= width <= 82
+    assert 20 <= height <= 24
+
+
+def test_detector_uses_target_color_connected_component_roi() -> None:
+    frame = np.zeros((140, 220, 3), dtype=np.uint8)
+    frame[:, :, 0] = 200
+    frame[:, :, 1] = 200
+    frame[:, :, 2] = 200
+
+    frame[8:30, 10:90, 0] = 0x1A
+    frame[8:30, 10:90, 1] = 0x21
+    frame[8:30, 10:90, 2] = 0x29
+
+    frame[12:26, 24:76, 0] = 255
+    frame[12:26, 24:76, 1] = 255
+    frame[12:26, 24:76, 2] = 255
+
+    frame[60:95, 120:180, 0] = 0x1A
+    frame[60:95, 120:180, 1] = 0x21
+    frame[60:95, 120:180, 2] = 0x29
+
+    detection = TopLeftBlueGrayBoxDetector(min_pixels=100).detect(frame)
+
+    assert detection.present is True
+    assert detection.bbox is not None
+    x, y, width, height = detection.bbox
+    assert 8 <= x <= 12
+    assert 8 <= y <= 10
+    assert 78 <= width <= 82
+    assert 20 <= height <= 24
 
 
 def test_parser_extracts_value_and_unit() -> None:
@@ -64,6 +97,33 @@ def test_preprocess_roi_respects_upscale_env(monkeypatch) -> None:
     processed = preprocess_roi(roi)
 
     assert processed.shape == (24, 36)
+
+
+def test_extract_measurements_trims_14px_header_before_ocr() -> None:
+    frame = np.zeros((80, 160, 3), dtype=np.uint8)
+    parser = _FixedParser([AiMeasurement(name="PV Vmax", value="0.96", unit="m/s", source="test")])
+    pipeline = EchoOcrPipeline(ocr_engine=_FakeOcrEngine("PV Vmax 0.96 m/s"), parser=parser)
+    pipeline._ensure_components()
+
+    captured_shapes: list[tuple[int, int, int]] = []
+
+    class _CapturingEngine(_FakeOcrEngine):
+        def extract(self, image: np.ndarray) -> OcrResult:
+            captured_shapes.append(image.shape)
+            return super().extract(image)
+
+    pipeline.ocr_engine = _CapturingEngine("PV Vmax 0.96 m/s")
+
+    ocr, items, bbox = pipeline._extract_measurements_for_frame(
+        frame,
+        RoiDetection(present=True, bbox=(0, 0, 64, 24), confidence=1.0),
+    )
+
+    assert ocr is not None
+    assert bbox == (0, 0, 64, 24)
+    assert len(items) == 1
+    assert captured_shapes
+    assert captured_shapes[0][0] == 30
 
 
 class _FakeOcrEngine:
@@ -108,9 +168,12 @@ def test_extract_measurements_uses_detector_bbox_only() -> None:
 
 def test_extract_records_persists_single_engine_metadata() -> None:
     frame = np.zeros((120, 200, 3), dtype=np.uint8)
-    frame[:24, :64, 0] = 0x1A
-    frame[:24, :64, 1] = 0x21
-    frame[:24, :64, 2] = 0x29
+    frame[:, :, 0] = 200
+    frame[:, :, 1] = 200
+    frame[:, :, 2] = 200
+    frame[5:29, 0:64, 0] = 0x1A
+    frame[5:29, 0:64, 1] = 0x21
+    frame[5:29, 0:64, 2] = 0x29
     pipeline = EchoOcrPipeline(
         ocr_engine=_FakeOcrEngine("TR Vmax 2.1 m/s", name="engine-a", confidence=0.9),
         parser=RegexMeasurementParser(),
@@ -138,9 +201,12 @@ def test_extract_records_persists_single_engine_metadata() -> None:
 
 def test_extract_records_respects_max_frames_limit() -> None:
     frame = np.zeros((120, 200, 3), dtype=np.uint8)
-    frame[:24, :64, 0] = 0x1A
-    frame[:24, :64, 1] = 0x21
-    frame[:24, :64, 2] = 0x29
+    frame[:, :, 0] = 200
+    frame[:, :, 1] = 200
+    frame[:, :, 2] = 200
+    frame[5:29, 0:64, 0] = 0x1A
+    frame[5:29, 0:64, 1] = 0x21
+    frame[5:29, 0:64, 2] = 0x29
 
     parser = _FixedParser([AiMeasurement(name="TR Vmax", value="2.1", unit="m/s", source="test")])
     pipeline = EchoOcrPipeline(
