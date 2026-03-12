@@ -57,6 +57,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self._validation_queue_mode = "review"
         self._pending_validation_path: Path | None = None
         self._validation_waiting_review = False
+        self._active_validation_dialog_submitted = False
+        self._active_validation_dialog_path: Path | None = None
         self._batch_export_files = 0
         self._batch_export_measurements = 0
         self._batch_thread: QtCore.QThread | None = None
@@ -813,17 +815,25 @@ class MainWindow(QtWidgets.QMainWindow):
         dialog.raise_()
         self._validation_dialog = dialog
         self._validation_waiting_review = True
+        self._active_validation_dialog_submitted = False
+        self._active_validation_dialog_path = dicom_path
         QtCore.QTimer.singleShot(0, self._start_validation_prefetch)
 
     @QtCore.Slot(int)
     def _on_validation_dialog_closed(self, _result: int) -> None:
-        if self._validation_queue_active and self._validation_waiting_review:
+        was_waiting_review = self._validation_waiting_review
+        was_submitted = self._active_validation_dialog_submitted
+
+        if self._validation_queue_active and was_waiting_review and not was_submitted:
             self._validation_queue_active = False
             self._validation_queue_mode = "review"
             self._validation_queue = []
             self._pending_validation_path = None
             self.statusBar().showMessage("Validation queue stopped.", 3000)
+
         self._validation_waiting_review = False
+        self._active_validation_dialog_submitted = False
+        self._active_validation_dialog_path = None
         self._validation_dialog = None
 
     @QtCore.Slot(object, object, int, int, bool)
@@ -835,10 +845,23 @@ class MainWindow(QtWidgets.QMainWindow):
         incorrect_count: int,
         skip_output: bool,
     ) -> None:
-        self._validation_waiting_review = False
         if not isinstance(dicom_path_obj, Path):
             self._state.report_error("Validation Error", "Validation submission contained no path.")
             return
+
+        if (
+            self._active_validation_dialog_path is not None
+            and dicom_path_obj != self._active_validation_dialog_path
+        ):
+            self._state.report_error(
+                "Validation Error",
+                (
+                    "Validation submission path did not match the active dialog. "
+                    "The submission was ignored to prevent writing labels to the wrong file."
+                ),
+            )
+            return
+
         measurements = [
             line for line in measurements_obj if isinstance(line, str)
         ] if isinstance(measurements_obj, list) else []
@@ -850,6 +873,9 @@ class MainWindow(QtWidgets.QMainWindow):
             except Exception as exc:
                 self._state.report_error("Validation Save Error", str(exc))
                 return
+
+        self._active_validation_dialog_submitted = True
+        self._validation_waiting_review = False
 
         accuracy, is_new_high = self._state.record_validation(
             dicom_path_obj,

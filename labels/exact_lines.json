@@ -1,0 +1,710 @@
+{
+  "version": 1,
+  "task": "exact_roi_measurement_transcription",
+  "files": [
+    {
+      "file_name": "92290733_0003.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002430/s92290733/92290733_0003.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 IVSd 1.1 cm"
+        },
+        {
+          "order": 2,
+          "text": "LVIDd 5.0 cm"
+        },
+        {
+          "order": 3,
+          "text": "LVPWd 1.1 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "92290733_0004.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002430/s92290733/92290733_0004.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "2 LA Diam 5.5 cm"
+        },
+        {
+          "order": 2,
+          "text": "1 LVIDs 4.2 cm"
+        },
+        {
+          "order": 3,
+          "text": "EF (Teich) 34 %"
+        },
+        {
+          "order": 4,
+          "text": "%FS 16 %"
+        }
+      ]
+    },
+    {
+      "file_name": "92290733_0007.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002430/s92290733/92290733_0007.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 LVOT Diam 2.0 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "92290733_0008.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002430/s92290733/92290733_0008.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 Ao asc 3.0 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "92290733_0010.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002430/s92290733/92290733_0010.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 Ao Diam 3.1 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "92290733_0014.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002430/s92290733/92290733_0014.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 TR Vmax 3.4 m/s"
+        },
+        {
+          "order": 2,
+          "text": "TR maxPG 47 mmHg"
+        }
+      ]
+    },
+    {
+      "file_name": "92290733_0019.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002430/s92290733/92290733_0019.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 TR Vmax 2.7 m/s"
+        },
+        {
+          "order": 2,
+          "text": "TR maxPG 29 mmHg"
+        }
+      ]
+    },
+    {
+      "file_name": "92290733_0030.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002430/s92290733/92290733_0030.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "2 RA LENGTH 6.1 cm"
+        },
+        {
+          "order": 2,
+          "text": "1 LA LENGTH 6.0 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "92290733_0032.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002430/s92290733/92290733_0032.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 E' Lat 0.06 m/s"
+        }
+      ]
+    },
+    {
+      "file_name": "92290733_0033.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002430/s92290733/92290733_0033.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 E' Sept 0.06 m/s"
+        }
+      ]
+    },
+    {
+      "file_name": "92290733_0035.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002430/s92290733/92290733_0035.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 MV E Vel 0.8 m/s"
+        },
+        {
+          "order": 2,
+          "text": "MV DecT 287 m/s"
+        },
+        {
+          "order": 3,
+          "text": "MV Dec Slope 3 m/s2"
+        },
+        {
+          "order": 4,
+          "text": "MV A Vel 1.2 m/s"
+        },
+        {
+          "order": 5,
+          "text": "MV E/A Ratio 0.7"
+        }
+      ]
+    },
+    {
+      "file_name": "94106955_0011.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0011.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 Ao Diam 3.2 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "94106955_0012.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0012.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 LVOT Diam 2.0 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "94106955_0013.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0013.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 LA Diam 4.0 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "94106955_0014.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0014.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 Ao asc 3.2 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "94106955_0016.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0016.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 IVSd 0.9 cm"
+        },
+        {
+          "order": 2,
+          "text": "LVIDd 5.4 cm"
+        },
+        {
+          "order": 3,
+          "text": "LVPWd 1.0 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "94106955_0017.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0017.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 LVIDs 3.6 cm"
+        },
+        {
+          "order": 2,
+          "text": "EF (Teich) 62 %"
+        },
+        {
+          "order": 3,
+          "text": "%FS 34 %"
+        }
+      ]
+    },
+    {
+      "file_name": "94106955_0021.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0021.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 TR Vmax 1.9 m/s"
+        },
+        {
+          "order": 2,
+          "text": "TR maxPG 14 mmHg"
+        }
+      ]
+    },
+    {
+      "file_name": "94106955_0024.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0024.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 PV Vmax 0.87 m/s"
+        },
+        {
+          "order": 2,
+          "text": "PV maxPG 3 mmHg"
+        }
+      ]
+    },
+    {
+      "file_name": "94106955_0028.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0028.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 PV Vmax 0.96 m/s"
+        },
+        {
+          "order": 2,
+          "text": "PV maxPG 4 mmHg"
+        }
+      ]
+    },
+    {
+      "file_name": "94106955_0034.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0034.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 TR Vmax 2.3 m/s"
+        },
+        {
+          "order": 2,
+          "text": "TR maxPG 21 mmHg"
+        }
+      ]
+    },
+    {
+      "file_name": "94106955_0035.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0035.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 TR Vmax 1.9 m/s"
+        },
+        {
+          "order": 2,
+          "text": "TR maxPG 14 mmHg"
+        }
+      ]
+    },
+    {
+      "file_name": "94106955_0044.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0044.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "2 RA LENGTH 5.9 cm"
+        },
+        {
+          "order": 2,
+          "text": "1 LA LENGTH 6.6 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "94106955_0046.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0046.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 MV E Vel 0.7 m/s"
+        },
+        {
+          "order": 2,
+          "text": "MV DecT 183 ms"
+        },
+        {
+          "order": 3,
+          "text": "MV Dec Slope 4 m/s2"
+        },
+        {
+          "order": 4,
+          "text": "MV A Vel 0.6 m/s"
+        },
+        {
+          "order": 5,
+          "text": "MV E/A Ratio 1.2"
+        }
+      ]
+    },
+    {
+      "file_name": "94106955_0050.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0050.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "3 P Vein A 0.3 m/s"
+        },
+        {
+          "order": 2,
+          "text": "2 P Vein D 0.4 m/s"
+        },
+        {
+          "order": 3,
+          "text": "P Vein S/D Ratio 1.2"
+        },
+        {
+          "order": 4,
+          "text": "1 P Vein S 0.5 m/s"
+        }
+      ]
+    },
+    {
+      "file_name": "94106955_0051.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0051.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 LALs A4C 5.8 cm"
+        },
+        {
+          "order": 2,
+          "text": "LAAs A4C 19.5 cm2"
+        },
+        {
+          "order": 3,
+          "text": "LAESV A-L A4C 56 ml"
+        }
+      ]
+    },
+    {
+      "file_name": "94106955_0053.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0053.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 LVLd A4C 7.18 cm"
+        },
+        {
+          "order": 2,
+          "text": "LVEDV MOD A4C 105.47 ml"
+        }
+      ]
+    },
+    {
+      "file_name": "94106955_0054.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0054.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "LVEF MOD A4C 63.66 %"
+        },
+        {
+          "order": 2,
+          "text": "SV MOD A4C 67.14 ml"
+        },
+        {
+          "order": 3,
+          "text": "1 LVLs A4C 5.93 cm"
+        },
+        {
+          "order": 4,
+          "text": "LVESV MOD A4C 38.32 ml"
+        }
+      ]
+    },
+    {
+      "file_name": "94106955_0055.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0055.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 E' Lat 0.09 m/s"
+        }
+      ]
+    },
+    {
+      "file_name": "94106955_0056.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0056.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 E' Sept 0.08 m/s"
+        }
+      ]
+    },
+    {
+      "file_name": "94106955_0057.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0057.dcm",
+      "split": "validation",
+      "measurements": []
+    },
+    {
+      "file_name": "94106955_0061.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0061.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 LVOT Vmax 1.1 m/s"
+        },
+        {
+          "order": 2,
+          "text": "LVOT maxPG 5 mmHg"
+        },
+        {
+          "order": 3,
+          "text": "LVOT VTI 19.9 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "94106955_0062.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0062.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "AVA Vmax 2.8 cm2"
+        },
+        {
+          "order": 2,
+          "text": "AVA Vmax 2.3 cm2"
+        },
+        {
+          "order": 3,
+          "text": "1 AV Vmax 1.3 m/s"
+        },
+        {
+          "order": 4,
+          "text": "AV Vmean 1.0 m/s"
+        },
+        {
+          "order": 5,
+          "text": "AV maxPG 6 mmHg"
+        },
+        {
+          "order": 6,
+          "text": "AV meanPG 4 mmHg"
+        },
+        {
+          "order": 7,
+          "text": "AV VTI 28 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "94106955_0064.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0064.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 AV Vmax 1.1 m/s"
+        },
+        {
+          "order": 2,
+          "text": "1 AV Vmean 0.9 m/s"
+        },
+        {
+          "order": 3,
+          "text": "AV maxPG 5 mmHg"
+        },
+        {
+          "order": 4,
+          "text": "AV meanPG 3 mmHg"
+        },
+        {
+          "order": 5,
+          "text": "AV VTI 2.8 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "94106955_0066.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0066.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 RVIDd 3.2 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "94106955_0069.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0069.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 TR Vmax 2.1 m/s"
+        },
+        {
+          "order": 2,
+          "text": "TR maxPG 17 mmHg"
+        }
+      ]
+    },
+    {
+      "file_name": "94106955_0071.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0071.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "LAESV (A-L) 70.05 ml"
+        },
+        {
+          "order": 2,
+          "text": "LAESV Index (A-L) 31.99 ml/m2"
+        },
+        {
+          "order": 3,
+          "text": "1 LALs A2C 6.0 cm"
+        },
+        {
+          "order": 4,
+          "text": "LAAs A2C 24 cm2"
+        },
+        {
+          "order": 5,
+          "text": "LAESV A-L A2C 84.0 ml"
+        }
+      ]
+    },
+    {
+      "file_name": "94106955_0074.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0074.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 LVLd A2C 7.76 cm"
+        },
+        {
+          "order": 2,
+          "text": "LVEDV MOD A2C 93.58 ml"
+        }
+      ]
+    },
+    {
+      "file_name": "94106955_0075.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0075.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "LVEF Biplane 64 %"
+        },
+        {
+          "order": 2,
+          "text": "LVEDV MOD BP 102 ml"
+        },
+        {
+          "order": 3,
+          "text": "LVESV MOD BP 37 ml"
+        },
+        {
+          "order": 4,
+          "text": "LVEF MOD A2C 62.09 %"
+        },
+        {
+          "order": 5,
+          "text": "SV MOD A2C 58.10 ml"
+        },
+        {
+          "order": 6,
+          "text": "1 LVLs A2C 6.07 cm"
+        },
+        {
+          "order": 7,
+          "text": "LVESV MOD A2C 35.48 ml"
+        }
+      ]
+    },
+    {
+      "file_name": "94106955_0090.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0090.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 IVC 2.2 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "94106955_0092.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0092.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 Ao Desc Diam 2.6 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "94106955_0096.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0096.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 Ao Arch Diam 2.8 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "94106955_0099.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0099.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 L 2.37 cm"
+        }
+      ]
+    }
+  ]
+}

@@ -394,10 +394,16 @@ class LocalLlmMeasurementParser:
             return []
         parsed = self._parse_json_payload(payload)
         items: List[AiMeasurement] = []
+        indexed_lines = self._extract_indexed_measurement_lines(text)
         for row in parsed:
             name = str(row.get("name", "")).strip()
             value = str(row.get("value", "")).strip().replace(",", ".")
             unit = str(row.get("unit", "")).strip()
+
+            # Restore a real leading OCR index when the model stripped it from the label.
+            restored_name = self._restore_leading_index(name=name, value=value, unit=unit, indexed_lines=indexed_lines)
+            if restored_name:
+                name = restored_name
 
             # --- DETERMINISTIC POST PROCESSING ---
             # 1. Name corrections
@@ -447,11 +453,7 @@ class LocalLlmMeasurementParser:
                 unit = "cm"
             if unit_lower == "mli" or unit_lower == "mll":
                 unit = "ml"
-            # Label mismatches (label says cm but it is physically an area/volume, or vice versa, follow label)
-            if "laas " in name.lower() and unit_lower == "cm2":
-                unit = "cm"
-            if "ava vmax" in name.lower() and unit_lower == "cm2":
-                unit = "cm"
+            # Keep cm2 when present; do not coerce area measurements back to cm.
             if "rvidd" in name.lower() and unit_lower == "w":
                 unit = "cm"
 
@@ -486,6 +488,49 @@ class LocalLlmMeasurementParser:
             return self._build_nuextract_prompt(ocr_text)
         return self._build_generic_json_prompt(ocr_text)
 
+    @staticmethod
+    def _extract_indexed_measurement_lines(ocr_text: str) -> List[tuple[str, str, str | None, str]]:
+        indexed_lines: List[tuple[str, str, str | None, str]] = []
+        for raw_line in ocr_text.splitlines():
+            cleaned = " ".join(raw_line.split()).strip()
+            if not cleaned:
+                continue
+            match = re.match(
+                r"^(?P<prefix>\d{1,2})\s+(?P<label>[A-Za-z%][A-Za-z0-9\s/\-()']+?)\s+"
+                r"(?P<value>[-+]?\d+(?:[.,]\d+)?)\s*"
+                r"(?P<unit>%|mmHg|ml/m2|m/s2|cm2|cm/s|m/s|bpm|cm|mm|ms|ml|s|mis|m1s|mls)?$",
+                cleaned,
+                flags=re.IGNORECASE,
+            )
+            if match is None:
+                continue
+            prefix = match.group("prefix")
+            label = _normalize_name(match.group("label"))
+            value = _normalize_value(match.group("value"))
+            unit = _normalize_unit(match.group("unit"))
+            indexed_lines.append((prefix, label, value, unit))
+        return indexed_lines
+
+    @staticmethod
+    def _restore_leading_index(
+        *, name: str, value: str, unit: str | None, indexed_lines: List[tuple[str, str, str | None, str]]
+    ) -> str | None:
+        normalized_name = _normalize_name(name)
+        normalized_value = _normalize_value(value)
+        normalized_unit = _normalize_unit(unit)
+        if not normalized_name or re.match(r"^\d{1,2}\s+", normalized_name):
+            return None
+
+        for prefix, indexed_label, indexed_value, indexed_unit in indexed_lines:
+            if indexed_value != normalized_value:
+                continue
+            if indexed_label != normalized_name:
+                continue
+            if normalized_unit and indexed_unit and indexed_unit.lower() != normalized_unit.lower():
+                continue
+            return f"{prefix} {normalized_name}"
+        return None
+
     def _is_nuextract_model(self) -> bool:
         return "nuextract" in self.config.model.lower()
 
@@ -495,7 +540,11 @@ class LocalLlmMeasurementParser:
             "Return ONLY valid JSON: an array of objects with keys "
             '"name", "value", "unit".\n'
             "Rules:\n"
+            "- Preserve the OCR label as literally as possible.\n"
+            "- Never remove a leading numeric token from the measurement label just because it looks like a row number.\n"
+            "- If an OCR line starts with something like '1 Ao Diam 3.2 cm' or '1 LVOT Diam 2.0 cm', the name must keep the leading '1'. This number could also be: 2,3,4,5....\n"
             "- Keep labels exactly as written if uncertain, including a real leading row number like 1 or 2 when it belongs to the measurement label.\n"
+            "- Prefer exact label preservation over cleanup or interpretation.\n"
             "- Measurements may be split across adjacent OCR lines; merge them into one final measurement.\n"
             "- If one line is mostly a label and the next line is mostly a value/unit, combine them.\n"
             "- Ignore non-measurement UI noise, decorative symbols, and telemetry.\n"
