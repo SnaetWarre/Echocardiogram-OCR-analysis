@@ -1,0 +1,75 @@
+{
+  "total_files": 2,
+  "total_labels": 7,
+  "ocr_predictions": 7,
+  "exact_line_matches": 0,
+  "label_matches": 0,
+  "value_matches": 4,
+  "unit_matches": 5,
+  "prefix_matches": 4,
+  "uncertainty_count": 7,
+  "fallback_invocations": 0,
+  "engine_disagreements": 0,
+  "roi_detection_failures": 0,
+  "line_segmentation_failures": 0,
+  "exact_line_match_rate": 0.0,
+  "label_match_rate": 0.0,
+  "value_match_rate": 0.5714285714285714,
+  "unit_match_rate": 0.7142857142857143,
+  "prefix_match_rate": 0.5714285714285714,
+  "uncertainty_rate": 1.0,
+  "fallback_invocation_rate": 0.0,
+  "roi_detection_failure_rate": 0.0,
+  "line_segmentation_failure_rate": 0.0,
+  "engine_disagreement_rate": 0.0,
+  "file_reports": [
+    {
+      "file_name": "92290733_0003.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002430/s92290733/92290733_0003.dcm",
+      "split": "validation",
+      "expected_lines": [
+        "1 IVSd 1.1 cm",
+        "LVIDd 5.0 cm",
+        "LVPWd 1.1 cm"
+      ],
+      "predicted_lines": [
+        "11Vod 1.1\u00a2m",
+        "LVIDaG 29.0 cm",
+        "LVPVVd 1.1 cm"
+      ],
+      "uncertainty_count": 3,
+      "fallback_invocations": 0,
+      "engine_disagreements": 0,
+      "exact": 0,
+      "label": 0,
+      "value": 2,
+      "unit": 2,
+      "prefix": 2
+    },
+    {
+      "file_name": "92290733_0004.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002430/s92290733/92290733_0004.dcm",
+      "split": "validation",
+      "expected_lines": [
+        "2 LA Diam 5.5 cm",
+        "1 LVIDs 4.2 cm",
+        "EF (Teich) 34 %",
+        "%FS 16 %"
+      ],
+      "predicted_lines": [
+        "2LA vam v8.v cm",
+        "1 LYIDS 4.Z2 cm",
+        "EF(Tercn) 34 %",
+        "Yrs 16%"
+      ],
+      "uncertainty_count": 4,
+      "fallback_invocations": 0,
+      "engine_disagreements": 0,
+      "exact": 0,
+      "label": 0,
+      "value": 2,
+      "unit": 3,
+      "prefix": 2
+    }
+  ]
+}

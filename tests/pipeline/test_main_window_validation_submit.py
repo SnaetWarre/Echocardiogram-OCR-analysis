@@ -23,14 +23,19 @@ def test_validation_submit_skips_output_when_false_positive(tmp_path: Path) -> N
     window = MainWindow()
     output_path = tmp_path / "exact_lines.json"
     window._validation_writer._output_path = output_path
+    original_information = QtWidgets.QMessageBox.information
+    QtWidgets.QMessageBox.information = lambda *args, **kwargs: 0  # type: ignore[assignment]
 
-    window._on_validation_submitted(
-        Path("/tmp/example.dcm"),
-        ["TR Vmax 1.9 m/s"],
-        0,
-        1,
-        True,
-    )
+    try:
+        window._on_validation_submitted(
+            Path("/tmp/example.dcm"),
+            ["TR Vmax 1.9 m/s"],
+            0,
+            1,
+            True,
+        )
+    finally:
+        QtWidgets.QMessageBox.information = original_information  # type: ignore[assignment]
 
     assert not output_path.exists()
     assert window._state.validation_session.total_validated_frames == 1

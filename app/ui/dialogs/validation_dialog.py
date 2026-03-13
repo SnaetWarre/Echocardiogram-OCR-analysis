@@ -5,6 +5,7 @@ from pathlib import Path
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from app.models.types import AiMeasurement, AiResult, OverlayBox
+from app.pipeline.measurement_decoder import extract_line_from_source
 
 _STYLE_UNMODIFIED = (
     "QFrame#rowFrame { border: 2px solid #1E8E3E; border-radius: 6px; background: #F4FBF6; }"
@@ -100,8 +101,9 @@ class ValidationFeedbackWidget(QtWidgets.QFrame):
         self._raw_ocr_label = QtWidgets.QLabel("")
         self._raw_ocr_label.setWordWrap(True)
         self._raw_ocr_label.setStyleSheet("color: #6B7D90; font-style: italic; font-size: 11px; border: none;")
-        if measurement.source and measurement.source.startswith("ocr_line:"):
-            self._raw_ocr_label.setText(f"OCR line: {measurement.source.split(':', 1)[1]}")
+        source_line = extract_line_from_source(measurement.source)
+        if source_line:
+            self._raw_ocr_label.setText(f"Source line: {source_line}")
             body.addWidget(self._raw_ocr_label)
 
         editor_label = QtWidgets.QLabel("Final value (edit if needed):")

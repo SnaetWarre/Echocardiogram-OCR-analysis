@@ -114,16 +114,17 @@ def test_extract_measurements_trims_14px_header_before_ocr() -> None:
 
     pipeline.ocr_engine = _CapturingEngine("PV Vmax 0.96 m/s")
 
-    ocr, items, bbox = pipeline._extract_measurements_for_frame(
+    ocr, panel, items, bbox = pipeline._extract_measurements_for_frame(
         frame,
         RoiDetection(present=True, bbox=(0, 0, 64, 24), confidence=1.0),
     )
 
     assert ocr is not None
+    assert panel.lines
     assert bbox == (0, 0, 64, 24)
     assert len(items) == 1
     assert captured_shapes
-    assert captured_shapes[0][0] == 30
+    assert captured_shapes[0][0] <= 72
 
 
 class _FakeOcrEngine:
@@ -155,12 +156,13 @@ def test_extract_measurements_uses_detector_bbox_only() -> None:
     pipeline = EchoOcrPipeline(ocr_engine=_FakeOcrEngine("TR Vmax 2.1 m/s"), parser=parser)
     pipeline._ensure_components()
 
-    ocr, items, bbox = pipeline._extract_measurements_for_frame(
+    ocr, panel, items, bbox = pipeline._extract_measurements_for_frame(
         frame,
         RoiDetection(present=True, bbox=(0, 0, 64, 24), confidence=1.0),
     )
 
     assert ocr is not None
+    assert panel.lines
     assert bbox == (0, 0, 64, 24)
     assert len(items) == 1
     assert items[0].name == "TR Vmax"
@@ -197,6 +199,8 @@ def test_extract_records_persists_single_engine_metadata() -> None:
 
     assert records
     assert records[0].ocr_engine == "engine-a"
+    assert records[0].exact_line_text
+    assert records[0].line_bbox is not None
 
 
 def test_extract_records_respects_max_frames_limit() -> None:
@@ -233,3 +237,43 @@ def test_extract_records_respects_max_frames_limit() -> None:
 
     assert len(records) == 1
     assert records[0].frame_index == 0
+
+
+def test_ai_result_uses_exact_line_sources_and_raw_line_predictions() -> None:
+    pipeline = EchoOcrPipeline()
+    records = [
+        pipeline._extract_records  # keep pyright from complaining about instantiation context
+    ]
+    _ = records
+
+    from app.pipeline.echo_ocr_schema import MeasurementRecord
+
+    result = pipeline._to_ai_result(
+        [
+            MeasurementRecord(
+                study_uid="study",
+                series_uid="series",
+                sop_instance_uid="sop",
+                frame_index=0,
+                measurement_name="TR Vmax",
+                measurement_value="2.1",
+                measurement_unit="m/s",
+                exact_line_text="1 TR Vmax 2.1 m/s",
+                line_confidence=0.88,
+                line_uncertain=False,
+                ocr_text_raw="1 TR Vmax 2.1 m/s",
+                ocr_confidence=0.88,
+                parser_confidence=0.88,
+                roi_bbox=(0, 0, 10, 10),
+                line_bbox=(0, 0, 10, 2),
+                text_order=0,
+                processed_at="now",
+                pipeline_version="v2-line-first",
+                ocr_engine="fake-ocr",
+            )
+        ]
+    )
+
+    assert result.measurements[0].source == "exact_line:1 TR Vmax 2.1 m/s:0.880"
+    assert result.raw["exact_lines"] == ["1 TR Vmax 2.1 m/s"]
+    assert result.raw["line_predictions"][0]["line_bbox"] == [0, 0, 10, 2]

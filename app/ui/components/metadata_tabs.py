@@ -78,9 +78,11 @@ class MetadataTabsWidget(QtWidgets.QTabWidget):
 
     def _update_ai_result(self, result: AiResult) -> None:
         validated_lines = result.raw.get("validated_lines")
-        if isinstance(validated_lines, list):
-            self._ai_table.setRowCount(len(validated_lines))
-            for row, line in enumerate(validated_lines):
+        exact_lines = result.raw.get("exact_lines")
+        line_rows = validated_lines if isinstance(validated_lines, list) else exact_lines if isinstance(exact_lines, list) else None
+        if isinstance(line_rows, list):
+            self._ai_table.setRowCount(len(line_rows))
+            for row, line in enumerate(line_rows):
                 text = line if isinstance(line, str) else str(line)
                 self._ai_table.setItem(row, 0, QtWidgets.QTableWidgetItem(text))
                 self._ai_table.setItem(row, 1, QtWidgets.QTableWidgetItem(""))
@@ -113,8 +115,10 @@ class MetadataTabsWidget(QtWidgets.QTabWidget):
                     writer = csv.writer(f)
                     writer.writerow(["Measurement", "Value", "Unit"])
                     validated_lines = result.raw.get("validated_lines")
-                    if isinstance(validated_lines, list):
-                        for line in validated_lines:
+                    exact_lines = result.raw.get("exact_lines")
+                    line_rows = validated_lines if isinstance(validated_lines, list) else exact_lines if isinstance(exact_lines, list) else None
+                    if isinstance(line_rows, list):
+                        for line in line_rows:
                             writer.writerow([line, "", ""])
                     else:
                         for meas in result.measurements:
@@ -155,11 +159,13 @@ class MetadataTabsWidget(QtWidgets.QTabWidget):
 
                 buffer.write("Measurements:\n")
                 validated_lines = result.raw.get("validated_lines")
-                if isinstance(validated_lines, list):
-                    if not validated_lines:
+                exact_lines = result.raw.get("exact_lines")
+                line_rows = validated_lines if isinstance(validated_lines, list) else exact_lines if isinstance(exact_lines, list) else None
+                if isinstance(line_rows, list):
+                    if not line_rows:
                         buffer.write("  No measurements found.\n")
                     else:
-                        for line in validated_lines:
+                        for line in line_rows:
                             buffer.write(f"  {line}\n")
                 elif not result.measurements:
                     buffer.write("  No measurements found.\n")

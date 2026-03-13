@@ -13,10 +13,14 @@ class MeasurementRecord:
     measurement_name: str
     measurement_value: str
     measurement_unit: str
+    exact_line_text: str
+    line_confidence: float
+    line_uncertain: bool
     ocr_text_raw: str
     ocr_confidence: float
     parser_confidence: float
     roi_bbox: tuple[int, int, int, int]
+    line_bbox: tuple[int, int, int, int] | None = None
     text_order: int = 0
     processed_at: str = ""
     pipeline_version: str = ""
@@ -25,6 +29,7 @@ class MeasurementRecord:
     def to_dict(self) -> dict[str, object]:
         payload = asdict(self)
         payload["roi_bbox"] = ",".join(str(value) for value in self.roi_bbox)
+        payload["line_bbox"] = "" if self.line_bbox is None else ",".join(str(value) for value in self.line_bbox)
         return payload
 
     @classmethod
@@ -40,10 +45,14 @@ CSV_FIELDS = [
     "measurement_name",
     "measurement_value",
     "measurement_unit",
+    "exact_line_text",
+    "line_confidence",
+    "line_uncertain",
     "ocr_text_raw",
     "ocr_confidence",
     "parser_confidence",
     "roi_bbox",
+    "line_bbox",
     "text_order",
     "processed_at",
     "pipeline_version",

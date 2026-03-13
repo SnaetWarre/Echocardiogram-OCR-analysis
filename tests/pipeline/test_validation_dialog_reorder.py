@@ -65,4 +65,16 @@ def test_validation_dialog_shows_ocr_line_hint_when_available() -> None:
     )
     dialog = ValidationDialog(Path("/tmp/example.dcm"), result)
 
-    assert "OCR line: Only 1 cm" in dialog._rows[0]._raw_ocr_label.text()
+    assert "Source line: Only 1 cm" in dialog._rows[0]._raw_ocr_label.text()
+
+
+def test_validation_dialog_shows_exact_line_hint_when_available() -> None:
+    _ = _get_app()
+    result = AiResult(
+        model_name="demo",
+        created_at=datetime.now(),
+        measurements=[AiMeasurement(name="Only", value="1", source="exact_line:1 Only 1 cm:0.950")],
+    )
+    dialog = ValidationDialog(Path("/tmp/example.dcm"), result)
+
+    assert "Source line: 1 Only 1 cm" in dialog._rows[0]._raw_ocr_label.text()
