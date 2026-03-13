@@ -38,8 +38,9 @@ class LexiconReranker:
         line_order: int,
         previous_line: str | None = None,
     ) -> list[RankedCandidate]:
+        candidate_pool = self._augment_candidates(tuple(candidates), line_order=line_order)
         ranked: list[RankedCandidate] = []
-        for candidate in candidates:
+        for candidate in candidate_pool:
             signals = self._score_candidate(candidate, line_order=line_order, previous_line=previous_line)
             score = sum(signals.values())
             ranked.append(RankedCandidate(candidate=candidate, score=score, signals=signals))
@@ -138,6 +139,102 @@ class LexiconReranker:
             "measurement_shape": measurement_shape,
             "source_bonus": source_bonus,
         }
+
+    def _augment_candidates(
+        self,
+        candidates: tuple[LineOcrCandidate, ...],
+        *,
+        line_order: int,
+    ) -> tuple[LineOcrCandidate, ...]:
+        augmented = list(candidates)
+        seen = {canonicalize_exact_line(candidate.text) for candidate in candidates}
+        for candidate in candidates:
+            repaired = self._repair_candidate_from_lexicon(candidate, line_order=line_order)
+            if repaired is None:
+                continue
+            canonical = canonicalize_exact_line(repaired.text)
+            if not canonical or canonical in seen:
+                continue
+            augmented.append(repaired)
+            seen.add(canonical)
+        return tuple(augmented)
+
+    def _repair_candidate_from_lexicon(
+        self,
+        candidate: LineOcrCandidate,
+        *,
+        line_order: int,
+    ) -> LineOcrCandidate | None:
+        decoded = parse_measurement_line(candidate.text)
+        if decoded.value is None or decoded.unit is None or decoded.label is None:
+            return None
+        if label_family_key(decoded.label) in self.lexicon.label_frequencies:
+            return None
+
+        best_family = self._best_matching_family(decoded.label, decoded.unit, line_order=line_order)
+        if best_family is None:
+            return None
+        family_name, similarity = best_family
+        if similarity < 0.82:
+            return None
+
+        exemplar_lines = self.lexicon.label_family_lines.get(family_name, [])
+        if not exemplar_lines:
+            return None
+        exemplar_decoded = parse_measurement_line(exemplar_lines[0])
+        repaired_label = exemplar_decoded.label or decoded.label
+        parts: list[str] = []
+        if decoded.prefix:
+            parts.append(decoded.prefix)
+        elif exemplar_decoded.prefix and self._family_prefers_prefix(family_name):
+            parts.append(exemplar_decoded.prefix)
+        parts.append(repaired_label)
+        parts.append(decoded.value)
+        parts.append(decoded.unit)
+        repaired_text = canonicalize_exact_line(" ".join(parts))
+        if not repaired_text:
+            return None
+        return LineOcrCandidate(
+            text=repaired_text,
+            confidence=max(0.0, candidate.confidence - 0.04),
+            engine_name=candidate.engine_name,
+            view_name=f"{candidate.view_name}:lexicon_repair",
+            source=f"{candidate.source}_lexicon_repair",
+            tokens=candidate.tokens,
+            metadata={
+                **candidate.metadata,
+                "lexicon_repair_family": family_name,
+                "lexicon_repair_similarity": similarity,
+                "lexicon_repair_from": candidate.text,
+            },
+        )
+
+    def _best_matching_family(self, label: str, unit: str, *, line_order: int) -> tuple[str, float] | None:
+        label_key = label_family_key(label)
+        best_family: str | None = None
+        best_score = 0.0
+        for family_name, known_lines in self.lexicon.label_family_lines.items():
+            if not known_lines:
+                continue
+            exemplar_decoded = parse_measurement_line(known_lines[0])
+            if exemplar_decoded.unit and exemplar_decoded.unit != unit:
+                continue
+            order_hits = self.lexicon.label_order_frequencies.get(family_name, {})
+            order_bonus = 0.03 if order_hits.get(str(line_order + 1), 0) > 0 else 0.0
+            similarity = SequenceMatcher(None, label_key, family_name).ratio() + order_bonus
+            if similarity > best_score:
+                best_family = family_name
+                best_score = similarity
+        if best_family is None:
+            return None
+        return best_family, best_score
+
+    def _family_prefers_prefix(self, family_name: str) -> bool:
+        exemplar_lines = self.lexicon.label_family_lines.get(family_name, [])
+        if not exemplar_lines:
+            return False
+        exemplar_decoded = parse_measurement_line(exemplar_lines[0])
+        return exemplar_decoded.prefix is not None
 
     def _best_family_similarity(self, family: str) -> float:
         if not family:

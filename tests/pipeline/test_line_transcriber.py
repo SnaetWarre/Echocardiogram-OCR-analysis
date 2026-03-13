@@ -174,3 +174,30 @@ def test_line_transcriber_keeps_repaired_primary_candidate_without_fallback() ->
 
     assert fallback.calls == 0
     assert result.lines[0].text == "LVIDd 5.0 cm"
+
+
+def test_line_transcriber_triggers_fallback_for_malformed_sparse_measurement_layout() -> None:
+    roi = np.zeros((20, 40), dtype=np.uint8)
+    segmentation = SegmentationResult(
+        header_trim_px=0,
+        content_bbox=(0, 0, 40, 20),
+        lines=(
+            SegmentedLine(order=0, bbox=(0, 0, 40, 20), metadata={"token_count": 1}),
+        ),
+    )
+    primary = _RecordingEngine([("Ao Diam\ncm\n5.1", 0.99), ("nonsense", 0.99)], name="primary")
+    fallback = _RecordingEngine([("1 Ao Diam 3.1 cm", 0.84), ("1 Ao Diam 3.1 cm", 0.82)], name="fallback")
+
+    result = LineTranscriber(
+        uncertain_threshold=0.7,
+        fallback_quality_threshold=0.72,
+        preprocess_views={"default": lambda image: image, "clahe": lambda image: image},
+    ).transcribe(
+        roi,
+        segmentation,
+        primary_engine=primary,
+        fallback_engine=fallback,
+    )
+
+    assert result.fallback_invocations == 1
+    assert result.lines[0].text == "1 Ao Diam 3.1 cm"

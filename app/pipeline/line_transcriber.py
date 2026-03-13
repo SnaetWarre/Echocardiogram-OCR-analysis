@@ -147,6 +147,7 @@ class LineTranscriber:
                 or not best_primary_candidate.text
                 or self._looks_like_junk(best_primary_candidate)
                 or self._looks_like_value_only_measurement(segment, best_primary_candidate)
+                or self._looks_like_malformed_measurement_layout(segment, best_primary_candidate)
             )
             if fallback_engine is not None and needs_fallback:
                 fallback_crop = default_preprocessor(raw_crop)
@@ -296,6 +297,36 @@ class LineTranscriber:
         canonical = canonicalize_exact_line(candidate.text)
         decoded = parse_measurement_line(canonical)
         return decoded.value is not None and "missing_label" in decoded.uncertain_reasons
+
+    def _looks_like_malformed_measurement_layout(self, segment: SegmentedLine, candidate: LineOcrCandidate) -> bool:
+        token_count = int(segment.metadata.get("token_count", 0) or 0)
+        if token_count > 1:
+            return False
+        canonical = canonicalize_exact_line(candidate.text)
+        if not canonical:
+            return False
+        if re.search(r"\b(?:cm|mm|ml|m/s|mmHg|%)\s+[-+]?\d+(?:[.,]\d+)?$", canonical, flags=re.IGNORECASE):
+            return True
+        lines = [line.strip() for line in canonical.splitlines() if line.strip()]
+        if len(lines) >= 2:
+            first = lines[0]
+            last = lines[-1]
+            if re.search(r"\b(?:cm|mm|ml|m/s|mmHg|%)\b", first, flags=re.IGNORECASE) and re.search(r"\d", last):
+                return True
+            if re.search(r"[A-Za-z]", first) and re.fullmatch(r"(?:cm|mm|ml|m/s|mmHg|%)(?:\s+[-+]?\d+(?:[.,]\d+)?)?", last, flags=re.IGNORECASE):
+                return True
+        decoded = parse_measurement_line(canonical)
+        if decoded.label and decoded.unit and decoded.value:
+            label_index = canonical.find(decoded.label)
+            unit_index = canonical.find(decoded.unit)
+            value_index = canonical.find(decoded.value)
+            if unit_index != -1 and value_index != -1 and unit_index < value_index:
+                return True
+            if label_index != -1 and value_index != -1 and unit_index != -1 and not (label_index <= value_index <= unit_index):
+                return True
+            if label_index != -1 and unit_index != -1 and value_index == -1:
+                return True
+        return False
 
     @staticmethod
     def _noise_penalty(text: str) -> float:

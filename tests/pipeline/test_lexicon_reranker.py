@@ -3,6 +3,7 @@ from __future__ import annotations
 from app.pipeline.lexicon_builder import LexiconArtifact, NumericStats
 from app.pipeline.lexicon_reranker import LexiconReranker
 from app.pipeline.line_transcriber import LineOcrCandidate, LinePrediction, PanelTranscription
+from app.pipeline.measurement_decoder import canonicalize_exact_line
 
 
 def _artifact() -> LexiconArtifact:
@@ -133,3 +134,37 @@ def test_lexicon_reranker_prefers_structured_fallback_over_junk_primary() -> Non
     )
 
     assert ranked[0].candidate.text == "1 E' Lat 0.09 m/s"
+
+
+def test_lexicon_reranker_repairs_near_miss_label_family_using_lexicon() -> None:
+    reranker = LexiconReranker(
+        LexiconArtifact(
+            artifact_version=1,
+            created_at="now",
+            labels_path="labels/exact_lines.json",
+            dataset_version=1,
+            dataset_task="exact_roi_measurement_transcription",
+            total_files=1,
+            total_lines=1,
+            exact_line_frequencies={"1 E' Lat 0.09 m/s": 1},
+            label_frequencies={"e' lat": 2},
+            label_family_lines={"e' lat": ["1 E' Lat 0.09 m/s"]},
+            label_unit_frequencies={"e' lat": {"m/s": 2}},
+            label_order_frequencies={"e' lat": {"1": 2}},
+            label_value_stats={},
+            token_frequencies={"lat": 2},
+            unit_frequencies={"m/s": 2},
+            prefix_frequencies={"1": 2},
+            line_pattern_frequencies={"<PREFIX> e' lat <VALUE> <UNIT:m/s>": 2},
+        )
+    )
+
+    ranked = reranker.rank_candidates(
+        [
+            LineOcrCandidate(text="1 E' Lat 0.09 m/s", confidence=0.7, engine_name="fallback", view_name="clahe", source="fallback_multiview"),
+            LineOcrCandidate(text="CHURTUS -68 T", confidence=0.99, engine_name="surya", view_name="high_contrast", source="primary_multiview"),
+        ],
+        line_order=0,
+    )
+
+    assert canonicalize_exact_line(ranked[0].candidate.text) == "1 E' Lat 0.09 m/s"
