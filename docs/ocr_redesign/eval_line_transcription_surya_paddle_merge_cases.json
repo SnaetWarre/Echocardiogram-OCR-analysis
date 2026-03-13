@@ -1,0 +1,205 @@
+{
+  "total_files": 6,
+  "total_labels": 34,
+  "ocr_predictions": 34,
+  "exact_line_matches": 10,
+  "label_matches": 15,
+  "value_matches": 16,
+  "unit_matches": 21,
+  "prefix_matches": 28,
+  "uncertainty_count": 3,
+  "fallback_invocations": 0,
+  "engine_disagreements": 0,
+  "roi_detection_failures": 0,
+  "line_segmentation_failures": 0,
+  "file_reports": [
+    {
+      "file_name": "92290733_0035.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002430/s92290733/92290733_0035.dcm",
+      "split": "validation",
+      "expected_lines": [
+        "1 MV E Vel 0.8 m/s",
+        "MV DecT 287 m/s",
+        "MV Dec Slope 3 m/s2",
+        "MV A Vel 1.2 m/s",
+        "MV E/A Ratio 0.7"
+      ],
+      "predicted_lines": [
+        "TIO. U.O ~7",
+        "M\u0661 N/ ____ \u201d 11 1231 , -4 \u2022 `",
+        "MV Dec Slope 3 m/s2",
+        "MV A Vel 1.2 m/s",
+        "MV E/A Ratio"
+      ],
+      "uncertainty_count": 0,
+      "fallback_invocations": 0,
+      "engine_disagreements": 0,
+      "segmentation_line_count": 5,
+      "sequence_similarity": 0.6256983240223464,
+      "debug_images": [],
+      "exact": 1,
+      "label": 2,
+      "value": 1,
+      "unit": 3,
+      "prefix": 4
+    },
+    {
+      "file_name": "94106955_0046.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0046.dcm",
+      "split": "validation",
+      "expected_lines": [
+        "1 MV E Vel 0.7 m/s",
+        "MV DecT 183 ms",
+        "MV Dec Slope 4 m/s2",
+        "MV A Vel 0.6 m/s",
+        "MV E/A Ratio 1.2"
+      ],
+      "predicted_lines": [
+        "MX \u0666. N/S i Ji \u2022 _",
+        "MV DecT 183 ms",
+        "MV Dec Slope 4 m/s2",
+        "MV A Vel 0.6 m/s",
+        "MV E/A Ratio"
+      ],
+      "uncertainty_count": 0,
+      "fallback_invocations": 0,
+      "engine_disagreements": 0,
+      "segmentation_line_count": 5,
+      "sequence_similarity": 0.8235294117647058,
+      "debug_images": [],
+      "exact": 2,
+      "label": 3,
+      "value": 2,
+      "unit": 4,
+      "prefix": 4
+    },
+    {
+      "file_name": "94106955_0062.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0062.dcm",
+      "split": "validation",
+      "expected_lines": [
+        "AVA Vmax 2.8 cm2",
+        "AVA Vmax 2.3 cm2",
+        "1 AV Vmax 1.3 m/s",
+        "AV Vmean 1.0 m/s",
+        "AV maxPG 6 mmHg",
+        "AV meanPG 4 mmHg",
+        "AV VTI 28 cm"
+      ],
+      "predicted_lines": [
+        "AVA Vmax 12.8 cm2",
+        "AVA (VTI) 2.3 cm2",
+        "1 AV Vmax 1.3 m/s",
+        "AV Vmean 1.0~m/s",
+        "4 8 I I I \u05d5\u05d5 .",
+        "AV meanPG 4 mmHa",
+        "\u03c4. . . . _ ."
+      ],
+      "uncertainty_count": 2,
+      "fallback_invocations": 0,
+      "engine_disagreements": 0,
+      "segmentation_line_count": 7,
+      "sequence_similarity": 0.7685589519650655,
+      "debug_images": [],
+      "exact": 1,
+      "label": 2,
+      "value": 4,
+      "unit": 3,
+      "prefix": 6
+    },
+    {
+      "file_name": "94106955_0064.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0064.dcm",
+      "split": "validation",
+      "expected_lines": [
+        "1 AV Vmax 1.1 m/s",
+        "1 AV Vmean 0.9 m/s",
+        "AV maxPG 5 mmHg",
+        "AV meanPG 3 mmHg",
+        "AV VTI 2.8 cm"
+      ],
+      "predicted_lines": [
+        "//***/ ' Vma>",
+        "AV Vmean 0.9 m/s",
+        "W max PG /144/ /##1/",
+        "AV meanPG 3 mmHg",
+        "\u05d9\u05e0\u05d9\u05d5 \u0661, \u0433. \u0660, . ,,"
+      ],
+      "uncertainty_count": 1,
+      "fallback_invocations": 0,
+      "engine_disagreements": 0,
+      "segmentation_line_count": 5,
+      "sequence_similarity": 0.6235294117647059,
+      "debug_images": [],
+      "exact": 0,
+      "label": 0,
+      "value": 0,
+      "unit": 2,
+      "prefix": 3
+    },
+    {
+      "file_name": "94106955_0071.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0071.dcm",
+      "split": "validation",
+      "expected_lines": [
+        "LAESV (A-L) 70.05 ml",
+        "LAESV Index (A-L) 31.99 ml/m2",
+        "1 LALs A2C 6.0 cm",
+        "LAAs A2C 24 cm2",
+        "LAESV A-L A2C 84.0 ml"
+      ],
+      "predicted_lines": [
+        "LAESV(A-L) /U.U5 ml",
+        "LAESV Index (A-L) 31.99 ml/m2",
+        "1 LALs A2C 6.0 cm",
+        "LAAs A20 24 cm2",
+        "LAESV A-L A2C 84.0 ml"
+      ],
+      "uncertainty_count": 0,
+      "fallback_invocations": 0,
+      "engine_disagreements": 0,
+      "segmentation_line_count": 5,
+      "sequence_similarity": 0.957345971563981,
+      "debug_images": [],
+      "exact": 3,
+      "label": 3,
+      "value": 4,
+      "unit": 5,
+      "prefix": 5
+    },
+    {
+      "file_name": "94106955_0075.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0075.dcm",
+      "split": "validation",
+      "expected_lines": [
+        "LVEF Biplane 64 %",
+        "LVEDV MOD BP 102 ml",
+        "LVESV MOD BP 37 ml",
+        "LVEF MOD A2C 62.09 %",
+        "SV MOD A2C 58.10 ml",
+        "1 LVLs A2C 6.07 cm",
+        "LVESV MOD A2C 35.48 ml"
+      ],
+      "predicted_lines": [
+        "EF Biplane 64 \u0667/\u0665",
+        "LVEDV MOD BP 102 ml",
+        "LVESV MOD BP 37 ml",
+        "62.09 % LVEF MOD A2C",
+        "SV MOD A2C 58.10 ml",
+        "LVLs A2C 6.07 cm",
+        "LVESV MOD A2C 35.48 m/"
+      ],
+      "uncertainty_count": 0,
+      "fallback_invocations": 0,
+      "engine_disagreements": 0,
+      "segmentation_line_count": 7,
+      "sequence_similarity": 0.9057971014492754,
+      "debug_images": [],
+      "exact": 3,
+      "label": 5,
+      "value": 5,
+      "unit": 4,
+      "prefix": 6
+    }
+  ]
+}

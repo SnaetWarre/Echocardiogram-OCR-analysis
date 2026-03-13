@@ -55,6 +55,7 @@ class LineSegmenter:
         line_padding_px: int = 2,
         merge_gap_px: int = 3,
         max_header_fraction: float = 0.45,
+        refine_split_min_height_px: int = 10,
     ) -> None:
         self.default_header_trim_px = max(0, int(default_header_trim_px))
         self.projection_threshold_ratio = max(0.001, float(projection_threshold_ratio))
@@ -62,6 +63,7 @@ class LineSegmenter:
         self.line_padding_px = max(0, int(line_padding_px))
         self.merge_gap_px = max(0, int(merge_gap_px))
         self.max_header_fraction = min(max(float(max_header_fraction), 0.0), 1.0)
+        self.refine_split_min_height_px = max(self.min_line_height_px * 2, int(refine_split_min_height_px))
 
     def segment(
         self,
@@ -104,13 +106,20 @@ class LineSegmenter:
                 )
             ]
 
+        initial_line_count = len(lines)
+        lines = self._refine_segmented_lines(gray, lines)
+
         return SegmentationResult(
             header_trim_px=header_trim_px,
             content_bbox=content_bbox,
             lines=tuple(lines),
             used_token_boxes=used_token_boxes,
             used_projection_fallback=used_projection_fallback,
-            debug={"line_count": len(lines), "header_trim_px": header_trim_px},
+            debug={
+                "line_count": len(lines),
+                "header_trim_px": header_trim_px,
+                "refined_line_splits": max(0, len(lines) - initial_line_count),
+            },
         )
 
     def detect_header_trim(self, roi: np.ndarray) -> int:
@@ -195,19 +204,27 @@ class LineSegmenter:
         if height <= 0 or width <= 0:
             return []
 
-        valid_boxes: list[tuple[int, int, int, int]] = []
+        raw_boxes: list[tuple[float, float, float, float]] = []
         for token in tokens:
             if token.bbox is None:
                 continue
-            x, y, w, h = token.bbox
-            valid_boxes.append(
-                (
-                    max(0, int(round(x))),
-                    max(0, int(round(y))),
-                    max(1, int(round(w))),
-                    max(1, int(round(h))),
-                )
-            )
+            x, y, a, b = token.bbox
+            raw_boxes.append((float(x), float(y), float(a), float(b)))
+
+        roi_height = height + max(0, int(header_trim_px))
+        bbox_format = self._infer_token_bbox_format(raw_boxes, roi_width=width, roi_height=roi_height)
+        valid_boxes: list[tuple[int, int, int, int]] = []
+        for raw_box in raw_boxes:
+            x, y, w, h = self._normalize_token_bbox(raw_box, bbox_format=bbox_format)
+            x1 = max(0, min(int(round(x)), width))
+            x2 = max(x1, min(int(round(x + w)), width))
+            full_y1 = int(round(y))
+            full_y2 = int(round(y + h))
+            y1 = max(0, min(full_y1 - header_trim_px, height))
+            y2 = max(y1, min(full_y2 - header_trim_px, height))
+            if x2 <= x1 or y2 <= y1:
+                continue
+            valid_boxes.append((x1, y1, x2 - x1, y2 - y1))
 
         if not valid_boxes:
             return []
@@ -237,10 +254,59 @@ class LineSegmenter:
                     order=order,
                     bbox=(x1, y1 + header_trim_px, max(1, x2 - x1), max(1, y2 - y1)),
                     component_boxes=tuple((x, y + header_trim_px, w, h) for x, y, w, h in row),
-                    metadata={"source": "token_boxes", "token_count": len(row)},
+                    metadata={"source": "token_boxes", "token_count": len(row), "token_bbox_format": bbox_format},
                 )
             )
         return lines
+
+    @staticmethod
+    def _normalize_token_bbox(
+        raw_box: tuple[float, float, float, float],
+        *,
+        bbox_format: str,
+    ) -> tuple[float, float, float, float]:
+        x, y, third, fourth = raw_box
+        if bbox_format == "xyxy":
+            return x, y, max(1.0, third - x), max(1.0, fourth - y)
+        return x, y, max(1.0, third), max(1.0, fourth)
+
+    def _infer_token_bbox_format(
+        self,
+        raw_boxes: Sequence[tuple[float, float, float, float]],
+        *,
+        roi_width: int,
+        roi_height: int,
+    ) -> str:
+        if not raw_boxes:
+            return "xywh"
+        xywh_score = self._token_bbox_score(raw_boxes, roi_width=roi_width, roi_height=roi_height, bbox_format="xywh")
+        xyxy_score = self._token_bbox_score(raw_boxes, roi_width=roi_width, roi_height=roi_height, bbox_format="xyxy")
+        return "xyxy" if xyxy_score + 1e-6 < xywh_score else "xywh"
+
+    def _token_bbox_score(
+        self,
+        raw_boxes: Sequence[tuple[float, float, float, float]],
+        *,
+        roi_width: int,
+        roi_height: int,
+        bbox_format: str,
+    ) -> float:
+        score = 0.0
+        for raw_box in raw_boxes:
+            x, y, w, h = self._normalize_token_bbox(raw_box, bbox_format=bbox_format)
+            if w <= 0 or h <= 0:
+                score += 1_000_000.0
+                continue
+            overflow_x = max(0.0, (x + w) - float(roi_width))
+            overflow_y = max(0.0, (y + h) - float(roi_height))
+            underflow_x = max(0.0, -x)
+            underflow_y = max(0.0, -y)
+            score += overflow_x + overflow_y + underflow_x + underflow_y
+            if w >= float(roi_width) * 0.98:
+                score += 10.0
+            if h >= float(roi_height) * 0.5:
+                score += 5.0
+        return score
 
     def _segment_from_projection(self, content: np.ndarray, *, header_trim_px: int) -> list[SegmentedLine]:
         if content.size == 0:
@@ -284,6 +350,156 @@ class LineSegmenter:
             )
 
         return lines
+
+    def _refine_segmented_lines(self, gray: np.ndarray, lines: list[SegmentedLine]) -> list[SegmentedLine]:
+        if not lines:
+            return []
+
+        original_count = len(lines)
+        heights = [line.bbox[3] for line in lines if line.bbox[3] > 0]
+        median_height = float(np.median(np.asarray(heights, dtype=np.float32))) if heights else 0.0
+        split_height_threshold = max(float(self.refine_split_min_height_px), median_height * 1.45)
+        refined: list[SegmentedLine] = []
+        for line in lines:
+            if float(line.bbox[3]) < split_height_threshold:
+                refined.append(line)
+                continue
+            split_lines = self._split_line_from_local_projection(
+                gray,
+                line,
+                reference_height_px=max(1.0, median_height),
+            )
+            refined.extend(split_lines)
+
+        if not refined:
+            refined = list(lines)
+
+        return [
+            SegmentedLine(
+                order=order,
+                bbox=line.bbox,
+                component_boxes=line.component_boxes,
+                metadata={
+                    **line.metadata,
+                    "refined_line_count": len(refined),
+                    "original_line_count": original_count,
+                },
+            )
+            for order, line in enumerate(refined)
+        ]
+
+    def _split_line_from_local_projection(
+        self,
+        gray: np.ndarray,
+        line: SegmentedLine,
+        *,
+        reference_height_px: float,
+    ) -> list[SegmentedLine]:
+        x, y, width, height = line.bbox
+        if width <= 0 or height < self.refine_split_min_height_px:
+            return [line]
+
+        y1 = max(0, y)
+        y2 = min(int(gray.shape[0]), y + height)
+        x1 = max(0, x)
+        x2 = min(int(gray.shape[1]), x + width)
+        if x1 >= x2 or y1 >= y2:
+            return [line]
+
+        crop = gray[y1:y2, x1:x2]
+        if crop.size == 0:
+            return [line]
+
+        mask = self._text_mask(crop)
+        row_density = mask.mean(axis=1) if mask.size else np.zeros(crop.shape[0], dtype=np.float32)
+        density_peak = float(row_density.max()) if row_density.size else 0.0
+        local_threshold = max(
+            self.projection_threshold_ratio,
+            min(0.22, density_peak * 0.45),
+            1.0 / max(1, int(crop.shape[1])),
+        )
+        active = row_density >= local_threshold
+        active = self._fill_short_row_gaps(active)
+        runs = [
+            (start, end)
+            for start, end in self._contiguous_runs(active)
+            if end - start + 1 >= self.min_line_height_px
+        ]
+        if len(runs) < 2:
+            return [line]
+        max_split_count = max(2, int(round(height / max(reference_height_px, 1.0))) + 1)
+        if len(runs) > max_split_count:
+            return [line]
+
+        boundaries: list[tuple[int, int]] = []
+        for index, (start, end) in enumerate(runs):
+            prev_end = runs[index - 1][1] if index > 0 else None
+            next_start = runs[index + 1][0] if index + 1 < len(runs) else None
+            top_pad = 0
+            if prev_end is None:
+                top_pad = min(self.line_padding_px, start)
+            else:
+                gap = max(0, start - prev_end - 1)
+                top_pad = min(self.line_padding_px, gap // 2)
+            bottom_pad = 0
+            if next_start is None:
+                bottom_pad = min(self.line_padding_px, max(0, crop.shape[0] - end - 1))
+            else:
+                gap = max(0, next_start - end - 1)
+                bottom_pad = min(self.line_padding_px, gap // 2)
+            band_top = max(0, start - top_pad)
+            band_bottom = min(int(crop.shape[0]), end + bottom_pad + 1)
+            boundaries.append((band_top, band_bottom))
+
+        split_lines: list[SegmentedLine] = []
+        for split_index, ((start, end), (band_top, band_bottom)) in enumerate(zip(runs, boundaries, strict=False)):
+            band = mask[band_top:band_bottom, :]
+            _ys, xs = np.where(band)
+            if xs.size == 0:
+                split_x1 = x1
+                split_x2 = x2
+            else:
+                split_x1 = max(0, x1 + int(xs.min()) - self.line_padding_px)
+                split_x2 = min(int(gray.shape[1]), x1 + int(xs.max()) + self.line_padding_px + 1)
+            split_y1 = max(0, y1 + band_top)
+            split_y2 = min(int(gray.shape[0]), y1 + band_bottom)
+            split_bbox = (split_x1, split_y1, max(1, split_x2 - split_x1), max(1, split_y2 - split_y1))
+            component_boxes = self._component_boxes_for_split(line.component_boxes, split_bbox)
+            split_lines.append(
+                SegmentedLine(
+                    order=line.order,
+                    bbox=split_bbox,
+                    component_boxes=component_boxes or (split_bbox,),
+                    metadata={
+                        **line.metadata,
+                        "refined_split": True,
+                        "refine_source": "local_projection",
+                        "refine_split_index": split_index,
+                        "refine_split_count": len(runs),
+                        "token_count": len(component_boxes or (split_bbox,)),
+                    },
+                )
+            )
+
+        return split_lines or [line]
+
+    @staticmethod
+    def _component_boxes_for_split(
+        component_boxes: tuple[tuple[int, int, int, int], ...],
+        split_bbox: tuple[int, int, int, int],
+    ) -> tuple[tuple[int, int, int, int], ...]:
+        if not component_boxes:
+            return ()
+
+        _sx, sy, _sw, sh = split_bbox
+        split_top = sy
+        split_bottom = sy + sh
+        selected = tuple(
+            box
+            for box in component_boxes
+            if max(split_top, box[1]) < min(split_bottom, box[1] + box[3])
+        )
+        return selected
 
     def _text_mask(self, image: np.ndarray) -> np.ndarray:
         gray = _to_gray(image)

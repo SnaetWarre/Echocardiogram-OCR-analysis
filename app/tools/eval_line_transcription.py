@@ -4,8 +4,11 @@ import argparse
 import json
 import sys
 from dataclasses import dataclass, field
+from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any
+
+import numpy as np
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
@@ -13,6 +16,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from app.pipeline.echo_ocr_pipeline import EchoOcrPipeline  # noqa: E402
 from app.pipeline.ai_pipeline import PipelineConfig  # noqa: E402
+from app.pipeline.line_segmenter import SegmentationResult  # noqa: E402
 from app.pipeline.measurement_decoder import parse_measurement_line  # noqa: E402
 from app.tools.echo_ocr_eval_labels import (  # noqa: E402
     DEFAULT_LABELS_PATH,
@@ -22,6 +26,10 @@ from app.tools.echo_ocr_eval_labels import (  # noqa: E402
 
 
 def _empty_file_reports() -> list[dict[str, Any]]:
+    return []
+
+
+def _empty_hard_cases() -> list[dict[str, Any]]:
     return []
 
 
@@ -41,6 +49,7 @@ class LineMetricTotals:
     line_segmentation_failures: int = 0
     ocr_predictions: int = 0
     file_reports: list[dict[str, Any]] = field(default_factory=_empty_file_reports)
+    hard_cases: list[dict[str, Any]] = field(default_factory=_empty_hard_cases)
 
 
 def _match_count(predicted_lines: list[str], expected_lines: list[str]) -> dict[str, int]:
@@ -91,12 +100,32 @@ def _match_count(predicted_lines: list[str], expected_lines: list[str]) -> dict[
     }
 
 
+def _sequence_similarity(expected_lines: list[str], predicted_lines: list[str]) -> float:
+    return SequenceMatcher(None, "\n".join(expected_lines), "\n".join(predicted_lines)).ratio()
+
+
+def _save_segmentation_debug_image(
+    *,
+    pipeline: EchoOcrPipeline,
+    frame: np.ndarray,
+    segmentation: SegmentationResult,
+    output_path: Path,
+) -> str | None:
+    try:
+        pipeline.save_segmentation_debug_image(frame, segmentation, output_path)
+    except Exception:
+        return None
+    return str(output_path)
+
+
 def evaluate_line_transcription(
     labels: list[LabeledFile],
     *,
     engine_name: str,
     fallback_engine_name: str = "",
     max_files: int | None = None,
+    debug_dir: Path | None = None,
+    hard_case_limit: int = 0,
 ) -> LineMetricTotals:
     totals = LineMetricTotals()
     pipeline = EchoOcrPipeline(
@@ -128,6 +157,8 @@ def evaluate_line_transcription(
         file_fallback_invocations = 0
         file_engine_disagreements = 0
         roi_detected = False
+        segmentation_line_count = 0
+        saved_debug_images: list[str] = []
 
         for frame_index in range(series.frame_count):
             frame = series.get_frame(frame_index)
@@ -135,12 +166,11 @@ def evaluate_line_transcription(
             if not detection.present or detection.bbox is None:
                 continue
             roi_detected = True
-            ocr, panel, _measurements, _bbox = pipeline.analyze_frame(frame)
-            if ocr is None:
-                continue
+            detection, segmentation, ocr, panel, _measurements, _bbox = pipeline.analyze_frame_with_debug(frame)
             if not panel.lines:
                 totals.line_segmentation_failures += 1
                 continue
+            segmentation_line_count += len(segmentation.lines)
             file_predicted_lines.extend(line.text for line in panel.lines if line.text)
             file_uncertainty_count += panel.uncertain_line_count
             file_fallback_invocations += panel.fallback_invocations
@@ -155,24 +185,49 @@ def evaluate_line_transcription(
         totals.engine_disagreements += file_engine_disagreements
 
         matches = _match_count(file_predicted_lines, expected_lines)
+        similarity = _sequence_similarity(expected_lines, file_predicted_lines)
         totals.exact_line_matches += matches["exact"]
         totals.label_matches += matches["label"]
         totals.value_matches += matches["value"]
         totals.unit_matches += matches["unit"]
         totals.prefix_matches += matches["prefix"]
-        totals.file_reports.append(
-            {
-                "file_name": labeled_file.file_name,
-                "file_path": str(labeled_file.path),
-                "split": labeled_file.split,
-                "expected_lines": expected_lines,
-                "predicted_lines": file_predicted_lines,
-                "uncertainty_count": file_uncertainty_count,
-                "fallback_invocations": file_fallback_invocations,
-                "engine_disagreements": file_engine_disagreements,
-                **matches,
-            }
-        )
+        file_report = {
+            "file_name": labeled_file.file_name,
+            "file_path": str(labeled_file.path),
+            "split": labeled_file.split,
+            "expected_lines": expected_lines,
+            "predicted_lines": file_predicted_lines,
+            "uncertainty_count": file_uncertainty_count,
+            "fallback_invocations": file_fallback_invocations,
+            "engine_disagreements": file_engine_disagreements,
+            "segmentation_line_count": segmentation_line_count,
+            "sequence_similarity": similarity,
+            "debug_images": saved_debug_images,
+            **matches,
+        }
+        totals.file_reports.append(file_report)
+
+        is_hard_case = matches["exact"] < len(expected_lines) or len(file_predicted_lines) != len(expected_lines)
+        if is_hard_case and debug_dir is not None and (hard_case_limit <= 0 or len(totals.hard_cases) < hard_case_limit):
+            try:
+                frame = series.get_frame(0)
+                detection, segmentation, _ocr, _panel, _measurements, _bbox = pipeline.analyze_frame_with_debug(frame)
+                if detection.present and detection.bbox is not None:
+                    x, y, bw, bh = detection.bbox
+                    roi = frame[y : y + bh, x : x + bw]
+                    debug_path = debug_dir / f"{labeled_file.file_name}__frame_000_segmentation.png"
+                    saved_path = _save_segmentation_debug_image(
+                        pipeline=pipeline,
+                        frame=roi,
+                        segmentation=segmentation,
+                        output_path=debug_path,
+                    )
+                    if saved_path:
+                        saved_debug_images.append(saved_path)
+                        file_report["debug_images"] = saved_debug_images
+            except Exception:
+                pass
+            totals.hard_cases.append(file_report)
 
     return totals
 
@@ -202,6 +257,8 @@ def main() -> None:
     parser.add_argument("--fallback-engine", default="", help="Fallback OCR engine")
     parser.add_argument("--max-files", type=int, default=0, help="Optional file limit for quick runs")
     parser.add_argument("--output", default="", help="Optional JSON output path")
+    parser.add_argument("--debug-dir", default="", help="Optional directory for segmentation debug images")
+    parser.add_argument("--hard-case-limit", type=int, default=0, help="Optional maximum number of hard-case debug exports; 0 means no limit")
     args = parser.parse_args()
 
     split_filter = {item.strip().lower() for item in args.split.split(",") if item.strip()}
@@ -211,6 +268,8 @@ def main() -> None:
         engine_name=args.engine,
         fallback_engine_name=args.fallback_engine,
         max_files=args.max_files or None,
+        debug_dir=Path(args.debug_dir) if args.debug_dir else None,
+        hard_case_limit=args.hard_case_limit,
     )
     summary = {
         "total_files": totals.total_files,
@@ -233,7 +292,7 @@ def main() -> None:
         output_path = Path(args.output)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(
-            json.dumps({**summary, "file_reports": totals.file_reports}, indent=2, ensure_ascii=True) + "\n",
+            json.dumps({**summary, "file_reports": totals.file_reports, "hard_cases": totals.hard_cases}, indent=2, ensure_ascii=True) + "\n",
             encoding="utf-8",
         )
 

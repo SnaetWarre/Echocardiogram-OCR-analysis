@@ -326,7 +326,33 @@ class EchoOcrPipeline(BasePipeline):
         frame: np.ndarray,
     ) -> tuple[OcrResult | None, PanelTranscription, list[AiMeasurement], tuple[int, int, int, int] | None]:
         self._ensure_components()
-        return self._extract_measurements_for_frame(frame, self.box_detector.detect(frame))
+        _detection, _segmentation, ocr, panel, measurements, bbox = self._analyze_frame_detection(
+            frame,
+            self.box_detector.detect(frame),
+        )
+        return ocr, panel, measurements, bbox
+
+    def analyze_frame_with_debug(
+        self,
+        frame: np.ndarray,
+    ) -> tuple[
+        RoiDetection,
+        SegmentationResult,
+        OcrResult | None,
+        PanelTranscription,
+        list[AiMeasurement],
+        tuple[int, int, int, int] | None,
+    ]:
+        self._ensure_components()
+        return self._analyze_frame_detection(frame, self.box_detector.detect(frame))
+
+    def save_segmentation_debug_image(
+        self,
+        roi: np.ndarray,
+        segmentation: SegmentationResult,
+        output_path: Path,
+    ) -> Path:
+        return self._line_segmenter.save_debug_image(roi, segmentation, output_path)
 
     def _extract_records(
         self,
@@ -384,8 +410,26 @@ class EchoOcrPipeline(BasePipeline):
         frame: np.ndarray,
         detection: RoiDetection,
     ) -> tuple[OcrResult | None, PanelTranscription, list[AiMeasurement], tuple[int, int, int, int] | None]:
+        _detection, _segmentation, ocr, panel, measurements, bbox = self._analyze_frame_detection(
+            frame,
+            detection,
+        )
+        return ocr, panel, measurements, bbox
+
+    def _analyze_frame_detection(
+        self,
+        frame: np.ndarray,
+        detection: RoiDetection,
+    ) -> tuple[
+        RoiDetection,
+        SegmentationResult,
+        OcrResult | None,
+        PanelTranscription,
+        list[AiMeasurement],
+        tuple[int, int, int, int] | None,
+    ]:
         if not detection.present or detection.bbox is None:
-            return None, PanelTranscription(), [], None
+            return detection, SegmentationResult(header_trim_px=0, content_bbox=None, lines=()), None, PanelTranscription(), [], None
         x, y, bw, bh = detection.bbox
         roi = frame[y : y + bh, x : x + bw]
         primary_engine = self.ocr_engine.primary if isinstance(self.ocr_engine, RoutedOcrEngine) else self.ocr_engine
@@ -410,9 +454,9 @@ class EchoOcrPipeline(BasePipeline):
             fallback = self.parser.parse(ocr.text, confidence=ocr.confidence)
             measurements = self._attach_line_sources(fallback, panel)
         if not measurements:
-            return None, panel, [], None
+            return detection, segmentation, None, panel, [], None
         self._maybe_write_segmentation_debug(roi, detection, segmentation, panel)
-        return ocr, panel, measurements, detection.bbox
+        return detection, segmentation, ocr, panel, measurements, detection.bbox
 
     def _to_ai_result(self, records: list[MeasurementRecord]) -> AiResult:
         seen: dict[tuple[str, str, str], tuple[AiMeasurement, MeasurementRecord]] = {}
