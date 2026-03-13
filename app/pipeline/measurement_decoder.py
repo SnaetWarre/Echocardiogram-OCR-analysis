@@ -26,20 +26,58 @@ _KNOWN_UNIT_ALIASES = {
     "mis": "m/s",
     "mls": "m/s",
     "m1s": "m/s",
+    "m/": "m/s",
+    "mmha": "mmHg",
     "mhg": "mmHg",
     "mmhg": "mmHg",
+    "em": "cm",
 }
+_UNIT_TOKEN_PATTERN = "|".join(
+    re.escape(token)
+    for token in sorted({*KNOWN_UNITS, *_KNOWN_UNIT_ALIASES.keys()}, key=len, reverse=True)
+)
+_TEXT_TRANSLATION = str.maketrans(
+    {
+        "’": "'",
+        "‘": "'",
+        "`": "'",
+        "´": "'",
+        "“": '"',
+        "”": '"',
+        "–": "-",
+        "—": "-",
+        "−": "-",
+        "•": " ",
+        "·": " ",
+        "→": " ",
+        "~": " ",
+        "¥": "V",
+        "¢": "c",
+    }
+)
 _LATEX_NOISE_RE = re.compile(r"\\(?:text|mathrm)\{([^}]*)\}")
 _LATEX_SPACING_RE = re.compile(r"\\[,;! ]")
 _COMPACT_VALUE_UNIT_RE = re.compile(
-    r"(?P<value>[-+]?\d+(?:[.,]\d+)?)(?P<unit>%|mmHg|ml/m2|m/s2|cm2|cm/s|m/s|bpm|cm|mm|ms|ml|s)\b",
+    rf"(?P<value>[-+]?\d+(?:[.,]\d+)?)(?P<unit>{_UNIT_TOKEN_PATTERN})(?=\s|$)",
     flags=re.IGNORECASE,
 )
 _VALUE_RE = re.compile(r"[-+]?\d+(?:[.,]\d+)?")
 _PREFIX_RE = re.compile(r"^(?P<prefix>\d{1,2})\s+(?P<body>.+)$")
 _VALUE_ONLY_RE = re.compile(
-    r"^(?P<value>[-+]?\d+(?:[.,]\d+)?)\s*(?P<unit>%|mmHg|ml/m2|m/s2|cm2|cm/s|m/s|bpm|cm|mm|ms|ml|s|mis|m1s|mls)?$",
+    rf"^(?P<value>[-+]?\d+(?:[.,]\d+)?)\s*(?P<unit>{_UNIT_TOKEN_PATTERN})?$",
     flags=re.IGNORECASE,
+)
+_LABEL_REPAIRS = (
+    (re.compile(r"\bL[YV]IDd\b", flags=re.IGNORECASE), "LVIDd"),
+    (re.compile(r"\bL[YV]P(?:W|VW)d\b", flags=re.IGNORECASE), "LVPWd"),
+    (re.compile(r"\bI[VY]Sd\b", flags=re.IGNORECASE), "IVSd"),
+    (re.compile(r"\bL[YV]OT\b", flags=re.IGNORECASE), "LVOT"),
+    (re.compile(r"\bA[o0]\b", flags=re.IGNORECASE), "Ao"),
+    (re.compile(r"\bA20\b", flags=re.IGNORECASE), "A2C"),
+    (re.compile(r"\bA40\b", flags=re.IGNORECASE), "A4C"),
+    (re.compile(r"\b1E['’]?\b", flags=re.IGNORECASE), "1 E'"),
+    (re.compile(r"\bE['’]?\s*Lat\b", flags=re.IGNORECASE), "E' Lat"),
+    (re.compile(r"\bE['’]?\s*Sept\b", flags=re.IGNORECASE), "E' Sept"),
 )
 
 
@@ -71,13 +109,33 @@ def normalize_unit(unit: str | None) -> str | None:
 
 def canonicalize_exact_line(text: str) -> str:
     line = _LATEX_NOISE_RE.sub(r"\1", text or "")
+    line = line.translate(_TEXT_TRANSLATION)
     line = _LATEX_SPACING_RE.sub(" ", line)
     line = line.replace("{", " ").replace("}", " ")
     line = line.replace("\\%", " %")
     line = line.replace("\\,", " ")
     line = line.replace("|", " ")
+    line = re.sub(r"^(\d{1,2})(?=[A-Za-z'])", r"\1 ", line)
     line = _COMPACT_VALUE_UNIT_RE.sub(r"\g<value> \g<unit>", line)
-    return normalize_space(line)
+    line = normalize_space(line)
+    for pattern, replacement in _LABEL_REPAIRS:
+        line = pattern.sub(replacement, line)
+    parts = line.split()
+    if parts:
+        normalized_parts = [normalize_unit(part) or part for part in parts]
+        line = " ".join(normalized_parts)
+    line = normalize_space(line)
+    return "" if _looks_like_symbol_junk(line) else line
+
+
+def _looks_like_symbol_junk(text: str) -> bool:
+    if not text:
+        return True
+    alnum_count = sum(1 for char in text if char.isalnum())
+    punctuation_count = sum(1 for char in text if not char.isalnum() and not char.isspace())
+    if alnum_count <= 1:
+        return True
+    return punctuation_count >= max(4, alnum_count * 2)
 
 
 def label_family_key(label: str | None) -> str:

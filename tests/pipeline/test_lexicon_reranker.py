@@ -37,7 +37,7 @@ def test_lexicon_reranker_prefers_known_label_family() -> None:
         line_order=0,
     )
 
-    assert ranked[0].candidate.text == "1 IVSd 0.9 cm"
+    assert ranked[0].candidate.text == "1 IVSd 0.9 em"
 
 
 def test_lexicon_reranker_updates_panel_with_best_candidate() -> None:

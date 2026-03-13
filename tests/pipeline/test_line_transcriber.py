@@ -147,3 +147,30 @@ def test_line_transcriber_triggers_fallback_for_junky_primary_candidate() -> Non
     assert fallback.calls >= 1
     assert result.fallback_invocations == 1
     assert result.lines[0].text == "1 E' Lat 0.09 m/s"
+
+
+def test_line_transcriber_keeps_repaired_primary_candidate_without_fallback() -> None:
+    roi = np.zeros((20, 40), dtype=np.uint8)
+    segmentation = SegmentationResult(
+        header_trim_px=0,
+        content_bbox=(0, 0, 40, 20),
+        lines=(
+            SegmentedLine(order=0, bbox=(0, 0, 40, 20), metadata={"token_count": 1}),
+        ),
+    )
+    primary = _RecordingEngine([("L¥IDd 5.0 em", 0.95), ("LVIDd 5.0 cm", 0.94)], name="primary")
+    fallback = _RecordingEngine([("fallback text", 0.8)], name="fallback")
+
+    result = LineTranscriber(
+        uncertain_threshold=0.7,
+        fallback_quality_threshold=0.72,
+        preprocess_views={"default": lambda image: image, "clahe": lambda image: image},
+    ).transcribe(
+        roi,
+        segmentation,
+        primary_engine=primary,
+        fallback_engine=fallback,
+    )
+
+    assert fallback.calls == 0
+    assert result.lines[0].text == "LVIDd 5.0 cm"

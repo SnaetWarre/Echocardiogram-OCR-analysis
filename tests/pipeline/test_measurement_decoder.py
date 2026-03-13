@@ -32,3 +32,22 @@ def test_parse_measurement_line_preserves_unknown_label_without_value() -> None:
 
 def test_line_pattern_converts_numeric_parts_to_generic_tokens() -> None:
     assert line_pattern("3 AV Vmax 1.8 m/s") == "<PREFIX> av vmax <VALUE> <UNIT:m/s>"
+
+
+def test_canonicalize_exact_line_repairs_common_ocr_label_near_misses() -> None:
+    assert canonicalize_exact_line("L¥IDd 5.0 em") == "LVIDd 5.0 cm"
+    assert canonicalize_exact_line("1E' Lat 0.09 m/") == "1 E' Lat 0.09 m/s"
+    assert canonicalize_exact_line("L¥P¥Wd i1.1em") == "LVPWd i1.1 cm"
+
+
+def test_canonicalize_exact_line_suppresses_symbol_heavy_junk() -> None:
+    assert canonicalize_exact_line("--- - . . _ __ -") == ""
+
+
+def test_parse_measurement_line_uses_repaired_label_and_unit_aliases() -> None:
+    decoded = parse_measurement_line("1E' Lat 0.09 m/")
+
+    assert decoded.prefix == "1"
+    assert decoded.label == "E' Lat"
+    assert decoded.value == "0.09"
+    assert decoded.unit == "m/s"

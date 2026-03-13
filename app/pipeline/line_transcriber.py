@@ -180,12 +180,13 @@ class LineTranscriber:
                     disagreement_count += 1
 
             chosen = max(candidates, key=self._candidate_rank_key)
-            uncertain = self._candidate_quality(chosen) < self.uncertain_threshold or not chosen.text.strip()
+            chosen_text = canonicalize_exact_line(chosen.text)
+            uncertain = self._candidate_quality(chosen) < self.uncertain_threshold or not chosen_text.strip()
             predictions.append(
                 LinePrediction(
                     order=segment.order,
                     bbox=segment.bbox,
-                    text=chosen.text,
+                    text=chosen_text,
                     confidence=chosen.confidence,
                     engine_name=chosen.engine_name,
                     source=chosen.source,
