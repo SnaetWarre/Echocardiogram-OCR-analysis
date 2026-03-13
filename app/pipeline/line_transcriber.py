@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
@@ -104,7 +105,7 @@ class LineTranscriber:
         disagreement_count = 0
         view_items = list(self.preprocess_views.items()) or [("default", lambda image: image)]
         default_view_name, default_preprocessor = view_items[0]
-        fallback_views = view_items[1:]
+        alternate_views = view_items[1:]
 
         for segment in segmentation.lines:
             raw_crop = crop_segment(roi_image, segment)
@@ -120,8 +121,29 @@ class LineTranscriber:
                 metadata={"segment_order": segment.order, "view": default_view_name},
             )
             candidates = [primary_candidate]
+            should_try_extra_views = self._should_try_additional_views(segment, primary_candidate)
 
-            needs_fallback = primary_candidate.confidence < self.uncertain_threshold or not primary_candidate.text
+            if should_try_extra_views:
+                for view_name, preprocessor in alternate_views:
+                    primary_view_result = primary_engine.extract(preprocessor(raw_crop))
+                    candidates.append(
+                        _candidate_from_result(
+                            result=primary_view_result,
+                            source="primary_multiview",
+                            view_name=view_name,
+                            metadata={"segment_order": segment.order, "view": view_name},
+                        )
+                    )
+
+            best_primary_candidate = max(
+                candidates,
+                key=lambda item: (item.confidence, len(item.text.strip()), item.view_name == default_view_name),
+            )
+            needs_fallback = (
+                best_primary_candidate.confidence < self.uncertain_threshold
+                or not best_primary_candidate.text
+                or self._has_view_disagreement(candidates)
+            )
             if fallback_engine is not None and needs_fallback:
                 fallback_crop = default_preprocessor(raw_crop)
                 fallback_result = fallback_engine.extract(fallback_crop)
@@ -136,16 +158,17 @@ class LineTranscriber:
                 if _normalize_for_similarity(primary_candidate.text) != _normalize_for_similarity(fallback_candidate.text):
                     disagreement_count += 1
 
-                for view_name, preprocessor in fallback_views:
-                    fallback_view_result = fallback_engine.extract(preprocessor(raw_crop))
-                    candidates.append(
-                        _candidate_from_result(
-                            result=fallback_view_result,
-                            source="fallback_multiview",
-                            view_name=view_name,
-                            metadata={"segment_order": segment.order, "view": view_name},
+                if should_try_extra_views:
+                    for view_name, preprocessor in alternate_views:
+                        fallback_view_result = fallback_engine.extract(preprocessor(raw_crop))
+                        candidates.append(
+                            _candidate_from_result(
+                                result=fallback_view_result,
+                                source="fallback_multiview",
+                                view_name=view_name,
+                                metadata={"segment_order": segment.order, "view": view_name},
+                            )
                         )
-                    )
 
             chosen = max(
                 candidates,
@@ -165,6 +188,7 @@ class LineTranscriber:
                     metadata={
                         "segmentation_source": segment.metadata.get("source"),
                         "token_count": segment.metadata.get("token_count", 0),
+                        "candidate_count": len(candidates),
                     },
                 )
             )
@@ -179,6 +203,34 @@ class LineTranscriber:
             fallback_invocations=fallback_invocations,
             engine_disagreement_count=disagreement_count,
         )
+
+    def _should_try_additional_views(self, segment: SegmentedLine, primary_candidate: LineOcrCandidate) -> bool:
+        token_count = int(segment.metadata.get("token_count", 0) or 0)
+        if bool(segment.metadata.get("refined_split")):
+            return True
+        if token_count <= 1:
+            return True
+        lines = [line.strip() for line in primary_candidate.text.splitlines() if line.strip()]
+        if len(lines) >= 3:
+            return True
+        if len(lines) == 2 and self._is_value_before_label(lines[0], lines[1]):
+            return True
+        return False
+
+    def _has_view_disagreement(self, candidates: list[LineOcrCandidate]) -> bool:
+        normalized = {
+            _normalize_for_similarity(candidate.text)
+            for candidate in candidates
+            if candidate.text.strip()
+        }
+        return len(normalized) > 1
+
+    @staticmethod
+    def _is_value_before_label(first_line: str, second_line: str) -> bool:
+        first_has_letters = bool(re.search(r"[A-Za-z]", first_line))
+        second_has_letters = bool(re.search(r"[A-Za-z]", second_line))
+        first_starts_value = bool(re.match(r"^[^A-Za-z]*[-+]?\d", first_line.strip()))
+        return first_starts_value and second_has_letters and not first_has_letters
 
 
 def _normalize_for_similarity(text: str) -> str:

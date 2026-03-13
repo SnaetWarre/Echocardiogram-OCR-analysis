@@ -2,26 +2,26 @@
   "total_files": 43,
   "total_labels": 101,
   "ocr_predictions": 100,
-  "exact_line_matches": 16,
-  "label_matches": 34,
-  "value_matches": 36,
-  "unit_matches": 35,
-  "prefix_matches": 56,
-  "uncertainty_count": 17,
-  "fallback_invocations": 1,
-  "engine_disagreements": 1,
+  "exact_line_matches": 31,
+  "label_matches": 52,
+  "value_matches": 57,
+  "unit_matches": 59,
+  "prefix_matches": 63,
+  "uncertainty_count": 6,
+  "fallback_invocations": 61,
+  "engine_disagreements": 59,
   "roi_detection_failures": 1,
   "line_segmentation_failures": 0,
-  "exact_line_match_rate": 0.15841584158415842,
-  "label_match_rate": 0.33663366336633666,
-  "value_match_rate": 0.3564356435643564,
-  "unit_match_rate": 0.3465346534653465,
-  "prefix_match_rate": 0.5544554455445545,
-  "uncertainty_rate": 0.17,
-  "fallback_invocation_rate": 0.01,
+  "exact_line_match_rate": 0.3069306930693069,
+  "label_match_rate": 0.5148514851485149,
+  "value_match_rate": 0.5643564356435643,
+  "unit_match_rate": 0.5841584158415841,
+  "prefix_match_rate": 0.6237623762376238,
+  "uncertainty_rate": 0.06,
+  "fallback_invocation_rate": 0.61,
   "roi_detection_failure_rate": 0.023255813953488372,
   "line_segmentation_failure_rate": 0.0,
-  "engine_disagreement_rate": 0.01,
+  "engine_disagreement_rate": 0.59,
   "file_reports": [
     {
       "file_name": "92290733_0003.dcm",
@@ -34,14 +34,14 @@
       ],
       "predicted_lines": [
         "--- - . . _ __ -",
-        "u - \u041f",
+        "KET\u00dcEM",
         "\u2022"
       ],
       "uncertainty_count": 2,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 2,
+      "engine_disagreements": 2,
       "segmentation_line_count": 3,
-      "sequence_similarity": 0.25396825396825395,
+      "sequence_similarity": 0.1875,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/92290733_0003.dcm__frame_000_segmentation.png"
       ],
@@ -62,23 +62,23 @@
         "%FS 16 %"
       ],
       "predicted_lines": [
-        "cm \\mathbf U _ i \\mathbf U _ j . . .",
-        "4) \u041c \u0661,",
-        "0.00 7, eichi -",
-        "[0] \u0438 _ \u041f n)"
+        "Diam 447 CIA",
+        "T\u06f1 M - 1 911",
+        "EF(Teich) 34%",
+        "-1,6,00,00,00,00,00,00,00,00 ___ -- -K ~ 31 18"
       ],
-      "uncertainty_count": 3,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "uncertainty_count": 0,
+      "fallback_invocations": 4,
+      "engine_disagreements": 4,
       "segmentation_line_count": 4,
-      "sequence_similarity": 0.23255813953488372,
+      "sequence_similarity": 0.36619718309859156,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/92290733_0004.dcm__frame_000_segmentation.png"
       ],
       "exact": 0,
       "label": 0,
-      "value": 0,
-      "unit": 0,
+      "value": 1,
+      "unit": 1,
       "prefix": 2
     },
     {
@@ -89,19 +89,19 @@
         "1 LVOT Diam 2.0 cm"
       ],
       "predicted_lines": [
-        "EV/ Diam /4\u0133 cm"
+        "LVOT Diam 2.0~cm"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 1,
+      "engine_disagreements": 1,
       "segmentation_line_count": 1,
-      "sequence_similarity": 0.6060606060606061,
+      "sequence_similarity": 0.8823529411764706,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/92290733_0007.dcm__frame_000_segmentation.png"
       ],
       "exact": 0,
-      "label": 0,
-      "value": 0,
+      "label": 1,
+      "value": 1,
       "unit": 0,
       "prefix": 0
     },
@@ -116,8 +116,8 @@
         "1 Ao asc 3.0 cm"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 1,
+      "engine_disagreements": 1,
       "segmentation_line_count": 1,
       "sequence_similarity": 1.0,
       "debug_images": [],
@@ -135,21 +135,19 @@
         "1 Ao Diam 3.1 cm"
       ],
       "predicted_lines": [
-        "Ao Diam cm - J. I"
+        "1 Ao Diam 3.1 cm"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 1,
+      "engine_disagreements": 1,
       "segmentation_line_count": 1,
-      "sequence_similarity": 0.6060606060606061,
-      "debug_images": [
-        "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/92290733_0010.dcm__frame_000_segmentation.png"
-      ],
-      "exact": 0,
-      "label": 0,
-      "value": 0,
-      "unit": 0,
-      "prefix": 0
+      "sequence_similarity": 1.0,
+      "debug_images": [],
+      "exact": 1,
+      "label": 1,
+      "value": 1,
+      "unit": 1,
+      "prefix": 1
     },
     {
       "file_name": "92290733_0014.dcm",
@@ -160,21 +158,21 @@
         "TR maxPG 47 mmHg"
       ],
       "predicted_lines": [
-        "TR Vmax 4 m/s 3.1",
-        "TR maxPG 47 mmHa"
+        "Vmax 3.4 m/s \\sf LK",
+        "TR maxPG 47 mmHg"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 2,
+      "engine_disagreements": 2,
       "segmentation_line_count": 2,
-      "sequence_similarity": 0.8529411764705882,
+      "sequence_similarity": 0.8285714285714286,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/92290733_0014.dcm__frame_000_segmentation.png"
       ],
-      "exact": 0,
+      "exact": 1,
       "label": 1,
-      "value": 1,
-      "unit": 0,
+      "value": 2,
+      "unit": 1,
       "prefix": 1
     },
     {
@@ -187,20 +185,20 @@
       ],
       "predicted_lines": [
         "rk vmax 4.7 m/s",
-        "TR maxPG 29 mmHa ___"
+        "TR maxPG 29 mmHg"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 1,
+      "engine_disagreements": 1,
       "segmentation_line_count": 2,
-      "sequence_similarity": 0.7714285714285715,
+      "sequence_similarity": 0.8484848484848485,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/92290733_0019.dcm__frame_000_segmentation.png"
       ],
-      "exact": 0,
+      "exact": 1,
       "label": 1,
       "value": 1,
-      "unit": 1,
+      "unit": 2,
       "prefix": 1
     },
     {
@@ -213,21 +211,21 @@
       ],
       "predicted_lines": [
         "2 RA LENGTH 4017",
-        "4=1(6) \u0627\u0644\u0648\u0637\u0627 6.0 -- cm . ."
+        "1 LA LENGTH 6.0 cm"
       ],
-      "uncertainty_count": 1,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "uncertainty_count": 0,
+      "fallback_invocations": 2,
+      "engine_disagreements": 2,
       "segmentation_line_count": 2,
-      "sequence_similarity": 0.525,
+      "sequence_similarity": 0.8888888888888888,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/92290733_0030.dcm__frame_000_segmentation.png"
       ],
-      "exact": 0,
-      "label": 1,
-      "value": 0,
-      "unit": 0,
-      "prefix": 1
+      "exact": 1,
+      "label": 2,
+      "value": 1,
+      "unit": 1,
+      "prefix": 2
     },
     {
       "file_name": "92290733_0032.dcm",
@@ -240,8 +238,8 @@
         "0.06 m/ \u00a327"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 1,
+      "engine_disagreements": 1,
       "segmentation_line_count": 1,
       "sequence_similarity": 0.5,
       "debug_images": [
@@ -261,20 +259,20 @@
         "1 E' Sept 0.06 m/s"
       ],
       "predicted_lines": [
-        "0.06 m/s Ser"
+        "1E\u2019 Sept 0.06 m/s"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 1,
+      "engine_disagreements": 1,
       "segmentation_line_count": 1,
-      "sequence_similarity": 0.5333333333333333,
+      "sequence_similarity": 0.9142857142857143,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/92290733_0033.dcm__frame_000_segmentation.png"
       ],
       "exact": 0,
       "label": 0,
-      "value": 0,
-      "unit": 0,
+      "value": 1,
+      "unit": 1,
       "prefix": 0
     },
     {
@@ -296,8 +294,8 @@
         "MV E/A Ratio"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 2,
+      "engine_disagreements": 2,
       "segmentation_line_count": 5,
       "sequence_similarity": 0.6256983240223464,
       "debug_images": [
@@ -341,19 +339,19 @@
         "1 LVOT Diam 2.0 cm"
       ],
       "predicted_lines": [
-        "EV/ Diam /4\u0133 cm"
+        "LVOT Diam 2.0~cm"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 1,
+      "engine_disagreements": 1,
       "segmentation_line_count": 1,
-      "sequence_similarity": 0.6060606060606061,
+      "sequence_similarity": 0.8823529411764706,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0012.dcm__frame_000_segmentation.png"
       ],
       "exact": 0,
-      "label": 0,
-      "value": 0,
+      "label": 1,
+      "value": 1,
       "unit": 0,
       "prefix": 0
     },
@@ -365,20 +363,20 @@
         "1 LA Diam 4.0 cm"
       ],
       "predicted_lines": [
-        "Diam cm"
+        "7 LA Diam 4.0 cm"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 1,
+      "engine_disagreements": 1,
       "segmentation_line_count": 1,
-      "sequence_similarity": 0.6086956521739131,
+      "sequence_similarity": 0.9375,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0013.dcm__frame_000_segmentation.png"
       ],
       "exact": 0,
-      "label": 0,
-      "value": 0,
-      "unit": 0,
+      "label": 1,
+      "value": 1,
+      "unit": 1,
       "prefix": 0
     },
     {
@@ -392,8 +390,8 @@
         "1 Ao asc 3.2 cm"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 1,
+      "engine_disagreements": 1,
       "segmentation_line_count": 1,
       "sequence_similarity": 1.0,
       "debug_images": [],
@@ -441,21 +439,21 @@
         "%FS 34 %"
       ],
       "predicted_lines": [
-        "- - \u2022 . . \u0131",
-        "NT/ eich 02 % _"
+        "SECTION",
+        "EF(Teich) 62%"
       ],
-      "uncertainty_count": 2,
-      "fallback_invocations": 1,
-      "engine_disagreements": 1,
+      "uncertainty_count": 1,
+      "fallback_invocations": 3,
+      "engine_disagreements": 3,
       "segmentation_line_count": 3,
-      "sequence_similarity": 0.45454545454545453,
+      "sequence_similarity": 0.5,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0017.dcm__frame_000_segmentation.png"
       ],
       "exact": 0,
       "label": 0,
-      "value": 0,
-      "unit": 0,
+      "value": 1,
+      "unit": 1,
       "prefix": 1
     },
     {
@@ -468,21 +466,21 @@
       ],
       "predicted_lines": [
         "TR Vmax 1.9 m/s/",
-        "14 mmHa TR maxPG"
+        "TR maxPG 14 mmHg"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 1,
+      "engine_disagreements": 1,
       "segmentation_line_count": 2,
-      "sequence_similarity": 0.7164179104477612,
+      "sequence_similarity": 0.9552238805970149,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0021.dcm__frame_000_segmentation.png"
       ],
-      "exact": 0,
-      "label": 1,
-      "value": 1,
-      "unit": 0,
-      "prefix": 0
+      "exact": 1,
+      "label": 2,
+      "value": 2,
+      "unit": 1,
+      "prefix": 1
     },
     {
       "file_name": "94106955_0024.dcm",
@@ -493,21 +491,21 @@
         "PV maxPG 3 mmHg"
       ],
       "predicted_lines": [
-        "\u00b7 = \\ 77 Vmax 0.87 m/s",
-        "PV maxPG1 3 mmHa"
+        "PV Vmax /0.87 m/s/",
+        "PV maxPG 3mmHa"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 2,
+      "engine_disagreements": 2,
       "segmentation_line_count": 2,
-      "sequence_similarity": 0.821917808219178,
+      "sequence_similarity": 0.8955223880597015,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0024.dcm__frame_000_segmentation.png"
       ],
       "exact": 0,
-      "label": 0,
+      "label": 1,
       "value": 2,
-      "unit": 1,
+      "unit": 0,
       "prefix": 1
     },
     {
@@ -519,19 +517,19 @@
         "PV maxPG 4 mmHg"
       ],
       "predicted_lines": [
-        "-17/ Vmax 0.96 m/s",
+        "PV Vmax 0.96 m/s",
         "PV maxPG 4 mmHa"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 2,
+      "engine_disagreements": 2,
       "segmentation_line_count": 2,
-      "sequence_similarity": 0.8823529411764706,
+      "sequence_similarity": 0.9393939393939394,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0028.dcm__frame_000_segmentation.png"
       ],
       "exact": 0,
-      "label": 1,
+      "label": 2,
       "value": 2,
       "unit": 1,
       "prefix": 1
@@ -546,20 +544,20 @@
       ],
       "predicted_lines": [
         "TR Vmax 4.5 m/s",
-        "TR maxPG 21 mmHa"
+        "TR maxPG 21 mmHg"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 1,
+      "engine_disagreements": 1,
       "segmentation_line_count": 2,
-      "sequence_similarity": 0.8787878787878788,
+      "sequence_similarity": 0.9090909090909091,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0034.dcm__frame_000_segmentation.png"
       ],
-      "exact": 0,
+      "exact": 1,
       "label": 2,
       "value": 1,
-      "unit": 1,
+      "unit": 2,
       "prefix": 1
     },
     {
@@ -572,21 +570,21 @@
       ],
       "predicted_lines": [
         "TR Vmax 1.9 m/s/",
-        "14 mmHa TR maxPG"
+        "TR maxPG 14 mmHg"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 1,
+      "engine_disagreements": 1,
       "segmentation_line_count": 2,
-      "sequence_similarity": 0.7164179104477612,
+      "sequence_similarity": 0.9552238805970149,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0035.dcm__frame_000_segmentation.png"
       ],
-      "exact": 0,
-      "label": 1,
-      "value": 1,
-      "unit": 0,
-      "prefix": 0
+      "exact": 1,
+      "label": 2,
+      "value": 2,
+      "unit": 1,
+      "prefix": 1
     },
     {
       "file_name": "94106955_0044.dcm",
@@ -598,21 +596,21 @@
       ],
       "predicted_lines": [
         "2 RA LENGTH 4917",
-        "AENGY cm o.o . . ."
+        "1 LA LENGTH 6.6 cm"
       ],
-      "uncertainty_count": 1,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "uncertainty_count": 0,
+      "fallback_invocations": 2,
+      "engine_disagreements": 2,
       "segmentation_line_count": 2,
-      "sequence_similarity": 0.5833333333333334,
+      "sequence_similarity": 0.8888888888888888,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0044.dcm__frame_000_segmentation.png"
       ],
-      "exact": 0,
-      "label": 1,
-      "value": 0,
-      "unit": 0,
-      "prefix": 1
+      "exact": 1,
+      "label": 2,
+      "value": 1,
+      "unit": 1,
+      "prefix": 2
     },
     {
       "file_name": "94106955_0046.dcm",
@@ -633,8 +631,8 @@
         "MV E/A Ratio"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 1,
+      "engine_disagreements": 1,
       "segmentation_line_count": 5,
       "sequence_similarity": 0.8235294117647058,
       "debug_images": [
@@ -658,22 +656,22 @@
       ],
       "predicted_lines": [
         "vein - - . . 11 U 4 I / (-)",
-        "7 Vein .4 m/ m \u00d8 74",
+        "2 P Vein D 0.4 m/s",
         "P Vein S/D Ratio 1.2",
-        "-- . . __ ___ _ \u2022 ."
+        "a Pylain Si"
       ],
-      "uncertainty_count": 1,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "uncertainty_count": 0,
+      "fallback_invocations": 4,
+      "engine_disagreements": 3,
       "segmentation_line_count": 4,
-      "sequence_similarity": 0.4727272727272727,
+      "sequence_similarity": 0.7051282051282052,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0050.dcm__frame_000_segmentation.png"
       ],
       "exact": 1,
       "label": 1,
       "value": 1,
-      "unit": 1,
+      "unit": 2,
       "prefix": 1
     },
     {
@@ -688,20 +686,20 @@
       "predicted_lines": [
         "\u201d F4 . \u0661, . . . .",
         "19.5 cm2 LAAs A4C",
-        "ESV TOWN. y 2 \u06f8T/ 71 11 ----"
+        "LAESV A-L A4C 56 ml"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 2,
+      "engine_disagreements": 2,
       "segmentation_line_count": 3,
-      "sequence_similarity": 0.31932773109243695,
+      "sequence_similarity": 0.6,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0051.dcm__frame_000_segmentation.png"
       ],
-      "exact": 0,
-      "label": 0,
-      "value": 0,
-      "unit": 0,
+      "exact": 1,
+      "label": 1,
+      "value": 1,
+      "unit": 1,
       "prefix": 2
     },
     {
@@ -717,8 +715,8 @@
         "LVEDV MOD A4C 105.47 ml"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 1,
+      "engine_disagreements": 1,
       "segmentation_line_count": 2,
       "sequence_similarity": 0.6304347826086957,
       "debug_images": [
@@ -741,16 +739,16 @@
         "LVESV MOD A4C 38.32 ml"
       ],
       "predicted_lines": [
-        "_ 1 / I \\sim I \\sim I \u0667\u0149 7474 03.00",
+        "VEF MOD A40 V\u0668 65.66",
         "SV MOD A4C 67 (12) \u00b7 m",
         "LVLs A40 5.93 cm",
         "LVESV MOD A4C 38.32 ml"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 2,
+      "engine_disagreements": 2,
       "segmentation_line_count": 4,
-      "sequence_similarity": 0.6888888888888889,
+      "sequence_similarity": 0.8606060606060606,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0054.dcm__frame_000_segmentation.png"
       ],
@@ -768,13 +766,13 @@
         "1 E' Lat 0.09 m/s"
       ],
       "predicted_lines": [
-        "0.09 m/s Lat"
+        "CHURTUS -68 \u0162"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 1,
+      "engine_disagreements": 1,
       "segmentation_line_count": 1,
-      "sequence_similarity": 0.5517241379310345,
+      "sequence_similarity": 0.13333333333333333,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0055.dcm__frame_000_segmentation.png"
       ],
@@ -792,20 +790,20 @@
         "1 E' Sept 0.08 m/s"
       ],
       "predicted_lines": [
-        "0.08 m/s Seni"
+        "1E' Sept 0.08 m/s"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 1,
+      "engine_disagreements": 1,
       "segmentation_line_count": 1,
-      "sequence_similarity": 0.5161290322580645,
+      "sequence_similarity": 0.9714285714285714,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0056.dcm__frame_000_segmentation.png"
       ],
       "exact": 0,
       "label": 0,
-      "value": 0,
-      "unit": 0,
+      "value": 1,
+      "unit": 1,
       "prefix": 0
     },
     {
@@ -838,20 +836,20 @@
       "predicted_lines": [
         "LVOT Vmax m/s",
         "LVOT maxPG 5 mmHa",
-        "W \u06f1\u0661 r \u2022 . . . 1 ___"
+        "LYOT VTI 19.9 cm"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 1,
+      "engine_disagreements": 1,
       "segmentation_line_count": 3,
-      "sequence_similarity": 0.660377358490566,
+      "sequence_similarity": 0.9019607843137255,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0061.dcm__frame_000_segmentation.png"
       ],
       "exact": 0,
       "label": 1,
-      "value": 1,
-      "unit": 0,
+      "value": 2,
+      "unit": 1,
       "prefix": 2
     },
     {
@@ -872,23 +870,23 @@
         "AVA (VTI) 2.3 cm2",
         "1 AV Vmax 1.3 m/s",
         "AV Vmean 1.0~m/s",
-        "4 8 I I I \u05d5\u05d5 .",
+        "AV maxPG 6 mmHg",
         "AV meanPG 4 mmHa",
-        "\u03c4. . . . _ ."
+        "AV VTI 28 cm"
       ],
-      "uncertainty_count": 2,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "uncertainty_count": 0,
+      "fallback_invocations": 2,
+      "engine_disagreements": 2,
       "segmentation_line_count": 7,
-      "sequence_similarity": 0.7685589519650655,
+      "sequence_similarity": 0.9478260869565217,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0062.dcm__frame_000_segmentation.png"
       ],
-      "exact": 1,
-      "label": 2,
-      "value": 4,
-      "unit": 3,
-      "prefix": 6
+      "exact": 3,
+      "label": 5,
+      "value": 7,
+      "unit": 5,
+      "prefix": 7
     },
     {
       "file_name": "94106955_0064.dcm",
@@ -904,22 +902,22 @@
       "predicted_lines": [
         "//***/ ' Vma>",
         "AV Vmean 0.9 m/s",
-        "W max PG /144/ /##1/",
+        "AV maxPG 5 mmHg",
         "AV meanPG 3 mmHg",
-        "\u05d9\u05e0\u05d9\u05d5 \u0661, \u0433. \u0660, . ,,"
+        "AV VTI 2838 cm"
       ],
-      "uncertainty_count": 1,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "uncertainty_count": 0,
+      "fallback_invocations": 2,
+      "engine_disagreements": 2,
       "segmentation_line_count": 5,
-      "sequence_similarity": 0.6235294117647059,
+      "sequence_similarity": 0.84472049689441,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0064.dcm__frame_000_segmentation.png"
       ],
-      "exact": 0,
-      "label": 0,
-      "value": 0,
-      "unit": 2,
+      "exact": 2,
+      "label": 3,
+      "value": 2,
+      "unit": 4,
       "prefix": 3
     },
     {
@@ -930,20 +928,20 @@
         "1 RVIDd 3.2 cm"
       ],
       "predicted_lines": [
-        "RVIDd .z cm"
+        "RVIDd 13.2 cm"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 1,
+      "engine_disagreements": 1,
       "segmentation_line_count": 1,
-      "sequence_similarity": 0.8,
+      "sequence_similarity": 0.8888888888888888,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0066.dcm__frame_000_segmentation.png"
       ],
       "exact": 0,
-      "label": 0,
+      "label": 1,
       "value": 0,
-      "unit": 0,
+      "unit": 1,
       "prefix": 0
     },
     {
@@ -956,20 +954,20 @@
       ],
       "predicted_lines": [
         "TR Vmax _",
-        "TR maxPG 17 mmHa"
+        "TR maxPG 17 mmHg"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 1,
+      "engine_disagreements": 1,
       "segmentation_line_count": 2,
-      "sequence_similarity": 0.8,
+      "sequence_similarity": 0.8333333333333334,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0069.dcm__frame_000_segmentation.png"
       ],
-      "exact": 0,
+      "exact": 1,
       "label": 1,
       "value": 1,
-      "unit": 0,
+      "unit": 1,
       "prefix": 1
     },
     {
@@ -991,8 +989,8 @@
         "LAESV A-L A2C 84.0 ml"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 1,
+      "engine_disagreements": 1,
       "segmentation_line_count": 5,
       "sequence_similarity": 0.957345971563981,
       "debug_images": [
@@ -1013,14 +1011,14 @@
         "LVEDV MOD A2C 93.58 ml"
       ],
       "predicted_lines": [
-        "_VI A PAY /K' cm (\u0113)",
+        "AVLC AZC ./6 em",
         "LVEDV MOD A2C 93.58 ml"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 2,
+      "engine_disagreements": 2,
       "segmentation_line_count": 2,
-      "sequence_similarity": 0.7142857142857143,
+      "sequence_similarity": 0.8354430379746836,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0074.dcm__frame_000_segmentation.png"
       ],
@@ -1047,23 +1045,23 @@
         "EF Biplane 64 \u0667/\u0665",
         "LVEDV MOD BP 102 ml",
         "LVESV MOD BP 37 ml",
-        "62.09 % LVEF MOD A2C",
+        "LVEF MOD A2C 62.09 %",
         "SV MOD A2C 58.10 ml",
         "LVLs A2C 6.07 cm",
         "LVESV MOD A2C 35.48 m/"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 2,
+      "engine_disagreements": 2,
       "segmentation_line_count": 7,
-      "sequence_similarity": 0.9057971014492754,
+      "sequence_similarity": 0.9637681159420289,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0075.dcm__frame_000_segmentation.png"
       ],
       "exact": 3,
       "label": 5,
       "value": 5,
-      "unit": 4,
+      "unit": 5,
       "prefix": 6
     },
     {
@@ -1074,20 +1072,20 @@
         "1 IVC 2.2 cm"
       ],
       "predicted_lines": [
-        "AV/ cm \u20b9."
+        "MO 4.2 cm"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 1,
+      "engine_disagreements": 1,
       "segmentation_line_count": 1,
-      "sequence_similarity": 0.38095238095238093,
+      "sequence_similarity": 0.5714285714285714,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0090.dcm__frame_000_segmentation.png"
       ],
       "exact": 0,
       "label": 0,
       "value": 0,
-      "unit": 0,
+      "unit": 1,
       "prefix": 0
     },
     {
@@ -1101,7 +1099,7 @@
         "1 Ao Desc Diam 2.6 cm"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
+      "fallback_invocations": 1,
       "engine_disagreements": 0,
       "segmentation_line_count": 1,
       "sequence_similarity": 1.0,
@@ -1120,21 +1118,19 @@
         "1 Ao Arch Diam 2.8 cm"
       ],
       "predicted_lines": [
-        "Ao Arch Diam 2.8 cm"
+        "1 Ao Arch Diam 2.8 cm"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 1,
+      "engine_disagreements": 1,
       "segmentation_line_count": 1,
-      "sequence_similarity": 0.95,
-      "debug_images": [
-        "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0096.dcm__frame_000_segmentation.png"
-      ],
-      "exact": 0,
+      "sequence_similarity": 1.0,
+      "debug_images": [],
+      "exact": 1,
       "label": 1,
       "value": 1,
       "unit": 1,
-      "prefix": 0
+      "prefix": 1
     },
     {
       "file_name": "94106955_0099.dcm",
@@ -1144,20 +1140,20 @@
         "1 L 2.37 cm"
       ],
       "predicted_lines": [
-        "911"
+        "1L 2.37 cm"
       ],
-      "uncertainty_count": 1,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "uncertainty_count": 0,
+      "fallback_invocations": 1,
+      "engine_disagreements": 1,
       "segmentation_line_count": 1,
-      "sequence_similarity": 0.14285714285714285,
+      "sequence_similarity": 0.9523809523809523,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0099.dcm__frame_000_segmentation.png"
       ],
       "exact": 0,
       "label": 0,
-      "value": 0,
-      "unit": 0,
+      "value": 1,
+      "unit": 1,
       "prefix": 0
     }
   ],
@@ -1173,14 +1169,14 @@
       ],
       "predicted_lines": [
         "--- - . . _ __ -",
-        "u - \u041f",
+        "KET\u00dcEM",
         "\u2022"
       ],
       "uncertainty_count": 2,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 2,
+      "engine_disagreements": 2,
       "segmentation_line_count": 3,
-      "sequence_similarity": 0.25396825396825395,
+      "sequence_similarity": 0.1875,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/92290733_0003.dcm__frame_000_segmentation.png"
       ],
@@ -1201,23 +1197,23 @@
         "%FS 16 %"
       ],
       "predicted_lines": [
-        "cm \\mathbf U _ i \\mathbf U _ j . . .",
-        "4) \u041c \u0661,",
-        "0.00 7, eichi -",
-        "[0] \u0438 _ \u041f n)"
+        "Diam 447 CIA",
+        "T\u06f1 M - 1 911",
+        "EF(Teich) 34%",
+        "-1,6,00,00,00,00,00,00,00,00 ___ -- -K ~ 31 18"
       ],
-      "uncertainty_count": 3,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "uncertainty_count": 0,
+      "fallback_invocations": 4,
+      "engine_disagreements": 4,
       "segmentation_line_count": 4,
-      "sequence_similarity": 0.23255813953488372,
+      "sequence_similarity": 0.36619718309859156,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/92290733_0004.dcm__frame_000_segmentation.png"
       ],
       "exact": 0,
       "label": 0,
-      "value": 0,
-      "unit": 0,
+      "value": 1,
+      "unit": 1,
       "prefix": 2
     },
     {
@@ -1228,43 +1224,19 @@
         "1 LVOT Diam 2.0 cm"
       ],
       "predicted_lines": [
-        "EV/ Diam /4\u0133 cm"
+        "LVOT Diam 2.0~cm"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 1,
+      "engine_disagreements": 1,
       "segmentation_line_count": 1,
-      "sequence_similarity": 0.6060606060606061,
+      "sequence_similarity": 0.8823529411764706,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/92290733_0007.dcm__frame_000_segmentation.png"
       ],
       "exact": 0,
-      "label": 0,
-      "value": 0,
-      "unit": 0,
-      "prefix": 0
-    },
-    {
-      "file_name": "92290733_0010.dcm",
-      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002430/s92290733/92290733_0010.dcm",
-      "split": "validation",
-      "expected_lines": [
-        "1 Ao Diam 3.1 cm"
-      ],
-      "predicted_lines": [
-        "Ao Diam cm - J. I"
-      ],
-      "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
-      "segmentation_line_count": 1,
-      "sequence_similarity": 0.6060606060606061,
-      "debug_images": [
-        "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/92290733_0010.dcm__frame_000_segmentation.png"
-      ],
-      "exact": 0,
-      "label": 0,
-      "value": 0,
+      "label": 1,
+      "value": 1,
       "unit": 0,
       "prefix": 0
     },
@@ -1277,21 +1249,21 @@
         "TR maxPG 47 mmHg"
       ],
       "predicted_lines": [
-        "TR Vmax 4 m/s 3.1",
-        "TR maxPG 47 mmHa"
+        "Vmax 3.4 m/s \\sf LK",
+        "TR maxPG 47 mmHg"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 2,
+      "engine_disagreements": 2,
       "segmentation_line_count": 2,
-      "sequence_similarity": 0.8529411764705882,
+      "sequence_similarity": 0.8285714285714286,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/92290733_0014.dcm__frame_000_segmentation.png"
       ],
-      "exact": 0,
+      "exact": 1,
       "label": 1,
-      "value": 1,
-      "unit": 0,
+      "value": 2,
+      "unit": 1,
       "prefix": 1
     },
     {
@@ -1304,20 +1276,20 @@
       ],
       "predicted_lines": [
         "rk vmax 4.7 m/s",
-        "TR maxPG 29 mmHa ___"
+        "TR maxPG 29 mmHg"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 1,
+      "engine_disagreements": 1,
       "segmentation_line_count": 2,
-      "sequence_similarity": 0.7714285714285715,
+      "sequence_similarity": 0.8484848484848485,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/92290733_0019.dcm__frame_000_segmentation.png"
       ],
-      "exact": 0,
+      "exact": 1,
       "label": 1,
       "value": 1,
-      "unit": 1,
+      "unit": 2,
       "prefix": 1
     },
     {
@@ -1330,21 +1302,21 @@
       ],
       "predicted_lines": [
         "2 RA LENGTH 4017",
-        "4=1(6) \u0627\u0644\u0648\u0637\u0627 6.0 -- cm . ."
+        "1 LA LENGTH 6.0 cm"
       ],
-      "uncertainty_count": 1,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "uncertainty_count": 0,
+      "fallback_invocations": 2,
+      "engine_disagreements": 2,
       "segmentation_line_count": 2,
-      "sequence_similarity": 0.525,
+      "sequence_similarity": 0.8888888888888888,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/92290733_0030.dcm__frame_000_segmentation.png"
       ],
-      "exact": 0,
-      "label": 1,
-      "value": 0,
-      "unit": 0,
-      "prefix": 1
+      "exact": 1,
+      "label": 2,
+      "value": 1,
+      "unit": 1,
+      "prefix": 2
     },
     {
       "file_name": "92290733_0032.dcm",
@@ -1357,8 +1329,8 @@
         "0.06 m/ \u00a327"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 1,
+      "engine_disagreements": 1,
       "segmentation_line_count": 1,
       "sequence_similarity": 0.5,
       "debug_images": [
@@ -1378,20 +1350,20 @@
         "1 E' Sept 0.06 m/s"
       ],
       "predicted_lines": [
-        "0.06 m/s Ser"
+        "1E\u2019 Sept 0.06 m/s"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 1,
+      "engine_disagreements": 1,
       "segmentation_line_count": 1,
-      "sequence_similarity": 0.5333333333333333,
+      "sequence_similarity": 0.9142857142857143,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/92290733_0033.dcm__frame_000_segmentation.png"
       ],
       "exact": 0,
       "label": 0,
-      "value": 0,
-      "unit": 0,
+      "value": 1,
+      "unit": 1,
       "prefix": 0
     },
     {
@@ -1413,8 +1385,8 @@
         "MV E/A Ratio"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 2,
+      "engine_disagreements": 2,
       "segmentation_line_count": 5,
       "sequence_similarity": 0.6256983240223464,
       "debug_images": [
@@ -1458,19 +1430,19 @@
         "1 LVOT Diam 2.0 cm"
       ],
       "predicted_lines": [
-        "EV/ Diam /4\u0133 cm"
+        "LVOT Diam 2.0~cm"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 1,
+      "engine_disagreements": 1,
       "segmentation_line_count": 1,
-      "sequence_similarity": 0.6060606060606061,
+      "sequence_similarity": 0.8823529411764706,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0012.dcm__frame_000_segmentation.png"
       ],
       "exact": 0,
-      "label": 0,
-      "value": 0,
+      "label": 1,
+      "value": 1,
       "unit": 0,
       "prefix": 0
     },
@@ -1482,20 +1454,20 @@
         "1 LA Diam 4.0 cm"
       ],
       "predicted_lines": [
-        "Diam cm"
+        "7 LA Diam 4.0 cm"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 1,
+      "engine_disagreements": 1,
       "segmentation_line_count": 1,
-      "sequence_similarity": 0.6086956521739131,
+      "sequence_similarity": 0.9375,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0013.dcm__frame_000_segmentation.png"
       ],
       "exact": 0,
-      "label": 0,
-      "value": 0,
-      "unit": 0,
+      "label": 1,
+      "value": 1,
+      "unit": 1,
       "prefix": 0
     },
     {
@@ -1536,21 +1508,21 @@
         "%FS 34 %"
       ],
       "predicted_lines": [
-        "- - \u2022 . . \u0131",
-        "NT/ eich 02 % _"
+        "SECTION",
+        "EF(Teich) 62%"
       ],
-      "uncertainty_count": 2,
-      "fallback_invocations": 1,
-      "engine_disagreements": 1,
+      "uncertainty_count": 1,
+      "fallback_invocations": 3,
+      "engine_disagreements": 3,
       "segmentation_line_count": 3,
-      "sequence_similarity": 0.45454545454545453,
+      "sequence_similarity": 0.5,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0017.dcm__frame_000_segmentation.png"
       ],
       "exact": 0,
       "label": 0,
-      "value": 0,
-      "unit": 0,
+      "value": 1,
+      "unit": 1,
       "prefix": 1
     },
     {
@@ -1563,21 +1535,21 @@
       ],
       "predicted_lines": [
         "TR Vmax 1.9 m/s/",
-        "14 mmHa TR maxPG"
+        "TR maxPG 14 mmHg"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 1,
+      "engine_disagreements": 1,
       "segmentation_line_count": 2,
-      "sequence_similarity": 0.7164179104477612,
+      "sequence_similarity": 0.9552238805970149,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0021.dcm__frame_000_segmentation.png"
       ],
-      "exact": 0,
-      "label": 1,
-      "value": 1,
-      "unit": 0,
-      "prefix": 0
+      "exact": 1,
+      "label": 2,
+      "value": 2,
+      "unit": 1,
+      "prefix": 1
     },
     {
       "file_name": "94106955_0024.dcm",
@@ -1588,21 +1560,21 @@
         "PV maxPG 3 mmHg"
       ],
       "predicted_lines": [
-        "\u00b7 = \\ 77 Vmax 0.87 m/s",
-        "PV maxPG1 3 mmHa"
+        "PV Vmax /0.87 m/s/",
+        "PV maxPG 3mmHa"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 2,
+      "engine_disagreements": 2,
       "segmentation_line_count": 2,
-      "sequence_similarity": 0.821917808219178,
+      "sequence_similarity": 0.8955223880597015,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0024.dcm__frame_000_segmentation.png"
       ],
       "exact": 0,
-      "label": 0,
+      "label": 1,
       "value": 2,
-      "unit": 1,
+      "unit": 0,
       "prefix": 1
     },
     {
@@ -1614,19 +1586,19 @@
         "PV maxPG 4 mmHg"
       ],
       "predicted_lines": [
-        "-17/ Vmax 0.96 m/s",
+        "PV Vmax 0.96 m/s",
         "PV maxPG 4 mmHa"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 2,
+      "engine_disagreements": 2,
       "segmentation_line_count": 2,
-      "sequence_similarity": 0.8823529411764706,
+      "sequence_similarity": 0.9393939393939394,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0028.dcm__frame_000_segmentation.png"
       ],
       "exact": 0,
-      "label": 1,
+      "label": 2,
       "value": 2,
       "unit": 1,
       "prefix": 1
@@ -1641,20 +1613,20 @@
       ],
       "predicted_lines": [
         "TR Vmax 4.5 m/s",
-        "TR maxPG 21 mmHa"
+        "TR maxPG 21 mmHg"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 1,
+      "engine_disagreements": 1,
       "segmentation_line_count": 2,
-      "sequence_similarity": 0.8787878787878788,
+      "sequence_similarity": 0.9090909090909091,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0034.dcm__frame_000_segmentation.png"
       ],
-      "exact": 0,
+      "exact": 1,
       "label": 2,
       "value": 1,
-      "unit": 1,
+      "unit": 2,
       "prefix": 1
     },
     {
@@ -1667,21 +1639,21 @@
       ],
       "predicted_lines": [
         "TR Vmax 1.9 m/s/",
-        "14 mmHa TR maxPG"
+        "TR maxPG 14 mmHg"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 1,
+      "engine_disagreements": 1,
       "segmentation_line_count": 2,
-      "sequence_similarity": 0.7164179104477612,
+      "sequence_similarity": 0.9552238805970149,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0035.dcm__frame_000_segmentation.png"
       ],
-      "exact": 0,
-      "label": 1,
-      "value": 1,
-      "unit": 0,
-      "prefix": 0
+      "exact": 1,
+      "label": 2,
+      "value": 2,
+      "unit": 1,
+      "prefix": 1
     },
     {
       "file_name": "94106955_0044.dcm",
@@ -1693,21 +1665,21 @@
       ],
       "predicted_lines": [
         "2 RA LENGTH 4917",
-        "AENGY cm o.o . . ."
+        "1 LA LENGTH 6.6 cm"
       ],
-      "uncertainty_count": 1,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "uncertainty_count": 0,
+      "fallback_invocations": 2,
+      "engine_disagreements": 2,
       "segmentation_line_count": 2,
-      "sequence_similarity": 0.5833333333333334,
+      "sequence_similarity": 0.8888888888888888,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0044.dcm__frame_000_segmentation.png"
       ],
-      "exact": 0,
-      "label": 1,
-      "value": 0,
-      "unit": 0,
-      "prefix": 1
+      "exact": 1,
+      "label": 2,
+      "value": 1,
+      "unit": 1,
+      "prefix": 2
     },
     {
       "file_name": "94106955_0046.dcm",
@@ -1728,8 +1700,8 @@
         "MV E/A Ratio"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 1,
+      "engine_disagreements": 1,
       "segmentation_line_count": 5,
       "sequence_similarity": 0.8235294117647058,
       "debug_images": [
@@ -1753,22 +1725,22 @@
       ],
       "predicted_lines": [
         "vein - - . . 11 U 4 I / (-)",
-        "7 Vein .4 m/ m \u00d8 74",
+        "2 P Vein D 0.4 m/s",
         "P Vein S/D Ratio 1.2",
-        "-- . . __ ___ _ \u2022 ."
+        "a Pylain Si"
       ],
-      "uncertainty_count": 1,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "uncertainty_count": 0,
+      "fallback_invocations": 4,
+      "engine_disagreements": 3,
       "segmentation_line_count": 4,
-      "sequence_similarity": 0.4727272727272727,
+      "sequence_similarity": 0.7051282051282052,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0050.dcm__frame_000_segmentation.png"
       ],
       "exact": 1,
       "label": 1,
       "value": 1,
-      "unit": 1,
+      "unit": 2,
       "prefix": 1
     },
     {
@@ -1783,20 +1755,20 @@
       "predicted_lines": [
         "\u201d F4 . \u0661, . . . .",
         "19.5 cm2 LAAs A4C",
-        "ESV TOWN. y 2 \u06f8T/ 71 11 ----"
+        "LAESV A-L A4C 56 ml"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 2,
+      "engine_disagreements": 2,
       "segmentation_line_count": 3,
-      "sequence_similarity": 0.31932773109243695,
+      "sequence_similarity": 0.6,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0051.dcm__frame_000_segmentation.png"
       ],
-      "exact": 0,
-      "label": 0,
-      "value": 0,
-      "unit": 0,
+      "exact": 1,
+      "label": 1,
+      "value": 1,
+      "unit": 1,
       "prefix": 2
     },
     {
@@ -1812,8 +1784,8 @@
         "LVEDV MOD A4C 105.47 ml"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 1,
+      "engine_disagreements": 1,
       "segmentation_line_count": 2,
       "sequence_similarity": 0.6304347826086957,
       "debug_images": [
@@ -1836,16 +1808,16 @@
         "LVESV MOD A4C 38.32 ml"
       ],
       "predicted_lines": [
-        "_ 1 / I \\sim I \\sim I \u0667\u0149 7474 03.00",
+        "VEF MOD A40 V\u0668 65.66",
         "SV MOD A4C 67 (12) \u00b7 m",
         "LVLs A40 5.93 cm",
         "LVESV MOD A4C 38.32 ml"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 2,
+      "engine_disagreements": 2,
       "segmentation_line_count": 4,
-      "sequence_similarity": 0.6888888888888889,
+      "sequence_similarity": 0.8606060606060606,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0054.dcm__frame_000_segmentation.png"
       ],
@@ -1863,13 +1835,13 @@
         "1 E' Lat 0.09 m/s"
       ],
       "predicted_lines": [
-        "0.09 m/s Lat"
+        "CHURTUS -68 \u0162"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 1,
+      "engine_disagreements": 1,
       "segmentation_line_count": 1,
-      "sequence_similarity": 0.5517241379310345,
+      "sequence_similarity": 0.13333333333333333,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0055.dcm__frame_000_segmentation.png"
       ],
@@ -1887,20 +1859,20 @@
         "1 E' Sept 0.08 m/s"
       ],
       "predicted_lines": [
-        "0.08 m/s Seni"
+        "1E' Sept 0.08 m/s"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 1,
+      "engine_disagreements": 1,
       "segmentation_line_count": 1,
-      "sequence_similarity": 0.5161290322580645,
+      "sequence_similarity": 0.9714285714285714,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0056.dcm__frame_000_segmentation.png"
       ],
       "exact": 0,
       "label": 0,
-      "value": 0,
-      "unit": 0,
+      "value": 1,
+      "unit": 1,
       "prefix": 0
     },
     {
@@ -1915,20 +1887,20 @@
       "predicted_lines": [
         "LVOT Vmax m/s",
         "LVOT maxPG 5 mmHa",
-        "W \u06f1\u0661 r \u2022 . . . 1 ___"
+        "LYOT VTI 19.9 cm"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 1,
+      "engine_disagreements": 1,
       "segmentation_line_count": 3,
-      "sequence_similarity": 0.660377358490566,
+      "sequence_similarity": 0.9019607843137255,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0061.dcm__frame_000_segmentation.png"
       ],
       "exact": 0,
       "label": 1,
-      "value": 1,
-      "unit": 0,
+      "value": 2,
+      "unit": 1,
       "prefix": 2
     },
     {
@@ -1949,23 +1921,23 @@
         "AVA (VTI) 2.3 cm2",
         "1 AV Vmax 1.3 m/s",
         "AV Vmean 1.0~m/s",
-        "4 8 I I I \u05d5\u05d5 .",
+        "AV maxPG 6 mmHg",
         "AV meanPG 4 mmHa",
-        "\u03c4. . . . _ ."
+        "AV VTI 28 cm"
       ],
-      "uncertainty_count": 2,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "uncertainty_count": 0,
+      "fallback_invocations": 2,
+      "engine_disagreements": 2,
       "segmentation_line_count": 7,
-      "sequence_similarity": 0.7685589519650655,
+      "sequence_similarity": 0.9478260869565217,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0062.dcm__frame_000_segmentation.png"
       ],
-      "exact": 1,
-      "label": 2,
-      "value": 4,
-      "unit": 3,
-      "prefix": 6
+      "exact": 3,
+      "label": 5,
+      "value": 7,
+      "unit": 5,
+      "prefix": 7
     },
     {
       "file_name": "94106955_0064.dcm",
@@ -1981,22 +1953,22 @@
       "predicted_lines": [
         "//***/ ' Vma>",
         "AV Vmean 0.9 m/s",
-        "W max PG /144/ /##1/",
+        "AV maxPG 5 mmHg",
         "AV meanPG 3 mmHg",
-        "\u05d9\u05e0\u05d9\u05d5 \u0661, \u0433. \u0660, . ,,"
+        "AV VTI 2838 cm"
       ],
-      "uncertainty_count": 1,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "uncertainty_count": 0,
+      "fallback_invocations": 2,
+      "engine_disagreements": 2,
       "segmentation_line_count": 5,
-      "sequence_similarity": 0.6235294117647059,
+      "sequence_similarity": 0.84472049689441,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0064.dcm__frame_000_segmentation.png"
       ],
-      "exact": 0,
-      "label": 0,
-      "value": 0,
-      "unit": 2,
+      "exact": 2,
+      "label": 3,
+      "value": 2,
+      "unit": 4,
       "prefix": 3
     },
     {
@@ -2007,20 +1979,20 @@
         "1 RVIDd 3.2 cm"
       ],
       "predicted_lines": [
-        "RVIDd .z cm"
+        "RVIDd 13.2 cm"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 1,
+      "engine_disagreements": 1,
       "segmentation_line_count": 1,
-      "sequence_similarity": 0.8,
+      "sequence_similarity": 0.8888888888888888,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0066.dcm__frame_000_segmentation.png"
       ],
       "exact": 0,
-      "label": 0,
+      "label": 1,
       "value": 0,
-      "unit": 0,
+      "unit": 1,
       "prefix": 0
     },
     {
@@ -2033,20 +2005,20 @@
       ],
       "predicted_lines": [
         "TR Vmax _",
-        "TR maxPG 17 mmHa"
+        "TR maxPG 17 mmHg"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 1,
+      "engine_disagreements": 1,
       "segmentation_line_count": 2,
-      "sequence_similarity": 0.8,
+      "sequence_similarity": 0.8333333333333334,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0069.dcm__frame_000_segmentation.png"
       ],
-      "exact": 0,
+      "exact": 1,
       "label": 1,
       "value": 1,
-      "unit": 0,
+      "unit": 1,
       "prefix": 1
     },
     {
@@ -2068,8 +2040,8 @@
         "LAESV A-L A2C 84.0 ml"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 1,
+      "engine_disagreements": 1,
       "segmentation_line_count": 5,
       "sequence_similarity": 0.957345971563981,
       "debug_images": [
@@ -2090,14 +2062,14 @@
         "LVEDV MOD A2C 93.58 ml"
       ],
       "predicted_lines": [
-        "_VI A PAY /K' cm (\u0113)",
+        "AVLC AZC ./6 em",
         "LVEDV MOD A2C 93.58 ml"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 2,
+      "engine_disagreements": 2,
       "segmentation_line_count": 2,
-      "sequence_similarity": 0.7142857142857143,
+      "sequence_similarity": 0.8354430379746836,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0074.dcm__frame_000_segmentation.png"
       ],
@@ -2124,23 +2096,23 @@
         "EF Biplane 64 \u0667/\u0665",
         "LVEDV MOD BP 102 ml",
         "LVESV MOD BP 37 ml",
-        "62.09 % LVEF MOD A2C",
+        "LVEF MOD A2C 62.09 %",
         "SV MOD A2C 58.10 ml",
         "LVLs A2C 6.07 cm",
         "LVESV MOD A2C 35.48 m/"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 2,
+      "engine_disagreements": 2,
       "segmentation_line_count": 7,
-      "sequence_similarity": 0.9057971014492754,
+      "sequence_similarity": 0.9637681159420289,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0075.dcm__frame_000_segmentation.png"
       ],
       "exact": 3,
       "label": 5,
       "value": 5,
-      "unit": 4,
+      "unit": 5,
       "prefix": 6
     },
     {
@@ -2151,43 +2123,19 @@
         "1 IVC 2.2 cm"
       ],
       "predicted_lines": [
-        "AV/ cm \u20b9."
+        "MO 4.2 cm"
       ],
       "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "fallback_invocations": 1,
+      "engine_disagreements": 1,
       "segmentation_line_count": 1,
-      "sequence_similarity": 0.38095238095238093,
+      "sequence_similarity": 0.5714285714285714,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0090.dcm__frame_000_segmentation.png"
       ],
       "exact": 0,
       "label": 0,
       "value": 0,
-      "unit": 0,
-      "prefix": 0
-    },
-    {
-      "file_name": "94106955_0096.dcm",
-      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0096.dcm",
-      "split": "validation",
-      "expected_lines": [
-        "1 Ao Arch Diam 2.8 cm"
-      ],
-      "predicted_lines": [
-        "Ao Arch Diam 2.8 cm"
-      ],
-      "uncertainty_count": 0,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
-      "segmentation_line_count": 1,
-      "sequence_similarity": 0.95,
-      "debug_images": [
-        "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0096.dcm__frame_000_segmentation.png"
-      ],
-      "exact": 0,
-      "label": 1,
-      "value": 1,
       "unit": 1,
       "prefix": 0
     },
@@ -2199,20 +2147,20 @@
         "1 L 2.37 cm"
       ],
       "predicted_lines": [
-        "911"
+        "1L 2.37 cm"
       ],
-      "uncertainty_count": 1,
-      "fallback_invocations": 0,
-      "engine_disagreements": 0,
+      "uncertainty_count": 0,
+      "fallback_invocations": 1,
+      "engine_disagreements": 1,
       "segmentation_line_count": 1,
-      "sequence_similarity": 0.14285714285714285,
+      "sequence_similarity": 0.9523809523809523,
       "debug_images": [
         "docs/ocr_redesign/segmentation_debug_validation_surya_paddle/94106955_0099.dcm__frame_000_segmentation.png"
       ],
       "exact": 0,
       "label": 0,
-      "value": 0,
-      "unit": 0,
+      "value": 1,
+      "unit": 1,
       "prefix": 0
     }
   ]

@@ -203,6 +203,12 @@ class EchoOcrPipeline(BasePipeline):
                     scale_algo=self._scale_algo,
                     contrast_mode="adaptive_threshold",
                 ),
+                "clahe": lambda image: preprocess_roi(
+                    image,
+                    scale_factor=self._scale_factor,
+                    scale_algo=self._scale_algo,
+                    contrast_mode="clahe",
+                ),
             }
         )
         self._line_first_parser = LineFirstParser(fallback_parser=RegexMeasurementParser())
