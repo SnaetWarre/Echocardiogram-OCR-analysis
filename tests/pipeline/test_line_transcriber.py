@@ -201,3 +201,57 @@ def test_line_transcriber_triggers_fallback_for_malformed_sparse_measurement_lay
 
     assert result.fallback_invocations == 1
     assert result.lines[0].text == "1 Ao Diam 3.1 cm"
+
+
+def test_line_transcriber_triggers_fallback_for_value_unit_first_sparse_junk() -> None:
+    roi = np.zeros((20, 40), dtype=np.uint8)
+    segmentation = SegmentationResult(
+        header_trim_px=0,
+        content_bbox=(0, 0, 40, 20),
+        lines=(
+            SegmentedLine(order=0, bbox=(0, 0, 40, 20), metadata={"token_count": 1}),
+        ),
+    )
+    primary = _RecordingEngine([("0.06 m/s £27", 0.99), ("noise", 0.99)], name="primary")
+    fallback = _RecordingEngine([("1 E' Lat 0.06 m/s", 0.81), ("1 E' Lat 0.06 m/s", 0.78)], name="fallback")
+
+    result = LineTranscriber(
+        uncertain_threshold=0.7,
+        fallback_quality_threshold=0.72,
+        preprocess_views={"default": lambda image: image, "clahe": lambda image: image},
+    ).transcribe(
+        roi,
+        segmentation,
+        primary_engine=primary,
+        fallback_engine=fallback,
+    )
+
+    assert result.fallback_invocations == 1
+    assert result.lines[0].text == "1 E' Lat 0.06 m/s"
+
+
+def test_line_transcriber_triggers_fallback_for_unknown_unit_sparse_junk() -> None:
+    roi = np.zeros((20, 40), dtype=np.uint8)
+    segmentation = SegmentationResult(
+        header_trim_px=0,
+        content_bbox=(0, 0, 40, 20),
+        lines=(
+            SegmentedLine(order=0, bbox=(0, 0, 40, 20), metadata={"token_count": 1}),
+        ),
+    )
+    primary = _RecordingEngine([("Dam יגש cm /4 !", 0.99), ("noise", 0.99)], name="primary")
+    fallback = _RecordingEngine([("1 LA Diam 4.0 cm", 0.78), ("1 LA Diam 4.0 cm", 0.76)], name="fallback")
+
+    result = LineTranscriber(
+        uncertain_threshold=0.7,
+        fallback_quality_threshold=0.72,
+        preprocess_views={"default": lambda image: image, "clahe": lambda image: image},
+    ).transcribe(
+        roi,
+        segmentation,
+        primary_engine=primary,
+        fallback_engine=fallback,
+    )
+
+    assert result.fallback_invocations == 1
+    assert result.lines[0].text == "1 LA Diam 4.0 cm"

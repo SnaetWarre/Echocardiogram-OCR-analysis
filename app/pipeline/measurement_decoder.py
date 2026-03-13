@@ -28,6 +28,7 @@ _KNOWN_UNIT_ALIASES = {
     "m1s": "m/s",
     "m/": "m/s",
     "mmha": "mmHg",
+    "més": "m/s",
     "mhg": "mmHg",
     "mmhg": "mmHg",
     "em": "cm",
@@ -69,8 +70,12 @@ _VALUE_ONLY_RE = re.compile(
 )
 _LABEL_REPAIRS = (
     (re.compile(r"\bL[YV]IDd\b", flags=re.IGNORECASE), "LVIDd"),
+    (re.compile(r"\bL[VY](?:I|YI)DS\b", flags=re.IGNORECASE), "LVIDs"),
     (re.compile(r"\bL[YV]P(?:W|VW)d\b", flags=re.IGNORECASE), "LVPWd"),
+    (re.compile(r"\bL[YV][YV]P(?:W|VW)d\b", flags=re.IGNORECASE), "LVPWd"),
     (re.compile(r"\bI[VY]Sd\b", flags=re.IGNORECASE), "IVSd"),
+    (re.compile(r"\bLALS\s+AdU\b", flags=re.IGNORECASE), "LALs A4C"),
+    (re.compile(r"\bLALS\s+A&v\b", flags=re.IGNORECASE), "LALs A4C"),
     (re.compile(r"\bL[YV]OT\b", flags=re.IGNORECASE), "LVOT"),
     (re.compile(r"\bA[o0]\b", flags=re.IGNORECASE), "Ao"),
     (re.compile(r"\bA20\b", flags=re.IGNORECASE), "A2C"),

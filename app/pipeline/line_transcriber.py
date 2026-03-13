@@ -279,12 +279,12 @@ class LineTranscriber:
         decoded = parse_measurement_line(canonical)
         if not canonical:
             return True
+        known_unit = normalize_unit(decoded.unit) if decoded.unit else None
+        if decoded.unit and known_unit not in KNOWN_UNITS:
+            return True
         if decoded.is_measurement:
             return False
         if self._noise_penalty(canonical) >= 0.12:
-            return True
-        known_unit = normalize_unit(decoded.unit) if decoded.unit else None
-        if decoded.unit and known_unit not in KNOWN_UNITS:
             return True
         letters = sum(1 for char in canonical if char.isalpha())
         digits = sum(1 for char in canonical if char.isdigit())
@@ -305,6 +305,8 @@ class LineTranscriber:
         canonical = canonicalize_exact_line(candidate.text)
         if not canonical:
             return False
+        if re.match(r"^[-+]?\d+(?:[.,]\d+)?\s+(?:cm|mm|ml|m/s|mmHg|%)\b", canonical, flags=re.IGNORECASE):
+            return True
         if re.search(r"\b(?:cm|mm|ml|m/s|mmHg|%)\s+[-+]?\d+(?:[.,]\d+)?$", canonical, flags=re.IGNORECASE):
             return True
         lines = [line.strip() for line in canonical.splitlines() if line.strip()]
@@ -316,6 +318,8 @@ class LineTranscriber:
             if re.search(r"[A-Za-z]", first) and re.fullmatch(r"(?:cm|mm|ml|m/s|mmHg|%)(?:\s+[-+]?\d+(?:[.,]\d+)?)?", last, flags=re.IGNORECASE):
                 return True
         decoded = parse_measurement_line(canonical)
+        if decoded.label and decoded.unit is None and decoded.value and re.search(r"\b(?:cm|mm|ml|m/s|mmHg|%)\b", decoded.label, flags=re.IGNORECASE):
+            return True
         if decoded.label and decoded.unit and decoded.value:
             label_index = canonical.find(decoded.label)
             unit_index = canonical.find(decoded.unit)
