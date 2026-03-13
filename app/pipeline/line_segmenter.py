@@ -49,6 +49,8 @@ class LineSegmenter:
     def __init__(
         self,
         *,
+        segmentation_mode: str = "fixed_pitch",
+        target_line_height_px: float = 20.0,
         default_header_trim_px: int = DEFAULT_HEADER_TRIM_PX,
         projection_threshold_ratio: float = 0.012,
         min_line_height_px: int = 4,
@@ -57,6 +59,8 @@ class LineSegmenter:
         max_header_fraction: float = 0.45,
         refine_split_min_height_px: int = 10,
     ) -> None:
+        self.segmentation_mode = str(segmentation_mode).strip().lower() or "fixed_pitch"
+        self.target_line_height_px = max(1.0, float(target_line_height_px))
         self.default_header_trim_px = max(0, int(default_header_trim_px))
         self.projection_threshold_ratio = max(0.001, float(projection_threshold_ratio))
         self.min_line_height_px = max(1, int(min_line_height_px))
@@ -80,6 +84,38 @@ class LineSegmenter:
         content_bbox = None
         if content.size > 0:
             content_bbox = (0, header_trim_px, int(content.shape[1]), int(content.shape[0]))
+
+        if self.segmentation_mode == "fixed_pitch":
+            lines = self._segment_fixed_pitch(content, header_trim_px=header_trim_px)
+            if not lines and content.size > 0:
+                lines = [
+                    SegmentedLine(
+                        order=0,
+                        bbox=(0, header_trim_px, int(content.shape[1]), int(content.shape[0])),
+                        component_boxes=((0, header_trim_px, int(content.shape[1]), int(content.shape[0])),),
+                        metadata={
+                            "source": "fixed_pitch",
+                            "recovered": True,
+                            "reason": "empty_fixed_pitch_segmentation",
+                            "target_line_height_px": self.target_line_height_px,
+                        },
+                    )
+                ]
+            return SegmentationResult(
+                header_trim_px=header_trim_px,
+                content_bbox=content_bbox,
+                lines=tuple(lines),
+                used_token_boxes=False,
+                used_projection_fallback=False,
+                debug={
+                    "line_count": len(lines),
+                    "header_trim_px": header_trim_px,
+                    "refined_line_splits": 0,
+                    "segmentation_mode": self.segmentation_mode,
+                    "target_line_height_px": self.target_line_height_px,
+                    "estimated_line_count": len(lines),
+                },
+            )
 
         lines: list[SegmentedLine] = []
         used_token_boxes = False
@@ -119,8 +155,76 @@ class LineSegmenter:
                 "line_count": len(lines),
                 "header_trim_px": header_trim_px,
                 "refined_line_splits": max(0, len(lines) - initial_line_count),
+                "segmentation_mode": self.segmentation_mode,
             },
         )
+
+    def _segment_fixed_pitch(self, content: np.ndarray, *, header_trim_px: int) -> list[SegmentedLine]:
+        if content.size == 0:
+            return []
+
+        content_height = int(content.shape[0])
+        content_width = int(content.shape[1])
+        estimated_line_count = self._estimate_line_count(content_height)
+        if estimated_line_count <= 0:
+            return []
+
+        stripe_edges = self._stripe_edges(content_height, estimated_line_count)
+        lines: list[SegmentedLine] = []
+        mask = self._text_mask(content)
+
+        for order, (start, end) in enumerate(zip(stripe_edges[:-1], stripe_edges[1:], strict=False)):
+            if end <= start:
+                continue
+            band = mask[start:end, :]
+            _ys, xs = np.where(band)
+            band_has_text = bool(xs.size)
+            if xs.size == 0:
+                x1 = 0
+                x2 = content_width
+            else:
+                x1 = max(0, int(xs.min()) - self.line_padding_px)
+                x2 = min(content_width, int(xs.max()) + self.line_padding_px + 1)
+            y1 = start + header_trim_px
+            y2 = end + header_trim_px
+            line_bbox = (x1, y1, max(1, x2 - x1), max(1, y2 - y1))
+            lines.append(
+                SegmentedLine(
+                    order=order,
+                    bbox=line_bbox,
+                    component_boxes=(line_bbox,),
+                    metadata={
+                        "source": "fixed_pitch",
+                        "target_line_height_px": self.target_line_height_px,
+                        "estimated_line_count": estimated_line_count,
+                        "stripe_index": order,
+                        "recovered": not band_has_text,
+                        "reason": "empty_fixed_pitch_band" if not band_has_text else "",
+                    },
+                )
+            )
+        return lines
+
+    def _estimate_line_count(self, content_height: int) -> int:
+        if content_height <= 0:
+            return 0
+        estimated = int(np.floor((float(content_height) / self.target_line_height_px) + 0.5))
+        return max(1, min(content_height, estimated))
+
+    @staticmethod
+    def _stripe_edges(content_height: int, line_count: int) -> list[int]:
+        if content_height <= 0:
+            return [0]
+        if line_count <= 1:
+            return [0, content_height]
+        edges = np.rint(np.linspace(0.0, float(content_height), line_count + 1)).astype(int).tolist()
+        edges[0] = 0
+        edges[-1] = content_height
+        for index in range(1, len(edges) - 1):
+            edges[index] = max(edges[index], edges[index - 1] + 1)
+        for index in range(len(edges) - 2, 0, -1):
+            edges[index] = min(edges[index], edges[index + 1] - 1)
+        return edges
 
     def detect_header_trim(self, roi: np.ndarray) -> int:
         gray = _to_gray(roi)

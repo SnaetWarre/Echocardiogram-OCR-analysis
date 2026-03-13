@@ -4,7 +4,7 @@ import json
 import re
 import subprocess
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Protocol
+from typing import Any, Dict, List, Optional, Protocol, cast
 
 from app.models.types import AiMeasurement
 
@@ -243,6 +243,71 @@ def _postprocess_measurements(items: List[AiMeasurement]) -> List[AiMeasurement]
     return list(dedup.values())
 
 
+def postprocess_measurements(items: List[AiMeasurement]) -> List[AiMeasurement]:
+    return _postprocess_measurements(items)
+
+
+def extract_json_payload(payload: str) -> str:
+    payload = payload.strip()
+    if not payload:
+        return "[]"
+    array_start = payload.find("[")
+    array_end = payload.rfind("]")
+    if array_start != -1 and array_end != -1 and array_end > array_start:
+        return payload[array_start : array_end + 1]
+    obj_start = payload.find("{")
+    obj_end = payload.rfind("}")
+    if obj_start != -1 and obj_end != -1 and obj_end > obj_start:
+        return payload[obj_start : obj_end + 1]
+    return "[]"
+
+
+def parse_json_payload(payload: str) -> Any:
+    payload = payload.strip()
+    if not payload:
+        return []
+    try:
+        return json.loads(extract_json_payload(payload))
+    except json.JSONDecodeError:
+        return []
+
+
+def parse_json_rows(payload: str) -> List[Dict[str, object]]:
+    parsed: object = parse_json_payload(payload)
+    if isinstance(parsed, dict):
+        parsed_dict = cast(Dict[str, object], parsed)
+        measurements = parsed_dict["measurements"] if "measurements" in parsed_dict else None
+        if isinstance(measurements, list):
+            measurement_rows = cast(List[object], measurements)
+            rows: List[Dict[str, object]] = []
+            for row in measurement_rows:
+                if isinstance(row, dict):
+                    rows.append(cast(Dict[str, object], row))
+            return rows
+        return []
+    if isinstance(parsed, list):
+        parsed_list = cast(List[object], parsed)
+        rows: List[Dict[str, object]] = []
+        for row in parsed_list:
+            if isinstance(row, dict):
+                rows.append(cast(Dict[str, object], row))
+        return rows
+    return []
+
+
+def run_local_model(*, command: str, model: str, prompt: str, timeout_s: float) -> str:
+    cmd = [command, "run", model, prompt]
+    proc = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        timeout=timeout_s,
+    )
+    if proc.returncode != 0:
+        raise RuntimeError(f"Local model failed ({command}): {(proc.stderr or proc.stdout).strip()}")
+    return (proc.stdout or "").strip()
+
+
 class RegexMeasurementParser:
     _pattern = re.compile(
         r"(?P<name>[A-Za-z0-9%][A-Za-z0-9\s/\-()']+?)\s+"
@@ -253,7 +318,7 @@ class RegexMeasurementParser:
 
     def parse(self, text: str, *, confidence: float) -> List[AiMeasurement]:
         items: List[AiMeasurement] = []
-        seen_keys = set()
+        seen_keys: Dict[tuple[str, str, str], None] = {}
 
         def _clean_ocr_text(raw: str) -> str:
             cleaned = _LATEX_NOISE_RE.sub(r"\1", raw)
@@ -295,7 +360,7 @@ class RegexMeasurementParser:
             key = (normalized_name.lower(), normalized_value, (normalized_unit or "").lower())
             if key in seen_keys:
                 return
-            seen_keys.add(key)
+            seen_keys[key] = None
             items.append(
                 AiMeasurement(
                     name=normalized_name,
@@ -489,8 +554,8 @@ class LocalLlmMeasurementParser:
         return self._build_generic_json_prompt(ocr_text)
 
     @staticmethod
-    def _extract_indexed_measurement_lines(ocr_text: str) -> List[tuple[str, str, str | None, str]]:
-        indexed_lines: List[tuple[str, str, str | None, str]] = []
+    def _extract_indexed_measurement_lines(ocr_text: str) -> List[tuple[str, str, str, str | None]]:
+        indexed_lines: List[tuple[str, str, str, str | None]] = []
         for raw_line in ocr_text.splitlines():
             cleaned = " ".join(raw_line.split()).strip()
             if not cleaned:
@@ -504,16 +569,20 @@ class LocalLlmMeasurementParser:
             )
             if match is None:
                 continue
-            prefix = match.group("prefix")
+            prefix = str(match.group("prefix") or "").strip()
+            if not prefix:
+                continue
             label = _normalize_name(match.group("label"))
-            value = _normalize_value(match.group("value"))
+            value: str | None = _normalize_value(match.group("value"))
             unit = _normalize_unit(match.group("unit"))
+            if value is None:
+                continue
             indexed_lines.append((prefix, label, value, unit))
         return indexed_lines
 
     @staticmethod
     def _restore_leading_index(
-        *, name: str, value: str, unit: str | None, indexed_lines: List[tuple[str, str, str | None, str]]
+        *, name: str, value: str, unit: str | None, indexed_lines: List[tuple[str, str, str, str | None]]
     ) -> str | None:
         normalized_name = _normalize_name(name)
         normalized_value = _normalize_value(value)
@@ -580,53 +649,19 @@ class LocalLlmMeasurementParser:
         )
 
     def _run_model(self, prompt: str) -> str:
-        cmd = [
-            self.config.command,
-            "run",
-            self.config.model,
-            prompt,
-        ]
-        proc = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=self.config.timeout_s,
+        return run_local_model(
+            command=self.config.command,
+            model=self.config.model,
+            prompt=prompt,
+            timeout_s=self.config.timeout_s,
         )
-        if proc.returncode != 0:
-            raise RuntimeError(
-                f"Local LLM parser failed ({self.config.command}): {(proc.stderr or proc.stdout).strip()}"
-            )
-        return (proc.stdout or "").strip()
 
     def _parse_json_payload(self, payload: str) -> List[Dict[str, object]]:
-        payload = payload.strip()
-        if not payload:
-            return []
-        json_blob = self._extract_json(payload)
-        try:
-            parsed = json.loads(json_blob)
-        except json.JSONDecodeError:
-            return []
-        if isinstance(parsed, dict):
-            measurements = parsed.get("measurements")
-            if isinstance(measurements, list):
-                return [row for row in measurements if isinstance(row, dict)]
-            return []
-        if isinstance(parsed, list):
-            return [row for row in parsed if isinstance(row, dict)]
-        return []
+        return parse_json_rows(payload)
 
     @staticmethod
     def _extract_json(payload: str) -> str:
-        array_start = payload.find("[")
-        array_end = payload.rfind("]")
-        if array_start != -1 and array_end != -1 and array_end > array_start:
-            return payload[array_start : array_end + 1]
-        obj_start = payload.find("{")
-        obj_end = payload.rfind("}")
-        if obj_start != -1 and obj_end != -1 and obj_end > obj_start:
-            return payload[obj_start : obj_end + 1]
-        return "[]"
+        return extract_json_payload(payload)
 
 
 class HybridMeasurementParser:
@@ -680,7 +715,11 @@ def build_parser(mode: str, parameters: Optional[Dict[str, object]] = None) -> M
 
     llm_model = str(params.get("llm_model", "qwen2.5:7b-instruct-q4_K_M"))
     llm_command = str(params.get("llm_command", "ollama"))
-    llm_timeout_s = float(params.get("llm_timeout_s", 30.0))
+    llm_timeout_raw = params.get("llm_timeout_s", 30.0)
+    try:
+        llm_timeout_s = float(llm_timeout_raw) if isinstance(llm_timeout_raw, (int, float, str)) else 30.0
+    except (TypeError, ValueError):
+        llm_timeout_s = 30.0
     llm_parser = LocalLlmMeasurementParser(
         config=LocalLlmParserConfig(
             model=llm_model,

@@ -9,6 +9,7 @@ import numpy as np
 from app.pipeline.line_segmenter import SegmentationResult, SegmentedLine
 from app.pipeline.measurement_decoder import KNOWN_UNITS, canonicalize_exact_line, normalize_unit, parse_measurement_line
 from app.pipeline.ocr_engines import OcrEngine, OcrResult, OcrToken
+from app.pipeline.vision_llm import VisionLineExpert
 
 
 def _empty_metadata() -> dict[str, Any]:
@@ -46,6 +47,7 @@ class PanelTranscription:
     uncertain_line_count: int = 0
     fallback_invocations: int = 0
     engine_disagreement_count: int = 0
+    vision_invocations: int = 0
 
 
 def crop_segment(image: np.ndarray, segment: SegmentedLine) -> np.ndarray:
@@ -88,11 +90,13 @@ class LineTranscriber:
         uncertain_threshold: float = 0.72,
         disagreement_similarity_threshold: float = 0.8,
         fallback_quality_threshold: float = 0.72,
+        vision_quality_threshold: float = 0.76,
         preprocess_views: dict[str, Callable[[np.ndarray], np.ndarray]] | None = None,
     ) -> None:
         self.uncertain_threshold = float(uncertain_threshold)
         self.disagreement_similarity_threshold = float(disagreement_similarity_threshold)
         self.fallback_quality_threshold = float(fallback_quality_threshold)
+        self.vision_quality_threshold = float(vision_quality_threshold)
         self.preprocess_views = preprocess_views or {}
 
     def transcribe(
@@ -102,10 +106,12 @@ class LineTranscriber:
         *,
         primary_engine: OcrEngine,
         fallback_engine: OcrEngine | None = None,
+        vision_expert: VisionLineExpert | None = None,
     ) -> PanelTranscription:
         predictions: list[LinePrediction] = []
         fallback_invocations = 0
         disagreement_count = 0
+        vision_invocations = 0
         view_items = list(self.preprocess_views.items()) or [("default", lambda image: image)]
         default_view_name, default_preprocessor = view_items[0]
         alternate_views = view_items[1:]
@@ -181,6 +187,30 @@ class LineTranscriber:
                     disagreement_count += 1
 
             chosen = max(candidates, key=self._candidate_rank_key)
+            if vision_expert is not None and self._should_try_vision_fallback(segment, chosen, candidates):
+                try:
+                    vision_result = vision_expert.transcribe(
+                        raw_crop,
+                        candidate_hints=[candidate.text for candidate in candidates if candidate.text.strip()],
+                    )
+                except Exception:
+                    vision_result = None
+                if vision_result is not None:
+                    vision_candidate = LineOcrCandidate(
+                        text=vision_result.text,
+                        confidence=float(vision_result.confidence),
+                        engine_name=getattr(vision_expert, "name", "vision"),
+                        view_name="vision",
+                        source="vision_fallback",
+                        metadata={
+                            "segment_order": segment.order,
+                            "vision_raw_response": vision_result.raw_response,
+                        },
+                    )
+                    candidates.append(vision_candidate)
+                    candidates = self._filter_candidates(candidates)
+                    chosen = max(candidates, key=self._candidate_rank_key)
+                    vision_invocations += 1
             chosen_text = canonicalize_exact_line(chosen.text)
             uncertain = self._candidate_quality(chosen) < self.uncertain_threshold or not chosen_text.strip()
             predictions.append(
@@ -212,7 +242,29 @@ class LineTranscriber:
             uncertain_line_count=uncertain_count,
             fallback_invocations=fallback_invocations,
             engine_disagreement_count=disagreement_count,
+            vision_invocations=vision_invocations,
         )
+
+    def _should_try_vision_fallback(
+        self,
+        segment: SegmentedLine,
+        chosen: LineOcrCandidate,
+        candidates: list[LineOcrCandidate],
+    ) -> bool:
+        quality = self._candidate_quality(chosen)
+        if not chosen.text.strip():
+            return True
+        if self._looks_like_junk(chosen):
+            return True
+        if quality < self.vision_quality_threshold:
+            return True
+        token_count = int(segment.metadata.get("token_count", 0) or 0)
+        distinct_candidates = {
+            _normalize_for_similarity(candidate.text) for candidate in candidates if candidate.text.strip()
+        }
+        if token_count <= 1 and len(distinct_candidates) >= 2 and quality < 0.98:
+            return True
+        return False
 
     def _should_try_additional_views(self, segment: SegmentedLine, primary_candidate: LineOcrCandidate) -> bool:
         token_count = int(segment.metadata.get("token_count", 0) or 0)

@@ -24,6 +24,7 @@ def test_line_segmenter_detects_header_trim_and_line_boxes() -> None:
     assert len(result.lines) == 2
     assert result.lines[0].bbox[1] >= result.header_trim_px
     assert result.lines[1].bbox[1] > result.lines[0].bbox[1]
+    assert all(line.metadata.get("source") == "fixed_pitch" for line in result.lines)
 
 
 def test_line_segmenter_recovers_full_content_when_no_text_is_visible() -> None:
@@ -47,7 +48,13 @@ def test_line_segmenter_refines_merged_token_row_with_local_projection_split() -
         OcrToken(text="merged", confidence=0.9, bbox=(8, 2, 76, 20)),
         OcrToken(text="single", confidence=0.9, bbox=(15, 32, 46, 5)),
     ]
-    segmenter = LineSegmenter(default_header_trim_px=0, min_line_height_px=3, line_padding_px=1, merge_gap_px=2)
+    segmenter = LineSegmenter(
+        segmentation_mode="adaptive",
+        default_header_trim_px=0,
+        min_line_height_px=3,
+        line_padding_px=1,
+        merge_gap_px=2,
+    )
     segmenter.detect_header_trim = lambda _roi: 0  # type: ignore[method-assign]
 
     result = segmenter.segment(roi, tokens=tokens)
@@ -76,7 +83,13 @@ def test_line_segmenter_normalizes_xyxy_token_boxes_for_dense_panel_rows() -> No
         OcrToken(text="C", confidence=0.9, bbox=(8, 32, 58, 36)),
         OcrToken(text="3", confidence=0.9, bbox=(76, 32, 112, 36)),
     ]
-    segmenter = LineSegmenter(default_header_trim_px=0, min_line_height_px=3, line_padding_px=1, merge_gap_px=2)
+    segmenter = LineSegmenter(
+        segmentation_mode="adaptive",
+        default_header_trim_px=0,
+        min_line_height_px=3,
+        line_padding_px=1,
+        merge_gap_px=2,
+    )
     segmenter.detect_header_trim = lambda _roi: 0  # type: ignore[method-assign]
 
     result = segmenter.segment(roi, tokens=tokens)
@@ -84,3 +97,20 @@ def test_line_segmenter_normalizes_xyxy_token_boxes_for_dense_panel_rows() -> No
     assert len(result.lines) == 3
     assert all(line.metadata.get("token_bbox_format") == "xyxy" for line in result.lines)
     assert [line.metadata.get("token_count") for line in result.lines] == [2, 2, 2]
+
+
+def test_line_segmenter_fixed_pitch_uses_twenty_pixel_stripes() -> None:
+    roi = np.zeros((64, 120, 3), dtype=np.uint8)
+    roi[:, :, :] = (0x1A, 0x21, 0x29)
+    roi[24:28, 10:100, :] = 255
+    roi[44:48, 12:102, :] = 255
+
+    segmenter = LineSegmenter(target_line_height_px=20.0)
+    segmenter.detect_header_trim = lambda _roi: 24  # type: ignore[method-assign]
+
+    result = segmenter.segment(roi)
+
+    assert len(result.lines) == 2
+    assert result.lines[0].bbox[3] == 20
+    assert result.lines[1].bbox[3] == 20
+    assert result.lines[0].metadata.get("estimated_line_count") == 2

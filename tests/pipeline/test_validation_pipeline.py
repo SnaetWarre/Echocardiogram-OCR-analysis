@@ -30,6 +30,10 @@ def test_build_validation_manager_forces_expected_configuration() -> None:
     assert pipeline.config.parameters["scale_algo"] == "lanczos"
     assert pipeline.config.parameters["contrast_mode"] == "none"
     assert pipeline.config.parameters["max_frames"] == 1
+    assert pipeline.config.parameters["panel_validation_mode"] == "selective"
+    assert pipeline.config.parameters["panel_validation_model"] == "demo-model"
+    assert pipeline.config.parameters["vision_fallback_enabled"] is True
+    assert pipeline.config.parameters["vision_model"] == "qwen2.5vl:3b-q4_K_M"
 
     pipeline._ensure_components()
     assert pipeline.ocr_engine.name == "surya-fake"

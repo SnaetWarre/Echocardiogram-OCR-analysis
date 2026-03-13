@@ -25,6 +25,11 @@ class MeasurementRecord:
     processed_at: str = ""
     pipeline_version: str = ""
     ocr_engine: str = ""
+    parser_source: str = ""
+    source_kind: str = "pixel_ocr"
+    source_path: str = ""
+    source_modality: str = ""
+    source_note: str = ""
 
     def to_dict(self) -> dict[str, object]:
         payload = asdict(self)
@@ -57,4 +62,9 @@ CSV_FIELDS = [
     "processed_at",
     "pipeline_version",
     "ocr_engine",
+    "parser_source",
+    "source_kind",
+    "source_path",
+    "source_modality",
+    "source_note",
 ]

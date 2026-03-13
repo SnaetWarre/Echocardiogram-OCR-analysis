@@ -12,6 +12,8 @@ def build_validation_manager(
     llm_model: str = "qwen2.5:7b-instruct-q4_K_M",
     llm_command: str = "ollama",
     parser_mode: str = "local_llm",
+    vision_model: str = "qwen2.5vl:3b-q4_K_M",
+    vision_fallback_enabled: bool = True,
 ) -> PipelineManager:
     engine = surya_engine if surya_engine is not None else build_engine("surya")
     parser = LocalLlmMeasurementParser(
@@ -39,6 +41,11 @@ def build_validation_manager(
                 "scale_algo": "lanczos",
                 "contrast_mode": "none",
                 "max_frames": 1,
+                "panel_validation_mode": "selective",
+                "panel_validation_model": llm_model,
+                "panel_validation_command": llm_command,
+                "vision_fallback_enabled": vision_fallback_enabled,
+                "vision_model": vision_model,
             }
         ),
     )

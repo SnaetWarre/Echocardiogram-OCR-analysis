@@ -41,6 +41,23 @@ class _RecordingEngine:
         )
 
 
+class _FakeVisionExpert:
+    name = "vision"
+
+    def __init__(self, text: str, confidence: float = 0.86) -> None:
+        self.text = text
+        self.confidence = confidence
+        self.calls = 0
+
+    def transcribe(self, image: np.ndarray, *, candidate_hints=None):
+        _ = image
+        _ = candidate_hints
+        self.calls += 1
+        from app.pipeline.vision_llm import VisionLineExpertResult
+
+        return VisionLineExpertResult(text=self.text, confidence=self.confidence, raw_response=self.text)
+
+
 def test_line_transcriber_routes_uncertain_lines_to_fallback_engine() -> None:
     roi = np.zeros((20, 40), dtype=np.uint8)
     segmentation = SegmentationResult(
@@ -255,3 +272,32 @@ def test_line_transcriber_triggers_fallback_for_unknown_unit_sparse_junk() -> No
 
     assert result.fallback_invocations == 1
     assert result.lines[0].text == "1 LA Diam 4.0 cm"
+
+
+def test_line_transcriber_routes_hard_lines_to_vision_expert() -> None:
+    roi = np.zeros((20, 40), dtype=np.uint8)
+    segmentation = SegmentationResult(
+        header_trim_px=0,
+        content_bbox=(0, 0, 40, 20),
+        lines=(
+            SegmentedLine(order=0, bbox=(0, 0, 40, 20), metadata={"token_count": 1}),
+        ),
+    )
+    primary = _RecordingEngine([("??", 0.2), ("?", 0.2)], name="primary")
+    vision = _FakeVisionExpert("1 TR Vmax 2.1 m/s")
+
+    result = LineTranscriber(
+        uncertain_threshold=0.7,
+        vision_quality_threshold=0.9,
+        preprocess_views={"default": lambda image: image, "clahe": lambda image: image},
+    ).transcribe(
+        roi,
+        segmentation,
+        primary_engine=primary,
+        fallback_engine=None,
+        vision_expert=vision,
+    )
+
+    assert vision.calls == 1
+    assert result.vision_invocations == 1
+    assert result.lines[0].text == "1 TR Vmax 2.1 m/s"

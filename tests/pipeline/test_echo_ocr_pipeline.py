@@ -13,6 +13,8 @@ from app.pipeline.echo_ocr_pipeline import (
     TopLeftBlueGrayBoxDetector,
     preprocess_roi,
 )
+from app.pipeline.line_transcriber import LinePrediction, PanelTranscription
+from app.pipeline.panel_validator import LocalLlmPanelValidator, PanelValidatorConfig
 from app.pipeline.ocr_engines import OcrResult, OcrToken
 
 
@@ -277,3 +279,36 @@ def test_ai_result_uses_exact_line_sources_and_raw_line_predictions() -> None:
     assert result.measurements[0].source == "exact_line:1 TR Vmax 2.1 m/s:0.880"
     assert result.raw["exact_lines"] == ["1 TR Vmax 2.1 m/s"]
     assert result.raw["line_predictions"][0]["line_bbox"] == [0, 0, 10, 2]
+
+
+def test_panel_validator_results_are_reattached_to_exact_lines() -> None:
+    pipeline = EchoOcrPipeline()
+    pipeline._panel_validator = LocalLlmPanelValidator(
+        config=PanelValidatorConfig(mode="always"),
+        runner=lambda _prompt: '{"measurements":[{"order":1,"name":"TR Vmax","value":"2.1","unit":"m/s"}]}',
+    )
+    panel = PanelTranscription(
+        lines=(
+            LinePrediction(
+                order=0,
+                bbox=(0, 0, 20, 4),
+                text="TR Vmax 2.1 m/s",
+                confidence=0.82,
+                engine_name="fake",
+                source="primary",
+                uncertain=True,
+            ),
+        ),
+        combined_text="TR Vmax 2.1 m/s",
+        uncertain_line_count=1,
+    )
+
+    refined = pipeline._maybe_apply_panel_validator(
+        panel,
+        [AiMeasurement(name="TR Vmax", value="2.1", unit="ms", order_hint=0)],
+        confidence=0.8,
+    )
+
+    assert refined[0].unit == "m/s"
+    assert refined[0].source is not None
+    assert "|parser=panel_validator:" in refined[0].source
