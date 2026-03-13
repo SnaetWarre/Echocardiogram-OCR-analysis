@@ -62,6 +62,10 @@ _COMPACT_VALUE_UNIT_RE = re.compile(
     rf"(?P<value>[-+]?\d+(?:[.,]\d+)?)(?P<unit>{_UNIT_TOKEN_PATTERN})(?=\s|$)",
     flags=re.IGNORECASE,
 )
+_SLASH_WRAPPED_VALUE_UNIT_RE = re.compile(
+    rf"/\s*(?P<value>[-+]?\d+(?:[.,]\d+)?)\s*(?P<unit>{_UNIT_TOKEN_PATTERN})\s*/",
+    flags=re.IGNORECASE,
+)
 _VALUE_RE = re.compile(r"[-+]?\d+(?:[.,]\d+)?")
 _PREFIX_RE = re.compile(r"^(?P<prefix>\d{1,2})\s+(?P<body>.+)$")
 _VALUE_ONLY_RE = re.compile(
@@ -73,6 +77,7 @@ _LABEL_REPAIRS = (
     (re.compile(r"\bL[VY](?:I|YI)DS\b", flags=re.IGNORECASE), "LVIDs"),
     (re.compile(r"\bL[YV]P(?:W|VW)d\b", flags=re.IGNORECASE), "LVPWd"),
     (re.compile(r"\bL[YV][YV]P(?:W|VW)d\b", flags=re.IGNORECASE), "LVPWd"),
+    (re.compile(r"\bL[VY]P[VW]{2,}d\b", flags=re.IGNORECASE), "LVPWd"),
     (re.compile(r"\bI[VY]Sd\b", flags=re.IGNORECASE), "IVSd"),
     (re.compile(r"\bLALS\s+AdU\b", flags=re.IGNORECASE), "LALs A4C"),
     (re.compile(r"\bLALS\s+A&v\b", flags=re.IGNORECASE), "LALs A4C"),
@@ -83,7 +88,10 @@ _LABEL_REPAIRS = (
     (re.compile(r"\b1E['’]?\b", flags=re.IGNORECASE), "1 E'"),
     (re.compile(r"\bE['’]?\s*Lat\b", flags=re.IGNORECASE), "E' Lat"),
     (re.compile(r"\bE['’]?\s*Sept\b", flags=re.IGNORECASE), "E' Sept"),
+    (re.compile(r"\bMV\s+Dect\b", flags=re.IGNORECASE), "MV DecT"),
 )
+_TRAILING_FILLER_RE = re.compile(r"(?:\s*(?:_+|(?:[.-]\s*){3,}|-+))+\s*$")
+_LEADING_PREFIX_GLYPH_RE = re.compile(r"^(?:ı|I|l)\s+(?=[A-Za-z])")
 
 
 def normalize_space(text: str) -> str:
@@ -120,11 +128,16 @@ def canonicalize_exact_line(text: str) -> str:
     line = line.replace("\\%", " %")
     line = line.replace("\\,", " ")
     line = line.replace("|", " ")
+    line = _SLASH_WRAPPED_VALUE_UNIT_RE.sub(r"\g<value> \g<unit>", line)
+    line = _LEADING_PREFIX_GLYPH_RE.sub("1 ", line)
+    line = line.replace("EF(", "EF (")
     line = re.sub(r"^(\d{1,2})(?=[A-Za-z'])", r"\1 ", line)
     line = _COMPACT_VALUE_UNIT_RE.sub(r"\g<value> \g<unit>", line)
     line = normalize_space(line)
     for pattern, replacement in _LABEL_REPAIRS:
         line = pattern.sub(replacement, line)
+    line = _strip_known_unit_filler(line)
+    line = _TRAILING_FILLER_RE.sub("", line)
     parts = line.split()
     if parts:
         normalized_parts = [normalize_unit(part) or part for part in parts]
@@ -141,6 +154,30 @@ def _looks_like_symbol_junk(text: str) -> bool:
     if alnum_count <= 1:
         return True
     return punctuation_count >= max(4, alnum_count * 2)
+
+
+def _strip_known_unit_filler(text: str) -> str:
+    line = text.rstrip()
+    lowered = line.lower()
+    for known in sorted(KNOWN_UNITS, key=len, reverse=True):
+        unit_index = lowered.rfind(known.lower())
+        if unit_index == -1:
+            continue
+        suffix = line[unit_index + len(known) :]
+        if not suffix:
+            continue
+        if _is_filler_suffix(suffix):
+            return line[:unit_index] + known
+    return line
+
+
+def _is_filler_suffix(text: str) -> bool:
+    stripped = text.strip()
+    if not stripped:
+        return False
+    if any(char not in {"_", ".", "-", "/", " "} for char in stripped):
+        return False
+    return stripped.count("_") >= 2 or stripped.count(".") >= 2 or stripped.count("-") >= 2 or "/" in stripped
 
 
 def label_family_key(label: str | None) -> str:

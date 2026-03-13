@@ -168,3 +168,69 @@ def test_lexicon_reranker_repairs_near_miss_label_family_using_lexicon() -> None
     )
 
     assert canonicalize_exact_line(ranked[0].candidate.text) == "1 E' Lat 0.09 m/s"
+
+
+def test_lexicon_reranker_repairs_known_family_prefix_and_unit() -> None:
+    reranker = LexiconReranker(
+        LexiconArtifact(
+            artifact_version=1,
+            created_at="now",
+            labels_path="labels/exact_lines.json",
+            dataset_version=1,
+            dataset_task="exact_roi_measurement_transcription",
+            total_files=1,
+            total_lines=1,
+            exact_line_frequencies={"1 AV Vmax 1.1 m/s": 2},
+            label_frequencies={"av vmax": 2},
+            label_family_lines={"av vmax": ["1 AV Vmax 1.1 m/s"]},
+            label_unit_frequencies={"av vmax": {"m/s": 2}},
+            label_order_frequencies={"av vmax": {"1": 2}},
+            label_value_stats={"av vmax": NumericStats(count=2, min=1.0, max=1.2, mean=1.1)},
+            token_frequencies={"av": 2},
+            unit_frequencies={"m/s": 2},
+            prefix_frequencies={"1": 2},
+            line_pattern_frequencies={"<PREFIX> av vmax <VALUE> <UNIT:m/s>": 2},
+        )
+    )
+
+    ranked = reranker.rank_candidates(
+        [
+            LineOcrCandidate(text="AV Vmax 1.1 ms", confidence=0.95, engine_name="surya", view_name="default", source="primary"),
+        ],
+        line_order=0,
+    )
+
+    assert ranked[0].candidate.text == "1 AV Vmax 1.1 m/s"
+
+
+def test_lexicon_reranker_repairs_decimal_scale_outlier() -> None:
+    reranker = LexiconReranker(
+        LexiconArtifact(
+            artifact_version=1,
+            created_at="now",
+            labels_path="labels/exact_lines.json",
+            dataset_version=1,
+            dataset_task="exact_roi_measurement_transcription",
+            total_files=1,
+            total_lines=1,
+            exact_line_frequencies={"AV VTI 2.8 cm": 2},
+            label_frequencies={"av vti": 2},
+            label_family_lines={"av vti": ["AV VTI 2.8 cm"]},
+            label_unit_frequencies={"av vti": {"cm": 2}},
+            label_order_frequencies={"av vti": {"5": 2}},
+            label_value_stats={"av vti": NumericStats(count=2, min=2.7, max=2.9, mean=2.8)},
+            token_frequencies={"vti": 2},
+            unit_frequencies={"cm": 2},
+            prefix_frequencies={},
+            line_pattern_frequencies={"av vti <VALUE> <UNIT:cm>": 2},
+        )
+    )
+
+    ranked = reranker.rank_candidates(
+        [
+            LineOcrCandidate(text="AV VTI 28 cm", confidence=0.95, engine_name="surya", view_name="default", source="primary"),
+        ],
+        line_order=4,
+    )
+
+    assert ranked[0].candidate.text == "AV VTI 2.8 cm"

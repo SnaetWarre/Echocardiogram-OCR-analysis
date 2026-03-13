@@ -61,3 +61,9 @@ def test_parse_measurement_line_normalizes_mes_unit_alias() -> None:
     assert decoded.label == "E' Lat"
     assert decoded.value == "0.09"
     assert decoded.unit == "m/s"
+
+
+def test_canonicalize_exact_line_strips_fillers_and_repairs_prefix_noise() -> None:
+    assert canonicalize_exact_line("2 LA Diam 5.5 cm ____") == "2 LA Diam 5.5 cm"
+    assert canonicalize_exact_line("ı IVSd /1.1 cm/ . . . . .") == "1 IVSd 1.1 cm"
+    assert canonicalize_exact_line("LVPVVd 1.1 cm") == "LVPWd 1.1 cm"

@@ -62,7 +62,24 @@ def crop_segment(image: np.ndarray, segment: SegmentedLine) -> np.ndarray:
 
 
 def _normalize_text_lines(text: str) -> str:
-    return "\n".join(line.strip() for line in text.splitlines() if line.strip()).strip()
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    filtered = [line for line in lines if not _looks_like_filler_line(line)]
+    chosen = filtered or lines[:1]
+    normalized = "\n".join(chosen[:3]).strip()
+    return normalized[:160]
+
+
+def _looks_like_filler_line(text: str) -> bool:
+    stripped = text.strip()
+    if not stripped:
+        return True
+    if all(char in {"_", ".", "-", "/", " ", "~"} for char in stripped):
+        return True
+    alnum_count = sum(1 for char in stripped if char.isalnum())
+    punctuation_count = sum(1 for char in stripped if not char.isalnum() and not char.isspace())
+    if alnum_count == 0:
+        return True
+    return alnum_count <= 2 and punctuation_count >= max(2, alnum_count)
 
 
 def _candidate_from_result(

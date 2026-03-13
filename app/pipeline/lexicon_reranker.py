@@ -4,12 +4,13 @@ from dataclasses import dataclass, field
 from difflib import SequenceMatcher
 from typing import Iterable
 
-from app.pipeline.lexicon_builder import LexiconArtifact
+from app.pipeline.lexicon_builder import LexiconArtifact, NumericStats
 from app.pipeline.line_transcriber import LineOcrCandidate, LinePrediction, PanelTranscription
 from app.pipeline.measurement_decoder import (
     canonicalize_exact_line,
     label_family_key,
     line_pattern,
+    normalize_unit,
     parse_measurement_line,
 )
 
@@ -150,15 +151,26 @@ class LexiconReranker:
         augmented = list(candidates)
         seen = {canonicalize_exact_line(candidate.text) for candidate in candidates}
         for candidate in candidates:
-            repaired = self._repair_candidate_from_lexicon(candidate, line_order=line_order)
-            if repaired is None:
-                continue
-            canonical = canonicalize_exact_line(repaired.text)
-            if not canonical or canonical in seen:
-                continue
-            augmented.append(repaired)
-            seen.add(canonical)
+            for repaired in self._repair_candidates_from_lexicon(candidate, line_order=line_order):
+                canonical = canonicalize_exact_line(repaired.text)
+                if not canonical or canonical in seen:
+                    continue
+                augmented.append(repaired)
+                seen.add(canonical)
         return tuple(augmented)
+
+    def _repair_candidates_from_lexicon(
+        self,
+        candidate: LineOcrCandidate,
+        *,
+        line_order: int,
+    ) -> tuple[LineOcrCandidate, ...]:
+        repairs: list[LineOcrCandidate] = []
+        family_repair = self._repair_candidate_from_lexicon(candidate, line_order=line_order)
+        if family_repair is not None:
+            repairs.append(family_repair)
+        repairs.extend(self._repair_known_family_candidate(candidate, line_order=line_order))
+        return tuple(repairs)
 
     def _repair_candidate_from_lexicon(
         self,
@@ -206,6 +218,139 @@ class LexiconReranker:
                 **candidate.metadata,
                 "lexicon_repair_family": family_name,
                 "lexicon_repair_similarity": similarity,
+                "lexicon_repair_from": candidate.text,
+            },
+        )
+
+    def _repair_known_family_candidate(
+        self,
+        candidate: LineOcrCandidate,
+        *,
+        line_order: int,
+    ) -> list[LineOcrCandidate]:
+        decoded = parse_measurement_line(candidate.text)
+        if decoded.label is None or decoded.value is None:
+            return []
+
+        family_name = label_family_key(decoded.label)
+        if family_name not in self.lexicon.label_frequencies:
+            return []
+        exemplar_lines = self.lexicon.label_family_lines.get(family_name, [])
+        if not exemplar_lines:
+            return []
+        exemplar_decoded = parse_measurement_line(exemplar_lines[0])
+        repairs: list[LineOcrCandidate] = []
+
+        repaired_prefix = decoded.prefix
+        if decoded.prefix is None and exemplar_decoded.prefix and self._family_prefers_prefix(family_name):
+            repaired_prefix = exemplar_decoded.prefix
+
+        preferred_unit = self._preferred_unit_for_family(family_name)
+        normalized_unit = normalize_unit(decoded.unit)
+        repaired_unit = decoded.unit
+        if preferred_unit and decoded.unit and normalized_unit != preferred_unit:
+            repaired_unit = preferred_unit
+
+        scaled_value = self._scaled_value_repair(decoded.value, family_name)
+        repaired_value = scaled_value if scaled_value is not None else decoded.value
+
+        if (
+            repaired_prefix != decoded.prefix
+            or repaired_unit != decoded.unit
+            or repaired_value != decoded.value
+        ):
+            repairs.append(
+                self._build_repaired_candidate(
+                    candidate,
+                    prefix=repaired_prefix,
+                    label=decoded.label,
+                    value=repaired_value,
+                    unit=repaired_unit,
+                    tag="family_repair",
+                    metadata={
+                        "lexicon_prefix_source": repaired_prefix,
+                        "lexicon_preferred_unit": repaired_unit,
+                        "lexicon_scaled_value_from": decoded.value,
+                    },
+                )
+            )
+
+        return repairs
+
+    def _preferred_unit_for_family(self, family_name: str) -> str | None:
+        unit_hits = self.lexicon.label_unit_frequencies.get(family_name, {})
+        if not unit_hits:
+            return None
+        best_unit, _count = max(unit_hits.items(), key=lambda item: item[1])
+        normalized = normalize_unit(best_unit)
+        return normalized or best_unit
+
+    def _scaled_value_repair(self, value: str, family_name: str) -> str | None:
+        stats = self.lexicon.label_value_stats.get(family_name)
+        if stats is None:
+            return None
+        try:
+            numeric_value = float(value)
+        except ValueError:
+            return None
+        if self._value_within_expected_range(numeric_value, stats):
+            return None
+        for factor in (0.1, 10.0):
+            scaled_value = numeric_value * factor
+            if self._value_within_expected_range(scaled_value, stats):
+                return self._format_scaled_value(value, scaled_value)
+        return None
+
+    @staticmethod
+    def _value_within_expected_range(value: float, stats: NumericStats) -> bool:
+        lower = max(0.0, stats.min * 0.75)
+        upper = max(stats.max * 1.25, stats.mean * 1.25)
+        return lower <= value <= upper
+
+    @staticmethod
+    def _format_scaled_value(original: str, scaled_value: float) -> str:
+        decimals = 0
+        if "." in original:
+            decimals = len(original.split(".", maxsplit=1)[1])
+        elif not float(scaled_value).is_integer():
+            decimals = 1
+        formatted = f"{scaled_value:.{min(2, decimals)}f}"
+        if decimals == 0:
+            formatted = f"{scaled_value:.0f}"
+        return formatted.rstrip("0").rstrip(".") if "." in formatted else formatted
+
+    @staticmethod
+    def _build_repaired_candidate(
+        candidate: LineOcrCandidate,
+        *,
+        prefix: str | None,
+        label: str | None,
+        value: str | None,
+        unit: str | None,
+        tag: str,
+        metadata: dict[str, object],
+    ) -> LineOcrCandidate:
+        parts: list[str] = []
+        if prefix:
+            parts.append(prefix)
+        if label:
+            parts.append(label)
+        if value:
+            parts.append(value)
+        if unit:
+            parts.append(unit)
+        repaired_text = canonicalize_exact_line(" ".join(parts))
+        return LineOcrCandidate(
+            text=repaired_text,
+            confidence=max(0.0, candidate.confidence - 0.03),
+            engine_name=candidate.engine_name,
+            view_name=f"{candidate.view_name}:{tag}",
+            source=f"{candidate.source}_{tag}",
+            tokens=candidate.tokens,
+            metadata={
+                **candidate.metadata,
+                **metadata,
+                "lexicon_repair_tag": tag,
                 "lexicon_repair_from": candidate.text,
             },
         )

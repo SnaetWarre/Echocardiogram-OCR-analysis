@@ -167,7 +167,7 @@ def test_extract_measurements_uses_detector_bbox_only() -> None:
     assert panel.lines
     assert bbox == (0, 0, 64, 24)
     assert len(items) == 1
-    assert items[0].name == "TR Vmax"
+    assert items[0].name == "1 TR Vmax"
 
 
 def test_extract_records_persists_single_engine_metadata() -> None:
