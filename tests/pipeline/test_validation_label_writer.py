@@ -1,3 +1,4 @@
+# pyright: reportMissingImports=false
 from __future__ import annotations
 
 import json
@@ -219,6 +220,26 @@ def test_writer_multiple_measurements_are_ordered(tmp_path: Path) -> None:
     assert measurements[0] == {"order": 1, "text": "1 IVSd 0.9 cm"}
     assert measurements[1] == {"order": 2, "text": "2 LVIDd 5.4 cm"}
     assert measurements[2] == {"order": 3, "text": "3 LVPWd 1.0 cm"}
+
+
+def test_writer_prefers_exact_line_source_when_available(tmp_path: Path) -> None:
+    output_path = tmp_path / "exact_lines.json"
+    writer = ValidationLabelWriter(output_path=output_path)
+
+    writer.append(
+        Path("/tmp/source_line.dcm"),
+        [
+            AiMeasurement(
+                name="Ao Diam",
+                value="3.2",
+                unit="cm",
+                source="exact_line:1 Ao Diam 3.2 cm:0.997",
+            )
+        ],
+    )
+
+    payload = json.loads(output_path.read_text(encoding="utf-8"))
+    assert payload["files"][0]["measurements"] == [{"order": 1, "text": "1 Ao Diam 3.2 cm"}]
 
 
 # ---------------------------------------------------------------------------

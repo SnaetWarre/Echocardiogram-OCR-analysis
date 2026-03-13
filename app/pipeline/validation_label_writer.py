@@ -2,14 +2,33 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, TypedDict, cast
 
 from app.models.types import AiMeasurement
+from app.pipeline.measurement_decoder import canonicalize_exact_line, extract_line_from_source
 
 
 DATASET_VERSION = 1
 DATASET_TASK = "exact_roi_measurement_transcription"
 DEFAULT_SPLIT = "validation"
+
+
+class MeasurementEntry(TypedDict):
+    order: int
+    text: str
+
+
+class FileEntry(TypedDict):
+    file_name: str
+    file_path: str
+    split: str
+    measurements: list[MeasurementEntry]
+
+
+class LabelDataset(TypedDict):
+    version: int
+    task: str
+    files: list[FileEntry]
 
 
 class ValidationLabelWriter:
@@ -37,7 +56,7 @@ class ValidationLabelWriter:
         self._write_payload(payload)
         return self._output_path
 
-    def _load_payload(self) -> dict[str, Any]:
+    def _load_payload(self) -> LabelDataset:
         if not self._output_path.exists():
             return self._empty_payload()
 
@@ -45,34 +64,64 @@ class ValidationLabelWriter:
         if not isinstance(payload, dict):
             raise ValueError("Label file must contain a top-level JSON object.")
 
-        version = payload.get("version")
+        payload_obj = cast(dict[str, Any], payload)
+
+        version = payload_obj.get("version")
         if version != DATASET_VERSION:
             raise ValueError(
                 f"Unsupported label dataset version: {version!r}. Expected {DATASET_VERSION}."
             )
 
-        task = payload.get("task")
+        task = payload_obj.get("task")
         if task != DATASET_TASK:
             raise ValueError(
                 f"Unsupported label dataset task: {task!r}. Expected {DATASET_TASK!r}."
             )
 
-        files = payload.get("files")
+        files = payload_obj.get("files")
         if not isinstance(files, list):
             raise ValueError("Label dataset must contain a 'files' array.")
 
-        return payload
-
-    def _write_payload(self, payload: dict[str, Any]) -> None:
-        files = payload.get("files", [])
-        if isinstance(files, list):
-            files.sort(
-                key=lambda item: (
-                    str(item.get("split", "")) if isinstance(item, dict) else "",
-                    str(item.get("file_name", "")) if isinstance(item, dict) else "",
-                    str(item.get("file_path", "")) if isinstance(item, dict) else "",
-                )
+        normalized_files: list[FileEntry] = []
+        for item in cast(list[Any], files):
+            if not isinstance(item, dict):
+                continue
+            file_obj = cast(dict[str, Any], item)
+            measurements_raw = file_obj.get("measurements")
+            measurements: list[MeasurementEntry] = []
+            if isinstance(measurements_raw, list):
+                for measurement in cast(list[Any], measurements_raw):
+                    if not isinstance(measurement, dict):
+                        continue
+                    measurement_obj = cast(dict[str, Any], measurement)
+                    order = measurement_obj.get("order")
+                    text = str(measurement_obj.get("text", "")).strip()
+                    if not isinstance(order, int) or not text:
+                        continue
+                    measurements.append({"order": order, "text": text})
+            normalized_files.append(
+                {
+                    "file_name": str(file_obj.get("file_name", "")),
+                    "file_path": str(file_obj.get("file_path", "")),
+                    "split": str(file_obj.get("split", "")),
+                    "measurements": measurements,
+                }
             )
+
+        return {
+            "version": DATASET_VERSION,
+            "task": DATASET_TASK,
+            "files": normalized_files,
+        }
+
+    def _write_payload(self, payload: LabelDataset) -> None:
+        payload["files"].sort(
+            key=lambda item: (
+                item["split"],
+                item["file_name"],
+                item["file_path"],
+            )
+        )
 
         self._output_path.parent.mkdir(parents=True, exist_ok=True)
         self._output_path.write_text(
@@ -81,7 +130,7 @@ class ValidationLabelWriter:
         )
 
     @staticmethod
-    def _empty_payload() -> dict[str, Any]:
+    def _empty_payload() -> LabelDataset:
         return {
             "version": DATASET_VERSION,
             "task": DATASET_TASK,
@@ -94,8 +143,8 @@ class ValidationLabelWriter:
         measurements: list[str | AiMeasurement],
         *,
         split: str,
-    ) -> dict[str, Any]:
-        ordered_measurements: list[dict[str, Any]] = []
+    ) -> FileEntry:
+        ordered_measurements: list[MeasurementEntry] = []
 
         for index, measurement in enumerate(measurements, start=1):
             text = ValidationLabelWriter._measurement_to_text(measurement)
@@ -116,19 +165,15 @@ class ValidationLabelWriter:
         }
 
     @staticmethod
-    def _upsert_file_record(payload: dict[str, Any], record: dict[str, Any]) -> None:
-        files = payload.get("files")
-        if not isinstance(files, list):
-            raise ValueError("Label dataset must contain a 'files' array.")
+    def _upsert_file_record(payload: LabelDataset, record: FileEntry) -> None:
+        files = payload["files"]
 
-        record_path = str(record.get("file_path", "")).strip()
+        record_path = record["file_path"].strip()
         if not record_path:
             raise ValueError("File record is missing a non-empty 'file_path'.")
 
         for index, existing in enumerate(files):
-            if not isinstance(existing, dict):
-                continue
-            if str(existing.get("file_path", "")).strip() == record_path:
+            if existing["file_path"].strip() == record_path:
                 files[index] = record
                 return
 
@@ -138,6 +183,10 @@ class ValidationLabelWriter:
     def _measurement_to_text(measurement: str | AiMeasurement) -> str:
         if isinstance(measurement, str):
             return ValidationLabelWriter._normalize_line(measurement)
+
+        source_line = ValidationLabelWriter._extract_exact_line_from_source(measurement.source)
+        if source_line:
+            return ValidationLabelWriter._normalize_line(source_line)
 
         parts = [
             ValidationLabelWriter._normalize_token(measurement.name),
@@ -152,15 +201,14 @@ class ValidationLabelWriter:
 
     @staticmethod
     def _normalize_line(value: str) -> str:
-        line = " ".join(value.split()).strip()
+        line = canonicalize_exact_line(value)
         if not line:
             return ""
-        line = line.replace("\\,", " ")
-        line = line.replace("\\%", " %")
-        line = line.replace("\\text{", "")
-        line = line.replace("\\mathrm{", "")
-        line = line.replace("}", "")
         return " ".join(line.split())
+
+    @staticmethod
+    def _extract_exact_line_from_source(source: str | None) -> str | None:
+        return extract_line_from_source(source)
 
     @staticmethod
     def _normalize_split(split: str) -> str:

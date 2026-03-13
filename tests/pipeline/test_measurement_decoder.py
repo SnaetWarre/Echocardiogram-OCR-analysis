@@ -1,0 +1,34 @@
+from __future__ import annotations
+
+from app.pipeline.measurement_decoder import (
+    canonicalize_exact_line,
+    line_pattern,
+    parse_measurement_line,
+)
+
+
+def test_canonicalize_exact_line_normalizes_spacing_and_compact_units() -> None:
+    assert canonicalize_exact_line(r"1   Ao\,Diam  3.2cm") == "1 Ao Diam 3.2 cm"
+
+
+def test_parse_measurement_line_extracts_prefix_label_value_unit() -> None:
+    decoded = parse_measurement_line("2 LVIDd 5.4 cm")
+
+    assert decoded.prefix == "2"
+    assert decoded.label == "LVIDd"
+    assert decoded.value == "5.4"
+    assert decoded.unit == "cm"
+    assert decoded.is_measurement is True
+
+
+def test_parse_measurement_line_preserves_unknown_label_without_value() -> None:
+    decoded = parse_measurement_line("Strange Overlay Label")
+
+    assert decoded.label == "Strange Overlay Label"
+    assert decoded.value is None
+    assert "missing_value" in decoded.uncertain_reasons
+    assert decoded.syntax_confidence < 1.0
+
+
+def test_line_pattern_converts_numeric_parts_to_generic_tokens() -> None:
+    assert line_pattern("3 AV Vmax 1.8 m/s") == "<PREFIX> av vmax <VALUE> <UNIT:m/s>"
