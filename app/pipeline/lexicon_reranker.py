@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from difflib import SequenceMatcher
-from typing import Any, Iterable
+from typing import Iterable
 
 from app.pipeline.lexicon_builder import LexiconArtifact
 from app.pipeline.line_transcriber import LineOcrCandidate, LinePrediction, PanelTranscription
@@ -18,7 +18,7 @@ from app.pipeline.measurement_decoder import (
 class RankedCandidate:
     candidate: LineOcrCandidate
     score: float
-    signals: dict[str, float] = field(default_factory=dict)
+    signals: dict[str, float] = field(default_factory=lambda: {})
 
 
 class LexiconReranker:
@@ -112,6 +112,18 @@ class LexiconReranker:
         syntax_score = decoded.syntax_confidence * 0.2
         family_similarity = self._best_family_similarity(family) * 0.15 if family else 0.0
         order_consistency = self._order_consistency(previous_line, canonical) * 0.05 if previous_line else 0.0
+        measurement_shape = 0.0
+        if decoded.label:
+            measurement_shape += 0.08
+        if decoded.value:
+            measurement_shape += 0.08
+        if decoded.unit:
+            measurement_shape += 0.04
+        source_bonus = 0.0
+        if candidate.source == "fallback_multiview":
+            source_bonus += 0.03
+        elif candidate.source == "primary_multiview":
+            source_bonus += 0.02
 
         return {
             "ocr_confidence": confidence_score,
@@ -123,6 +135,8 @@ class LexiconReranker:
             "syntax": syntax_score,
             "family_similarity": family_similarity,
             "order_consistency": order_consistency,
+            "measurement_shape": measurement_shape,
+            "source_bonus": source_bonus,
         }
 
     def _best_family_similarity(self, family: str) -> float:

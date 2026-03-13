@@ -99,3 +99,37 @@ def test_lexicon_reranker_prefers_label_before_value_candidate_for_dense_rows() 
     )
 
     assert ranked[0].candidate.text == "LVEF MOD A2C 62.09 %"
+
+
+def test_lexicon_reranker_prefers_structured_fallback_over_junk_primary() -> None:
+    reranker = LexiconReranker(
+        LexiconArtifact(
+            artifact_version=1,
+            created_at="now",
+            labels_path="labels/exact_lines.json",
+            dataset_version=1,
+            dataset_task="exact_roi_measurement_transcription",
+            total_files=1,
+            total_lines=1,
+            exact_line_frequencies={},
+            label_frequencies={"e' lat": 2},
+            label_family_lines={"e' lat": ["1 E' Lat 0.09 m/s"]},
+            label_unit_frequencies={"e' lat": {"m/s": 2}},
+            label_order_frequencies={"e' lat": {"1": 2}},
+            label_value_stats={},
+            token_frequencies={"lat": 2},
+            unit_frequencies={"m/s": 2},
+            prefix_frequencies={"1": 2},
+            line_pattern_frequencies={"<PREFIX> e' lat <VALUE> <UNIT:m/s>": 2},
+        )
+    )
+
+    ranked = reranker.rank_candidates(
+        [
+            LineOcrCandidate(text="CHURTUS -68 T", confidence=0.99, engine_name="surya", view_name="high_contrast", source="primary_multiview"),
+            LineOcrCandidate(text="1 E' Lat 0.09 m/s", confidence=0.75, engine_name="tesseract", view_name="clahe", source="fallback_multiview"),
+        ],
+        line_order=0,
+    )
+
+    assert ranked[0].candidate.text == "1 E' Lat 0.09 m/s"

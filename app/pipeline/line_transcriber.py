@@ -7,6 +7,7 @@ from typing import Any, Callable
 import numpy as np
 
 from app.pipeline.line_segmenter import SegmentationResult, SegmentedLine
+from app.pipeline.measurement_decoder import KNOWN_UNITS, canonicalize_exact_line, normalize_unit, parse_measurement_line
 from app.pipeline.ocr_engines import OcrEngine, OcrResult, OcrToken
 
 
@@ -86,10 +87,12 @@ class LineTranscriber:
         *,
         uncertain_threshold: float = 0.72,
         disagreement_similarity_threshold: float = 0.8,
+        fallback_quality_threshold: float = 0.72,
         preprocess_views: dict[str, Callable[[np.ndarray], np.ndarray]] | None = None,
     ) -> None:
         self.uncertain_threshold = float(uncertain_threshold)
         self.disagreement_similarity_threshold = float(disagreement_similarity_threshold)
+        self.fallback_quality_threshold = float(fallback_quality_threshold)
         self.preprocess_views = preprocess_views or {}
 
     def transcribe(
@@ -135,14 +138,15 @@ class LineTranscriber:
                         )
                     )
 
-            best_primary_candidate = max(
-                candidates,
-                key=lambda item: (item.confidence, len(item.text.strip()), item.view_name == default_view_name),
-            )
+            candidates = self._filter_candidates(candidates)
+
+            best_primary_candidate = max(candidates, key=self._candidate_rank_key)
+            best_primary_quality = self._candidate_quality(best_primary_candidate)
             needs_fallback = (
-                best_primary_candidate.confidence < self.uncertain_threshold
+                best_primary_quality < self.fallback_quality_threshold
                 or not best_primary_candidate.text
-                or self._has_view_disagreement(candidates)
+                or self._looks_like_junk(best_primary_candidate)
+                or self._looks_like_value_only_measurement(segment, best_primary_candidate)
             )
             if fallback_engine is not None and needs_fallback:
                 fallback_crop = default_preprocessor(raw_crop)
@@ -170,11 +174,13 @@ class LineTranscriber:
                             )
                         )
 
-            chosen = max(
-                candidates,
-                key=lambda item: (item.confidence, len(item.text.strip()), item.engine_name == primary_engine.name),
-            )
-            uncertain = chosen.confidence < self.uncertain_threshold or not chosen.text.strip()
+                candidates = self._filter_candidates(candidates)
+                best_candidate = max(candidates, key=self._candidate_rank_key)
+                if _normalize_for_similarity(best_primary_candidate.text) != _normalize_for_similarity(best_candidate.text):
+                    disagreement_count += 1
+
+            chosen = max(candidates, key=self._candidate_rank_key)
+            uncertain = self._candidate_quality(chosen) < self.uncertain_threshold or not chosen.text.strip()
             predictions.append(
                 LinePrediction(
                     order=segment.order,
@@ -189,6 +195,8 @@ class LineTranscriber:
                         "segmentation_source": segment.metadata.get("source"),
                         "token_count": segment.metadata.get("token_count", 0),
                         "candidate_count": len(candidates),
+                        "candidate_quality": self._candidate_quality(chosen),
+                        "best_primary_quality": best_primary_quality,
                     },
                 )
             )
@@ -217,13 +225,85 @@ class LineTranscriber:
             return True
         return False
 
-    def _has_view_disagreement(self, candidates: list[LineOcrCandidate]) -> bool:
-        normalized = {
-            _normalize_for_similarity(candidate.text)
-            for candidate in candidates
-            if candidate.text.strip()
-        }
-        return len(normalized) > 1
+    def _filter_candidates(self, candidates: list[LineOcrCandidate]) -> list[LineOcrCandidate]:
+        if len(candidates) <= 1:
+            return candidates
+
+        scored = [(candidate, self._candidate_quality(candidate)) for candidate in candidates if candidate.text.strip()]
+        if not scored:
+            return candidates[:1]
+
+        best_quality = max(score for _candidate, score in scored)
+        best_has_measurement = any(score >= 0.95 for _candidate, score in scored)
+        filtered = [
+            candidate
+            for candidate, score in scored
+            if score >= best_quality - 0.22 and (not best_has_measurement or score >= 0.45)
+        ]
+        return filtered or [max(scored, key=lambda item: item[1])[0]]
+
+    def _candidate_rank_key(self, candidate: LineOcrCandidate) -> tuple[float, float, int, bool]:
+        return (
+            self._candidate_quality(candidate),
+            candidate.confidence,
+            len(candidate.text.strip()),
+            candidate.source.startswith("primary"),
+        )
+
+    def _candidate_quality(self, candidate: LineOcrCandidate) -> float:
+        canonical = canonicalize_exact_line(candidate.text)
+        decoded = parse_measurement_line(canonical)
+        score = 0.0
+        if canonical:
+            score += 0.1
+        score += max(0.0, min(candidate.confidence, 1.0)) * 0.15
+        score += decoded.syntax_confidence * 0.2
+        if decoded.label:
+            score += 0.15
+        if decoded.value:
+            score += 0.15
+        known_unit = normalize_unit(decoded.unit) if decoded.unit else None
+        if known_unit in KNOWN_UNITS:
+            score += 0.1
+        if decoded.is_measurement:
+            score += 0.35
+        if decoded.unit and known_unit not in KNOWN_UNITS:
+            score -= 0.18
+        score -= self._noise_penalty(canonical)
+        return score
+
+    def _looks_like_junk(self, candidate: LineOcrCandidate) -> bool:
+        canonical = canonicalize_exact_line(candidate.text)
+        decoded = parse_measurement_line(canonical)
+        if not canonical:
+            return True
+        if decoded.is_measurement:
+            return False
+        if self._noise_penalty(canonical) >= 0.12:
+            return True
+        known_unit = normalize_unit(decoded.unit) if decoded.unit else None
+        if decoded.unit and known_unit not in KNOWN_UNITS:
+            return True
+        letters = sum(1 for char in canonical if char.isalpha())
+        digits = sum(1 for char in canonical if char.isdigit())
+        return letters + digits < 4
+
+    def _looks_like_value_only_measurement(self, segment: SegmentedLine, candidate: LineOcrCandidate) -> bool:
+        token_count = int(segment.metadata.get("token_count", 0) or 0)
+        if token_count > 1:
+            return False
+        canonical = canonicalize_exact_line(candidate.text)
+        decoded = parse_measurement_line(canonical)
+        return decoded.value is not None and "missing_label" in decoded.uncertain_reasons
+
+    @staticmethod
+    def _noise_penalty(text: str) -> float:
+        if not text:
+            return 0.2
+        allowed = sum(1 for char in text if char.isalnum() or char.isspace() or char in "%'./-()")
+        disallowed_ratio = 1.0 - (allowed / max(1, len(text)))
+        repeated_punct = len(re.findall(r"[._\-=]{3,}", text))
+        return disallowed_ratio * 0.2 + repeated_punct * 0.05
 
     @staticmethod
     def _is_value_before_label(first_line: str, second_line: str) -> bool:
