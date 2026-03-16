@@ -55,6 +55,7 @@ def preprocess_roi(
     scale_factor: int | None = 3,
     scale_algo: str | None = "lanczos",
     contrast_mode: str | None = "none",
+    smooth: bool = False,
 ) -> np.ndarray:
     if scale_factor is None:
         try:
@@ -113,6 +114,12 @@ def preprocess_roi(
         # 5. Mild morphological closing to bridge gaps in thin fonts
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
         clean = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
+
+        # 6. Optional edge smoothing: light blur + re-threshold to reduce
+        #    jagged stroke edges without merging neighbouring glyphs.
+        if smooth:
+            blurred = cv2.GaussianBlur(clean, (3, 3), 0.6)
+            _, clean = cv2.threshold(blurred, 127, 255, cv2.THRESH_BINARY)
 
         return clean
 
@@ -187,6 +194,17 @@ class EchoOcrPipeline(BasePipeline):
         self._scale_factor = self._read_int_parameter(parameters, "scale_factor", default=3)
         self._scale_algo = str(parameters.get("scale_algo", "lanczos")).strip().lower()
         self._contrast_mode = str(parameters.get("contrast_mode", "none")).strip().lower()
+        self._segmentation_mode = str(parameters.get("segmentation_mode", "fixed_pitch")).strip().lower()
+        self._target_line_height_px = self._read_float_parameter(
+            parameters,
+            "target_line_height_px",
+            default=20.0,
+        )
+        self._strict_ocr_engine_selection = self._read_bool_parameter(
+            parameters,
+            "strict_ocr_engine_selection",
+            default=False,
+        )
         self._fallback_engine_name = str(
             parameters.get("fallback_ocr_engine", os.getenv("ECHO_OCR_FALLBACK_ENGINE", ""))
         ).strip().lower()
@@ -249,7 +267,11 @@ class EchoOcrPipeline(BasePipeline):
         self._study_companion_discovery: StudyCompanionDiscovery | None = None
         self._panel_validator: LocalLlmPanelValidator | None = None
         self._vision_expert: VisionLineExpert | None = None
-        self._line_segmenter = LineSegmenter(default_header_trim_px=DEFAULT_HEADER_TRIM_PX)
+        self._line_segmenter = LineSegmenter(
+            segmentation_mode=self._segmentation_mode,
+            target_line_height_px=self._target_line_height_px,
+            default_header_trim_px=DEFAULT_HEADER_TRIM_PX,
+        )
         self._line_transcriber = LineTranscriber(
             vision_quality_threshold=self._vision_quality_threshold,
             preprocess_views={
@@ -327,8 +349,9 @@ class EchoOcrPipeline(BasePipeline):
             return None
         return parsed if parsed > 0 else None
 
-    @staticmethod
-    def _build_ocr_engine_with_fallback(preferred_engine: str) -> OcrEngine:
+    def _build_ocr_engine_with_fallback(self, preferred_engine: str) -> OcrEngine:
+        if self._strict_ocr_engine_selection:
+            return build_engine(preferred_engine)
         for name in (preferred_engine, "easyocr", "paddleocr", "tesseract"):
             try:
                 return build_engine(name)
@@ -697,6 +720,8 @@ class EchoOcrPipeline(BasePipeline):
             raw={
                 "record_count": len(records),
                 "pipeline_version": self.version,
+                "segmentation_mode": self._segmentation_mode,
+                "target_line_height_px": self._target_line_height_px,
                 "source_kinds": source_kinds,
                 "parser_sources": parser_sources,
                 "exact_lines": [record.exact_line_text for _, record in ordered],
@@ -707,6 +732,7 @@ class EchoOcrPipeline(BasePipeline):
                         "confidence": record.line_confidence,
                         "uncertain": record.line_uncertain,
                         "line_bbox": list(record.line_bbox) if record.line_bbox is not None else None,
+                        "ocr_engine": record.ocr_engine,
                         "parser_source": record.parser_source,
                         "source_kind": record.source_kind,
                         "source_path": record.source_path,
