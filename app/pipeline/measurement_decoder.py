@@ -79,6 +79,7 @@ _LABEL_REPAIRS = (
     (re.compile(r"\bL[YV][YV]P(?:W|VW)d\b", flags=re.IGNORECASE), "LVPWd"),
     (re.compile(r"\bL[VY]P[VW]{2,}d\b", flags=re.IGNORECASE), "LVPWd"),
     (re.compile(r"\bI[VY]Sd\b", flags=re.IGNORECASE), "IVSd"),
+    (re.compile(r"\bLALS\b", flags=re.IGNORECASE), "LALs"),
     (re.compile(r"\bLALS\s+AdU\b", flags=re.IGNORECASE), "LALs A4C"),
     (re.compile(r"\bLALS\s+A&v\b", flags=re.IGNORECASE), "LALs A4C"),
     (re.compile(r"\bL[YV]OT\b", flags=re.IGNORECASE), "LVOT"),
@@ -89,6 +90,8 @@ _LABEL_REPAIRS = (
     (re.compile(r"\bE['’]?\s*Lat\b", flags=re.IGNORECASE), "E' Lat"),
     (re.compile(r"\bE['’]?\s*Sept\b", flags=re.IGNORECASE), "E' Sept"),
     (re.compile(r"\bMV\s+Dect\b", flags=re.IGNORECASE), "MV DecT"),
+    (re.compile(r"\(eich\s+\d*\s*", flags=re.IGNORECASE), "EF (Teich) "),
+    (re.compile(r"\bP\s+Vein\s+s\b", flags=re.IGNORECASE), "P Vein S"),
 )
 _TRAILING_FILLER_RE = re.compile(r"(?:\s*(?:_+|(?:[.-]\s*){3,}|-+))+\s*$")
 _LEADING_PREFIX_GLYPH_RE = re.compile(r"^(?:ı|I|l)\s+(?=[A-Za-z])")
@@ -146,8 +149,13 @@ def canonicalize_exact_line(text: str) -> str:
     return "" if _looks_like_symbol_junk(line) else line
 
 
+_CJK_OR_GARBLE_RE = re.compile(r"[\u4e00-\u9fff\u0400-\u04ff]|\\mathbf|\\text|\\Delta")
+
+
 def _looks_like_symbol_junk(text: str) -> bool:
     if not text:
+        return True
+    if _CJK_OR_GARBLE_RE.search(text):
         return True
     alnum_count = sum(1 for char in text if char.isalnum())
     punctuation_count = sum(1 for char in text if not char.isalnum() and not char.isspace())
