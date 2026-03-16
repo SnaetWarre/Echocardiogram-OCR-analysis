@@ -174,3 +174,27 @@ def test_validation_dialog_reset_to_ai_restores_original() -> None:
 
     assert not row.is_edited
     assert row._editor.toPlainText() == "TR Vmax 1.9 m/s"
+
+
+def test_validation_dialog_shows_engine_comparison_when_present() -> None:
+    _ = _get_app()
+    result = AiResult(
+        model_name="demo",
+        created_at=datetime.now(),
+        measurements=[AiMeasurement(name="TR Vmax", value="1.9", unit="m/s")],
+        raw={
+            "engine_comparison": [
+                {"engine": "surya", "status": "ok", "exact_lines": ["1 TR Vmax 1.9 m/s"]},
+                {"engine": "easyocr", "status": "ok", "exact_lines": ["1 TR Vmax 2.0 m/s"]},
+            ]
+        },
+    )
+    dialog = ValidationDialog(Path("/tmp/example.dcm"), result)
+
+    comparison_texts = [
+        widget.toPlainText()
+        for widget in dialog.findChildren(QtWidgets.QTextEdit)
+        if "surya" in widget.toPlainText() and "easyocr" in widget.toPlainText()
+    ]
+
+    assert comparison_texts

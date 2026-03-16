@@ -85,3 +85,16 @@ def test_ai_thread_cleanup_does_not_resume_while_waiting_review() -> None:
         window._advance_validation_queue = original  # type: ignore[method-assign]
 
     assert calls == []
+
+
+def test_setting_selected_ocr_engines_resets_cached_validation_manager() -> None:
+    _ = _get_app()
+    window = MainWindow()
+    original_manager = object()
+    window._validation_pipeline_manager = original_manager  # type: ignore[assignment]
+    window._validation_manager_selection = ("surya",)
+
+    window._set_selected_ocr_engines(("easyocr",))
+
+    assert window._validation_pipeline_manager is None
+    assert window._validation_manager_selection == ()

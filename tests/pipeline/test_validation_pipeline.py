@@ -1,10 +1,18 @@
 from __future__ import annotations
 
+from datetime import datetime
+from pathlib import Path
+
 import numpy as np
 
+from app.models.types import PipelineRequest
 from app.pipeline.echo_ocr_pipeline import EchoOcrPipeline
 from app.pipeline.ocr_engines import OcrResult
-from app.pipeline.validation_pipeline import build_validation_manager
+from app.pipeline.validation_pipeline import (
+    build_gui_ocr_comparison_manager,
+    build_gui_ocr_manager,
+    build_validation_manager,
+)
 
 
 class _FakeSuryaEngine:
@@ -38,3 +46,77 @@ def test_build_validation_manager_forces_expected_configuration() -> None:
     pipeline._ensure_components()
     assert pipeline.ocr_engine.name == "surya-fake"
     assert pipeline.parser.__class__.__name__ == "LocalLlmMeasurementParser"
+
+
+def test_build_gui_ocr_manager_defaults_to_surya_no_parser_fixed_pitch_20px() -> None:
+    manager = build_gui_ocr_manager(surya_engine=_FakeSuryaEngine())
+    pipeline = manager.active()
+
+    assert isinstance(pipeline, EchoOcrPipeline)
+    assert pipeline.config.parameters["ocr_engine"] == "surya"
+    assert pipeline.config.parameters["parser_mode"] == "off"
+    assert pipeline.config.parameters["segmentation_mode"] == "fixed_pitch"
+    assert pipeline.config.parameters["target_line_height_px"] == 20.0
+    assert pipeline.config.parameters["panel_validation_mode"] == "off"
+    assert pipeline.config.parameters["vision_fallback_enabled"] is False
+
+    pipeline._ensure_components()
+    assert pipeline.ocr_engine.name == "surya-fake"
+    assert pipeline.parser.__class__.__name__ == "NoopMeasurementParser"
+
+
+def test_build_gui_ocr_comparison_manager_collects_side_by_side_results() -> None:
+    from app.pipeline.validation_pipeline import GuiOcrComparisonPipeline
+
+    class _StubEchoPipeline(EchoOcrPipeline):
+        def __init__(self, engine_name: str) -> None:
+            super().__init__()
+            self.engine_name = engine_name
+
+        def run(self, request: PipelineRequest):
+            from app.models.types import AiMeasurement, AiResult, PipelineResult
+
+            return PipelineResult(
+                dicom_path=request.dicom_path,
+                status="ok",
+                ai_result=AiResult(
+                    model_name=f"echo-ocr:{self.engine_name}",
+                    created_at=datetime.now(),
+                    measurements=[AiMeasurement(name=f"{self.engine_name} Vmax", value="2.1", unit="m/s")],
+                    raw={
+                        "exact_lines": [f"1 {self.engine_name} Vmax 2.1 m/s"],
+                        "line_predictions": [{"text": f"1 {self.engine_name} Vmax 2.1 m/s"}],
+                    },
+                ),
+                error=None,
+            )
+
+    manager = build_gui_ocr_comparison_manager(ocr_engine_names=("surya", "easyocr"))
+    pipeline = manager.active()
+
+    assert isinstance(pipeline, GuiOcrComparisonPipeline)
+    pipeline._pipelines = {  # type: ignore[attr-defined]
+        "surya": _StubEchoPipeline("surya"),
+        "easyocr": _StubEchoPipeline("easyocr"),
+    }
+
+    result = pipeline.run(PipelineRequest(dicom_path=Path("/tmp/example.dcm")))
+
+    assert result.status == "ok"
+    assert result.ai_result is not None
+    assert result.ai_result.raw["comparison_mode"] is True
+    assert result.ai_result.raw["selected_ocr_engines"] == ["surya", "easyocr"]
+    comparison = result.ai_result.raw["engine_comparison"]
+    assert isinstance(comparison, list)
+    assert comparison[0]["engine"] == "surya"
+    assert comparison[1]["engine"] == "easyocr"
+    assert pipeline.config.parameters["comparison_mode"] is True
+
+
+def test_gui_comparison_manager_rejects_unknown_engine() -> None:
+    try:
+        _ = build_gui_ocr_comparison_manager(ocr_engine_names=("surya", "unknown"))
+    except ValueError as exc:
+        assert "Unsupported OCR engine" in str(exc)
+    else:
+        raise AssertionError("Expected unsupported OCR engine to raise ValueError")
