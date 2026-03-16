@@ -58,6 +58,7 @@ class LineSegmenter:
         merge_gap_px: int = 3,
         max_header_fraction: float = 0.45,
         refine_split_min_height_px: int = 10,
+        snap_to_valleys: bool = False,
     ) -> None:
         self.segmentation_mode = str(segmentation_mode).strip().lower() or "fixed_pitch"
         self.target_line_height_px = max(1.0, float(target_line_height_px))
@@ -68,6 +69,7 @@ class LineSegmenter:
         self.merge_gap_px = max(0, int(merge_gap_px))
         self.max_header_fraction = min(max(float(max_header_fraction), 0.0), 1.0)
         self.refine_split_min_height_px = max(self.min_line_height_px * 2, int(refine_split_min_height_px))
+        self.snap_to_valleys = bool(snap_to_valleys)
 
     def segment(
         self,
@@ -173,6 +175,10 @@ class LineSegmenter:
         lines: list[SegmentedLine] = []
         mask = self._text_mask(content)
 
+        if self.snap_to_valleys:
+            row_density = mask.mean(axis=1).astype(np.float32) if mask.size else np.zeros(content_height, dtype=np.float32)
+            stripe_edges = self._snap_edges_to_valleys(stripe_edges, row_density)
+
         for order, (start, end) in enumerate(zip(stripe_edges[:-1], stripe_edges[1:], strict=False)):
             if end <= start:
                 continue
@@ -225,6 +231,54 @@ class LineSegmenter:
         for index in range(len(edges) - 2, 0, -1):
             edges[index] = min(edges[index], edges[index + 1] - 1)
         return edges
+
+    def _snap_edges_to_valleys(
+        self,
+        edges: list[int],
+        row_density: np.ndarray,
+    ) -> list[int]:
+        """Refine internal stripe edges by snapping them to the centre of
+        the nearest low-density valley — but ONLY when the current edge
+        sits inside or adjacent to a text row.  Edges already in a gap
+        are left untouched so the OCR engine keeps its natural padding."""
+        if len(edges) <= 2 or row_density.size == 0:
+            return edges
+
+        content_height = int(row_density.size)
+        search_radius = max(3, int(self.target_line_height_px * 0.35))
+        gap_threshold = 0.02
+
+        refined: list[int] = [edges[0]]
+        for edge in edges[1:-1]:
+            check_lo = max(0, edge - 1)
+            check_hi = min(content_height, edge + 2)
+            neighbourhood_max = float(np.max(row_density[check_lo:check_hi]))
+            if neighbourhood_max <= gap_threshold:
+                refined.append(edge)
+                continue
+
+            lo = max(1, edge - search_radius)
+            hi = min(content_height, edge + search_radius + 1)
+            if hi <= lo:
+                refined.append(edge)
+                continue
+            window = row_density[lo:hi]
+            min_val = float(np.min(window))
+            max_val = float(np.max(window))
+            threshold = min_val + (max_val - min_val) * 0.10
+            valley_indices = np.where(window <= threshold)[0]
+            if valley_indices.size > 0:
+                center = int(round(float(np.mean(valley_indices))))
+                refined.append(lo + center)
+            else:
+                refined.append(edge)
+        refined.append(edges[-1])
+
+        for i in range(1, len(refined)):
+            if refined[i] <= refined[i - 1]:
+                refined[i] = refined[i - 1] + 1
+
+        return refined
 
     def detect_header_trim(self, roi: np.ndarray) -> int:
         gray = _to_gray(roi)
