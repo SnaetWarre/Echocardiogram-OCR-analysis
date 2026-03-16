@@ -1,4 +1,0 @@
-dropdown menu in gui app to swap between ocr engines and parsers (for later on to swap to newer and better ocr engine for example)
-
-maybe even make it multi select? to check more at the same time and see the diff
-
