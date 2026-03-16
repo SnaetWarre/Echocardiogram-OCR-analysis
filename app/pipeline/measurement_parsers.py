@@ -13,6 +13,13 @@ class MeasurementParser(Protocol):
     def parse(self, text: str, *, confidence: float) -> List[AiMeasurement]: ...
 
 
+class NoopMeasurementParser:
+    def parse(self, text: str, *, confidence: float) -> List[AiMeasurement]:
+        _ = text
+        _ = confidence
+        return []
+
+
 _UNIT_ALIASES = {
     "mis": "m/s",
     "mls": "m/s",
@@ -709,6 +716,8 @@ class RegexThenLlmMeasurementParser:
 def build_parser(mode: str, parameters: Optional[Dict[str, object]] = None) -> MeasurementParser:
     params = parameters or {}
     parser_mode = (mode or "regex").strip().lower()
+    if parser_mode in {"", "off", "none", "disabled", "noop"}:
+        return NoopMeasurementParser()
     regex_parser = RegexMeasurementParser()
     if parser_mode == "regex":
         return regex_parser
