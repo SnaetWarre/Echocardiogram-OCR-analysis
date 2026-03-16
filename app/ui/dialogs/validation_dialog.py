@@ -290,6 +290,10 @@ class ValidationDialog(QtWidgets.QDialog):
         if roi_summary is not None:
             layout.addWidget(roi_summary)
 
+        comparison_summary = self._build_engine_comparison_summary(ai_result)
+        if comparison_summary is not None:
+            layout.addWidget(comparison_summary)
+
         legend = QtWidgets.QFrame()
         legend.setFrameShape(QtWidgets.QFrame.Shape.StyledPanel)
         legend.setStyleSheet("QFrame { background: #F8F9FA; border: 1px solid #DDD; border-radius: 6px; padding: 8px; }")
@@ -463,6 +467,73 @@ class ValidationDialog(QtWidgets.QDialog):
         layout.addWidget(hint)
 
         return frame
+
+    _ENGINE_COLORS: dict[str, str] = {
+        "surya": "#B45309",
+        "paddleocr": "#1D4ED8",
+        "easyocr": "#047857",
+        "tesseract": "#6D28D9",
+    }
+
+    def _build_engine_comparison_summary(self, ai_result: AiResult) -> QtWidgets.QFrame | None:
+        comparison_rows = ai_result.raw.get("engine_comparison")
+        formatted_html = self._format_engine_comparison_html(comparison_rows)
+        if not formatted_html:
+            return None
+
+        frame = QtWidgets.QFrame()
+        frame.setFrameShape(QtWidgets.QFrame.Shape.StyledPanel)
+        frame.setStyleSheet(
+            "QFrame { background: #F7F5EF; border: 1px solid #D8CBA8; border-radius: 6px; padding: 8px; }"
+            "QLabel { color: #3E3420; }"
+        )
+
+        layout = QtWidgets.QVBoxLayout(frame)
+        layout.setContentsMargins(10, 8, 10, 8)
+        layout.setSpacing(6)
+
+        title = QtWidgets.QLabel("<b>OCR engine comparison</b>")
+        title.setToolTip("When multiple OCR engines are selected, compare their extracted lines here.")
+        layout.addWidget(title)
+
+        summary = QtWidgets.QTextEdit()
+        summary.setReadOnly(True)
+        summary.setHtml(formatted_html)
+        summary.setMinimumHeight(120)
+        summary.setMaximumHeight(260)
+        layout.addWidget(summary)
+        return frame
+
+    @classmethod
+    def _format_engine_comparison_html(cls, rows: object) -> str:
+        if not isinstance(rows, list) or not rows:
+            return ""
+
+        parts: list[str] = []
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            engine = str(row.get("engine", "unknown")).strip() or "unknown"
+            status = str(row.get("status", "unknown")).strip() or "unknown"
+            color = cls._ENGINE_COLORS.get(engine.lower(), "#3E3420")
+            parts.append(
+                f'<div style="margin-bottom:8px;">'
+                f'<b style="color:{color};">[{engine}]</b>'
+                f' <span style="color:#777;">status={status}</span>'
+            )
+            error = str(row.get("error", "")).strip()
+            if error:
+                parts.append(f'<br><span style="color:#C44;">error: {error}</span></div>')
+                continue
+            exact_lines = row.get("exact_lines")
+            if isinstance(exact_lines, list) and exact_lines:
+                for line in exact_lines:
+                    escaped = str(line).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                    parts.append(f'<br><span style="color:{color}; font-family:monospace;">{escaped}</span>')
+            else:
+                parts.append('<br><span style="color:#999;">No measurements found.</span>')
+            parts.append("</div>")
+        return "".join(parts)
 
     def _sync_rows_from_list(self) -> None:
         new_rows: list[ValidationFeedbackWidget] = []

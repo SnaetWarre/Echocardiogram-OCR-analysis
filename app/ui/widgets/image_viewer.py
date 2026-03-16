@@ -188,14 +188,27 @@ class ImageViewer(QtWidgets.QGraphicsView):
         value = max(self._min_zoom, min(self._max_zoom, value))
         if value == self._zoom:
             return
-        if anchor is not None:
-            self.setTransformationAnchor(QtWidgets.QGraphicsView.ViewportAnchor.AnchorUnderMouse)
-        else:
-            self.setTransformationAnchor(QtWidgets.QGraphicsView.ViewportAnchor.AnchorViewCenter)
 
         factor = value / self._zoom
-        self._zoom = value
-        self.scale(factor, factor)
+
+        if anchor is not None:
+            old_scene_pos = self.mapToScene(anchor)
+            self._zoom = value
+            self.scale(factor, factor)
+            new_viewport_pos = self.mapFromScene(old_scene_pos)
+            delta = new_viewport_pos - anchor
+            self.horizontalScrollBar().setValue(
+                self.horizontalScrollBar().value() + delta.x()
+            )
+            self.verticalScrollBar().setValue(
+                self.verticalScrollBar().value() + delta.y()
+            )
+        else:
+            self.setTransformationAnchor(
+                QtWidgets.QGraphicsView.ViewportAnchor.AnchorViewCenter
+            )
+            self._zoom = value
+            self.scale(factor, factor)
 
         self.viewChanged.emit(self._zoom)
         self._update_hover_hud()
@@ -217,7 +230,11 @@ class ImageViewer(QtWidgets.QGraphicsView):
             text_item.setBrush(QtGui.QBrush(self._overlay_style.text_color))
             text_item.setFont(self._overlay_style.font)
             text_item.setZValue(6)
-            text_item.setPos(box.x, box.y - 18)
+            label_height = text_item.boundingRect().height()
+            if box.height < label_height + 6:
+                text_item.setPos(box.x + box.width + 3, box.y)
+            else:
+                text_item.setPos(box.x + 2, box.y + 1)
             bg = QtWidgets.QGraphicsRectItem(text_item.boundingRect())
             bg.setBrush(QtGui.QBrush(self._overlay_style.text_bg))
             bg.setPen(QtGui.QPen(QtCore.Qt.PenStyle.NoPen))

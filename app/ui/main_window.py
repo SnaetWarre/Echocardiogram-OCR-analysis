@@ -8,11 +8,16 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 from app.io.dicom_loader import load_dicom_series
 from app.io.errors import DicomLoadError
-from app.models.types import AiMeasurement, AiResult, DicomSeries, PipelineRequest, PipelineResult
+from app.models.types import AiMeasurement, AiResult, DicomSeries, OverlayBox, PipelineRequest, PipelineResult
 from app.pipeline.ai_pipeline import PipelineManager
 from app.pipeline.startup_services import StartupServices
 from app.pipeline.validation_label_writer import ValidationLabelWriter
-from app.pipeline.validation_pipeline import build_validation_manager
+from app.pipeline.validation_pipeline import (
+    DEFAULT_GUI_OCR_ENGINE,
+    GUI_OCR_ENGINE_NAMES,
+    build_gui_ocr_comparison_manager,
+    build_gui_ocr_manager,
+)
 from app.ui.components.controls import ControlsWidget
 from app.ui.components.metadata_tabs import MetadataTabsWidget
 from app.ui.components.sidebar import SidebarWidget
@@ -24,6 +29,23 @@ from app.ui.validation_queue import build_validation_queue
 from app.ui.widgets.image_viewer import ImageViewer
 from app.ui.workers import AiRunWorker, BatchTestWorker, DicomLoadWorker, PrefetchTask, ValidationPrefetchWorker
 from app.utils.cache import LruFrameCache
+
+
+OVERLAY_MODES = ("off", "roi", "lines", "detailed")
+OVERLAY_MODE_LABELS: dict[str, str] = {
+    "off": "Off",
+    "roi": "ROI Only",
+    "lines": "Lines",
+    "detailed": "Detailed",
+}
+ENGINE_OVERLAY_COLORS: dict[str, str] = {
+    "surya": "#F59E0B",
+    "paddleocr": "#3B82F6",
+    "easyocr": "#10B981",
+    "tesseract": "#8B5CF6",
+}
+OVERLAY_UNCERTAIN_COLOR = "#EF4444"
+OVERLAY_DEFAULT_COLOR = "#F59E0B"
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -68,6 +90,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self._prefetched_validation_items: dict[Path, tuple[DicomSeries, PipelineResult]] = {}
         self._prefetch_validation_active_path: Path | None = None
         self._validation_prefetch_limit = 1
+        self._selected_ocr_engines: tuple[str, ...] = (DEFAULT_GUI_OCR_ENGINE,)
+        self._validation_manager_selection: tuple[str, ...] = ()
+        self._ocr_engine_button: QtWidgets.QToolButton | None = None
+        self._ocr_engine_actions: dict[str, QtGui.QAction] = {}
+        self._overlay_mode = "off"
+        self._overlay_mode_button: QtWidgets.QToolButton | None = None
+        self._overlay_mode_actions: dict[str, QtGui.QAction] = {}
 
         # Logs & Error state
         self._log_dir = Path.cwd() / "logs"
@@ -141,16 +170,26 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self._viewer = ImageViewer()
         self._viewer.viewChanged.connect(self._on_view_changed)
-        right_layout.addWidget(self._viewer, stretch=1)
 
         self._build_toolbar()
 
-        # Controls & Tabs
+        bottom_panel = QtWidgets.QWidget()
+        bottom_layout = QtWidgets.QVBoxLayout(bottom_panel)
+        bottom_layout.setContentsMargins(0, 0, 0, 0)
+        bottom_layout.setSpacing(4)
         self._controls = ControlsWidget(self._state)
-        right_layout.addWidget(self._controls)
-
+        bottom_layout.addWidget(self._controls)
         self._tabs = MetadataTabsWidget(self._state)
-        right_layout.addWidget(self._tabs)
+        bottom_layout.addWidget(self._tabs, stretch=1)
+
+        self._content_splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Vertical)
+        self._content_splitter.setChildrenCollapsible(False)
+        self._content_splitter.addWidget(self._viewer)
+        self._content_splitter.addWidget(bottom_panel)
+        self._content_splitter.setStretchFactor(0, 3)
+        self._content_splitter.setStretchFactor(1, 1)
+        self._content_splitter.setSizes([600, 200])
+        right_layout.addWidget(self._content_splitter, stretch=1)
 
         splitter.addWidget(right_container)
         splitter.setStretchFactor(0, 0)
@@ -206,6 +245,13 @@ class MainWindow(QtWidgets.QMainWindow):
         toolbar.addSeparator()
 
         if getattr(self._state, "ai_enabled", False):
+            self._add_ocr_engine_selector(toolbar)
+            self._add_overlay_mode_selector(toolbar)
+            toolbar.addSeparator()
+            act_cycle_overlay = QtGui.QAction(self)
+            act_cycle_overlay.setShortcut(QtGui.QKeySequence("O"))
+            act_cycle_overlay.triggered.connect(self._cycle_overlay_mode)
+            self.addAction(act_cycle_overlay)
             act_run_ai = QtGui.QAction(self._icon("ai_run"), "Run AI", self)
             act_run_ai.triggered.connect(self._run_ai)
             toolbar.addAction(act_run_ai)
@@ -217,6 +263,133 @@ class MainWindow(QtWidgets.QMainWindow):
             act_run_export = QtGui.QAction(self._icon("ai_run"), "OCR Batch Export", self)
             act_run_export.triggered.connect(self._run_ocr_batch_export)
             toolbar.addAction(act_run_export)
+            self._update_ocr_engine_selector_enabled()
+
+    @staticmethod
+    def _ocr_engine_label(engine_name: str) -> str:
+        labels = {
+            "surya": "Surya",
+            "paddleocr": "PaddleOCR",
+            "easyocr": "EasyOCR",
+            "tesseract": "Tesseract",
+        }
+        return labels.get(engine_name, engine_name)
+
+    def _add_ocr_engine_selector(self, toolbar: QtWidgets.QToolBar) -> None:
+        button = QtWidgets.QToolButton(self)
+        button.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.InstantPopup)
+        button.setToolButtonStyle(QtCore.Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        button.setIcon(self._icon("ai_run"))
+        menu = QtWidgets.QMenu(button)
+
+        self._ocr_engine_actions = {}
+        for engine_name in GUI_OCR_ENGINE_NAMES:
+            action = menu.addAction(self._ocr_engine_label(engine_name))
+            action.setCheckable(True)
+            action.setChecked(engine_name in self._selected_ocr_engines)
+            action.toggled.connect(
+                lambda checked, current_engine=engine_name: self._on_ocr_engine_toggled(
+                    current_engine,
+                    checked,
+                )
+            )
+            self._ocr_engine_actions[engine_name] = action
+
+        button.setMenu(menu)
+        self._ocr_engine_button = button
+        self._update_ocr_engine_button_text()
+        toolbar.addWidget(button)
+
+    def _selected_ocr_engine_names(self) -> tuple[str, ...]:
+        if not self._ocr_engine_actions:
+            return self._selected_ocr_engines
+        selected = tuple(
+            engine_name
+            for engine_name in GUI_OCR_ENGINE_NAMES
+            if self._ocr_engine_actions.get(engine_name) is not None
+            and self._ocr_engine_actions[engine_name].isChecked()
+        )
+        return selected or self._selected_ocr_engines
+
+    def _update_ocr_engine_button_text(self) -> None:
+        if self._ocr_engine_button is None:
+            return
+        selected = self._selected_ocr_engine_names()
+        if len(selected) == 1:
+            text = f"OCR: {self._ocr_engine_label(selected[0])}"
+        else:
+            text = f"OCR: Compare ({len(selected)})"
+        tooltip_lines = [
+            "Select one or more OCR engines.",
+            "Multiple selections run side-by-side comparison.",
+            "",
+            "Selected:",
+            *(f"- {self._ocr_engine_label(engine_name)}" for engine_name in selected),
+        ]
+        self._ocr_engine_button.setText(text)
+        self._ocr_engine_button.setToolTip("\n".join(tooltip_lines))
+
+    def _update_ocr_engine_selector_enabled(self) -> None:
+        if self._ocr_engine_button is None:
+            return
+        busy = bool(
+            (self._ai_thread and self._ai_thread.isRunning())
+            or self._validation_queue_active
+            or self._validation_waiting_review
+        )
+        self._ocr_engine_button.setEnabled(not busy)
+
+    def _set_selected_ocr_engines(self, engine_names: tuple[str, ...]) -> None:
+        selected_set = set(engine_names)
+        selected = tuple(
+            engine_name
+            for engine_name in GUI_OCR_ENGINE_NAMES
+            if engine_name in selected_set
+        ) or (DEFAULT_GUI_OCR_ENGINE,)
+
+        for engine_name, action in self._ocr_engine_actions.items():
+            action.blockSignals(True)
+            action.setChecked(engine_name in selected)
+            action.blockSignals(False)
+
+        if selected == self._selected_ocr_engines:
+            self._update_ocr_engine_button_text()
+            return
+        self._selected_ocr_engines = selected
+        self._validation_pipeline_manager = None
+        self._validation_manager_selection = ()
+        self._state.pipeline_manager = None
+        self._clear_prefetched_validation()
+        self._update_ocr_engine_button_text()
+    
+    def _on_ocr_engine_toggled(self, engine_name: str, checked: bool) -> None:
+        if checked:
+            selected = self._selected_ocr_engine_names()
+            self._set_selected_ocr_engines(selected)
+        else:
+            remaining = tuple(
+                name
+                for name in GUI_OCR_ENGINE_NAMES
+                if name != engine_name
+                and self._ocr_engine_actions.get(name) is not None
+                and self._ocr_engine_actions[name].isChecked()
+            )
+            if not remaining:
+                action = self._ocr_engine_actions.get(engine_name)
+                if action is not None:
+                    action.blockSignals(True)
+                    action.setChecked(True)
+                    action.blockSignals(False)
+                self.statusBar().showMessage("Keep at least one OCR engine selected.", 2500)
+                return
+            self._set_selected_ocr_engines(remaining)
+
+        selected_labels = [self._ocr_engine_label(name) for name in self._selected_ocr_engine_names()]
+        if len(selected_labels) == 1:
+            message = f"OCR engine set to {selected_labels[0]}."
+        else:
+            message = "OCR comparison mode: " + ", ".join(selected_labels)
+        self.statusBar().showMessage(message, 3000)
 
     def _log_event(self, message: str) -> None:
         self._log_dir.mkdir(parents=True, exist_ok=True)
@@ -269,6 +442,179 @@ class MainWindow(QtWidgets.QMainWindow):
         _ = zoom
         self._update_status()
 
+    # --- Overlay mode management ---
+
+    def _add_overlay_mode_selector(self, toolbar: QtWidgets.QToolBar) -> None:
+        button = QtWidgets.QToolButton(self)
+        button.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.InstantPopup)
+        button.setToolButtonStyle(QtCore.Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        button.setIcon(self._icon("zoom_fit"))
+        button.setToolTip("Overlay mode (O to cycle)")
+        menu = QtWidgets.QMenu(button)
+        group = QtGui.QActionGroup(self)
+        group.setExclusive(True)
+        self._overlay_mode_actions = {}
+        for mode_key in OVERLAY_MODES:
+            action = menu.addAction(OVERLAY_MODE_LABELS[mode_key])
+            action.setCheckable(True)
+            action.setChecked(mode_key == self._overlay_mode)
+            action.triggered.connect(
+                lambda _checked, m=mode_key: self._set_overlay_mode(m)
+            )
+            group.addAction(action)
+            self._overlay_mode_actions[mode_key] = action
+        button.setMenu(menu)
+        self._overlay_mode_button = button
+        self._update_overlay_mode_button_text()
+        toolbar.addWidget(button)
+
+    def _update_overlay_mode_button_text(self) -> None:
+        if self._overlay_mode_button is None:
+            return
+        label = OVERLAY_MODE_LABELS.get(self._overlay_mode, "Off")
+        self._overlay_mode_button.setText(f"Overlay: {label}")
+
+    def _set_overlay_mode(self, mode: str) -> None:
+        if mode not in OVERLAY_MODES:
+            mode = "off"
+        if mode == self._overlay_mode:
+            return
+        self._overlay_mode = mode
+        for key, action in self._overlay_mode_actions.items():
+            action.blockSignals(True)
+            action.setChecked(key == mode)
+            action.blockSignals(False)
+        self._update_overlay_mode_button_text()
+        result = self._state.last_ai_result
+        seg_info = ""
+        if result is not None and mode in ("lines", "detailed"):
+            seg_mode = result.raw.get("segmentation_mode", "unknown")
+            line_h = result.raw.get("target_line_height_px", "?")
+            seg_info = f" ({seg_mode}, {line_h}px)"
+        label = OVERLAY_MODE_LABELS[mode]
+        self.statusBar().showMessage(f"Overlay: {label}{seg_info}", 2500)
+        self._refresh_viewer_overlays()
+
+    def _cycle_overlay_mode(self) -> None:
+        idx = OVERLAY_MODES.index(self._overlay_mode) if self._overlay_mode in OVERLAY_MODES else -1
+        next_mode = OVERLAY_MODES[(idx + 1) % len(OVERLAY_MODES)]
+        self._set_overlay_mode(next_mode)
+
+    # --- Overlay box building ---
+
+    @staticmethod
+    def _truncate_overlay_text(text: str, *, limit: int = 28) -> str:
+        compact = " ".join(str(text).split()).strip()
+        if len(compact) <= limit:
+            return compact
+        return compact[: max(0, limit - 3)].rstrip() + "..."
+
+    @staticmethod
+    def _coerce_overlay_bbox(raw_bbox: object) -> tuple[float, float, float, float] | None:
+        if not isinstance(raw_bbox, (list, tuple)) or len(raw_bbox) != 4:
+            return None
+        try:
+            x, y, width, height = (float(value) for value in raw_bbox)
+        except (TypeError, ValueError):
+            return None
+        if width <= 0 or height <= 0:
+            return None
+        return x, y, width, height
+
+    @staticmethod
+    def _line_overlay_color(entry: dict[str, object], uncertain: bool) -> str:
+        if uncertain:
+            return OVERLAY_UNCERTAIN_COLOR
+        engine = str(entry.get("ocr_engine", "")).strip().lower()
+        return ENGINE_OVERLAY_COLORS.get(engine, OVERLAY_DEFAULT_COLOR)
+
+    def _build_viewer_overlay_boxes(self, result: AiResult) -> list[OverlayBox]:
+        if self._overlay_mode == "off":
+            return []
+
+        roi_boxes = [box for box in result.boxes if box.label == "measurement_roi"]
+        if self._overlay_mode == "roi":
+            return roi_boxes
+
+        boxes = list(roi_boxes)
+        line_predictions = result.raw.get("line_predictions")
+        if not isinstance(line_predictions, list):
+            return boxes
+
+        comparison_lines = self._collect_comparison_overlay_lines(result)
+
+        for index, entry in enumerate(line_predictions, start=1):
+            if not isinstance(entry, dict):
+                continue
+            bbox = self._coerce_overlay_bbox(entry.get("line_bbox"))
+            if bbox is None:
+                continue
+            raw_order = entry.get("order")
+            line_index = (raw_order + 1) if isinstance(raw_order, int) else index
+            uncertain = bool(entry.get("uncertain", False))
+
+            if self._overlay_mode == "lines":
+                label = None
+            else:
+                prefix = "?" if uncertain else ""
+                line_text = self._truncate_overlay_text(str(entry.get("text", "")).strip(), limit=20)
+                label = f"{prefix}L{line_index}"
+                if line_text:
+                    label = f"{label}: {line_text}"
+
+            boxes.append(
+                OverlayBox(
+                    x=bbox[0], y=bbox[1], width=bbox[2], height=bbox[3],
+                    label=label, confidence=None,
+                    color=self._line_overlay_color(entry, uncertain),
+                )
+            )
+
+        if self._overlay_mode == "detailed" and comparison_lines:
+            boxes.extend(comparison_lines)
+
+        return boxes
+
+    def _collect_comparison_overlay_lines(self, result: AiResult) -> list[OverlayBox]:
+        engine_comparison = result.raw.get("engine_comparison")
+        if not isinstance(engine_comparison, list):
+            return []
+        primary_engine = str(result.raw.get("primary_ocr_engine", "")).strip().lower()
+        extra: list[OverlayBox] = []
+        for row in engine_comparison:
+            if not isinstance(row, dict):
+                continue
+            engine_name = str(row.get("engine", "")).strip().lower()
+            if engine_name == primary_engine:
+                continue
+            preds = row.get("line_predictions")
+            if not isinstance(preds, list):
+                continue
+            color = ENGINE_OVERLAY_COLORS.get(engine_name, "#6B7280")
+            for idx, pred in enumerate(preds, start=1):
+                if not isinstance(pred, dict):
+                    continue
+                bbox = self._coerce_overlay_bbox(pred.get("line_bbox"))
+                if bbox is None:
+                    continue
+                line_text = self._truncate_overlay_text(str(pred.get("text", "")).strip(), limit=22)
+                raw_order = pred.get("order")
+                li = (raw_order + 1) if isinstance(raw_order, int) else idx
+                label = f"[{engine_name}] L{li}"
+                if line_text:
+                    label = f"{label}: {line_text}"
+                extra.append(OverlayBox(
+                    x=bbox[0], y=bbox[1] + 2, width=bbox[2], height=bbox[3],
+                    label=label, confidence=None, color=color,
+                ))
+        return extra
+
+    def _refresh_viewer_overlays(self) -> None:
+        if self._state.last_ai_result is None:
+            self._viewer.clear_overlays()
+            return
+        self._viewer.set_overlay_boxes(self._build_viewer_overlay_boxes(self._state.last_ai_result))
+
     # --- Loading Logic ---
     def _on_loading_state_changed(self, loading: bool, message: str) -> None:
         if message:
@@ -277,6 +623,7 @@ class MainWindow(QtWidgets.QMainWindow):
             QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.CursorShape.WaitCursor)
         else:
             QtWidgets.QApplication.restoreOverrideCursor()
+        self._update_ocr_engine_selector_enabled()
 
     def _on_folder_selected(self, folder: Path) -> None:
         if not folder.exists() or not folder.is_dir():
@@ -391,7 +738,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     # --- AI Logic ---
     def _on_ai_result_ready(self, result: AiResult) -> None:
-        self._viewer.set_overlay_boxes(result.boxes)
+        self._viewer.set_overlay_boxes(self._build_viewer_overlay_boxes(result))
 
     @QtCore.Slot(int, int, int, float, float)
     def _on_validation_stats_changed(
@@ -408,13 +755,18 @@ class MainWindow(QtWidgets.QMainWindow):
         self._validation_stats.set_stats(accuracy, total_count)
 
     def _run_ai(self) -> None:
-        if not self._state.ai_enabled or self._state.pipeline_manager is None:
+        if not self._state.ai_enabled:
             QtWidgets.QMessageBox.information(
                 self, "AI Disabled", "AI pipeline is not enabled in environment."
             )
             return
+        try:
+            manager = self._ensure_validation_manager()
+        except Exception as exc:
+            self._state.report_error("OCR Setup Error", str(exc))
+            return
         self._start_ai_run(
-            manager=self._state.pipeline_manager,
+            manager=manager,
             loading_message="Running AI inference...",
             mode="overlay",
         )
@@ -443,6 +795,22 @@ class MainWindow(QtWidgets.QMainWindow):
             self.statusBar().showMessage("No DICOM files found for validation queue.", 3000)
             return
 
+        default_labels = Path.cwd() / "labels" / "exact_lines.json"
+        default_path = str(default_labels)
+        selected_path, _ = QtWidgets.QFileDialog.getSaveFileName(
+            self,
+            "Save Labels To",
+            default_path,
+            "JSON Files (*.json);;All Files (*.*)",
+        )
+        if not selected_path:
+            return
+
+        selected_output = Path(selected_path)
+        if selected_output.suffix.lower() != ".json":
+            selected_output = selected_output.with_suffix(".json")
+
+        self._validation_writer = ValidationLabelWriter(output_path=selected_output)
         self._state.reset_validation_session()
         self._validation_queue = queue
         self._validation_queue_active = True
@@ -450,9 +818,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self._pending_validation_path = None
         self._validation_waiting_review = False
         self.statusBar().showMessage(
-            f"Validation queue started with {len(self._validation_queue)} files.",
-            3000,
+            f"Validation queue started with {len(self._validation_queue)} files. Saving to: {selected_output.name}",
+            4000,
         )
+        self._update_ocr_engine_selector_enabled()
         self._advance_validation_queue()
 
     def _run_ocr_batch_export(self) -> None:
@@ -505,6 +874,7 @@ class MainWindow(QtWidgets.QMainWindow):
             f"OCR export started with {len(self._validation_queue)} files.",
             3000,
         )
+        self._update_ocr_engine_selector_enabled()
         self._advance_validation_queue()
 
     def _build_validation_queue(self) -> list[Path]:
@@ -673,6 +1043,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._clear_prefetched_validation()
         self._batch_export_files = 0
         self._batch_export_measurements = 0
+        self._update_ocr_engine_selector_enabled()
 
         if queue_mode == "export":
             summary = (
@@ -731,10 +1102,25 @@ class MainWindow(QtWidgets.QMainWindow):
         self._ai_thread.start()
 
     def _ensure_validation_manager(self) -> PipelineManager:
-        if self._validation_pipeline_manager is not None:
+        selected_engines = self._selected_ocr_engine_names()
+        if (
+            self._validation_pipeline_manager is not None
+            and self._validation_manager_selection == selected_engines
+        ):
             return self._validation_pipeline_manager
         surya_engine = self._startup_services.surya_engine if self._startup_services else None
-        self._validation_pipeline_manager = build_validation_manager(surya_engine=surya_engine)
+        if len(selected_engines) > 1:
+            self._validation_pipeline_manager = build_gui_ocr_comparison_manager(
+                ocr_engine_names=selected_engines,
+                surya_engine=surya_engine,
+            )
+        else:
+            self._validation_pipeline_manager = build_gui_ocr_manager(
+                ocr_engine_name=selected_engines[0],
+                surya_engine=surya_engine,
+            )
+        self._validation_manager_selection = selected_engines
+        self._state.pipeline_manager = self._validation_pipeline_manager
         return self._validation_pipeline_manager
 
     @QtCore.Slot(str)
@@ -789,6 +1175,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def _on_loader_thread_finished(self) -> None:
         self._loader = None
         self._loader_thread = None
+        self._update_ocr_engine_selector_enabled()
         if self._validation_queue_active and self._pending_validation_path is None:
             QtCore.QTimer.singleShot(0, self._advance_validation_queue)
 
@@ -796,6 +1183,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def _on_ai_thread_finished(self) -> None:
         self._ai_worker = None
         self._ai_thread = None
+        self._update_ocr_engine_selector_enabled()
         if (
             self._validation_queue_active
             and self._ai_run_mode in {"validation", "export"}
@@ -817,6 +1205,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._validation_waiting_review = True
         self._active_validation_dialog_submitted = False
         self._active_validation_dialog_path = dicom_path
+        self._update_ocr_engine_selector_enabled()
         QtCore.QTimer.singleShot(0, self._start_validation_prefetch)
 
     @QtCore.Slot(int)
@@ -835,6 +1224,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._active_validation_dialog_submitted = False
         self._active_validation_dialog_path = None
         self._validation_dialog = None
+        self._update_ocr_engine_selector_enabled()
 
     @QtCore.Slot(object, object, int, int, bool)
     def _on_validation_submitted(
@@ -960,7 +1350,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._viewer.set_frame_info(index, series.frame_count)
 
         if self._state.last_ai_result:
-            self._viewer.set_overlay_boxes(self._state.last_ai_result.boxes)
+            self._viewer.set_overlay_boxes(self._build_viewer_overlay_boxes(self._state.last_ai_result))
         else:
             self._viewer.clear_overlays()
 
