@@ -11,7 +11,7 @@ from app.io.dicom_loader import load_dicom_series
 from app.io.errors import DicomLoadError
 from app.models.types import PipelineRequest
 from app.pipeline.ai_pipeline import PipelineManager
-from app.ui.validation_queue import collect_dicom_files
+from app.validation.queue import collect_dicom_files
 from app.utils.cache import LruFrameCache
 from app.utils.image import qimage_from_array
 

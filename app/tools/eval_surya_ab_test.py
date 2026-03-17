@@ -12,12 +12,14 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from app.pipeline.echo_ocr_box_detector import TopLeftBlueGrayBoxDetector
-from app.pipeline.echo_ocr_pipeline import preprocess_roi as _original_preprocess_roi
+from app.ocr.preprocessing import preprocess_roi as _original_preprocess_roi
 from app.pipeline.gotocr_normalizer import normalize_gotocr_text
 from app.pipeline.ocr_engines import OcrResult, SuryaOcrEngine
-from app.tools.echo_ocr_eval_labels import parse_labels, run_evaluation
+from app.repo_paths import DEFAULT_EXACT_LINES_PATH
+from app.validation.datasets import parse_labels
+from app.validation.evaluation import run_evaluation
 
-DEFAULT_LABELS = PROJECT_ROOT / "labels" / "exact_lines.json"
+DEFAULT_LABELS = DEFAULT_EXACT_LINES_PATH
 
 
 class NormalizedSuryaEngine:
@@ -111,9 +113,9 @@ def main() -> None:
             return TopLeftBlueGrayBoxDetector()
 
         with (
-            patch("app.tools.echo_ocr_eval_labels.preprocess_roi", side_effect=_proxy_preprocess),
+            patch("app.validation.evaluation.preprocess_roi", side_effect=_proxy_preprocess),
             patch(
-                "app.tools.echo_ocr_eval_labels.TopLeftBlueGrayBoxDetector",
+                "app.validation.evaluation.TopLeftBlueGrayBoxDetector",
                 side_effect=_proxy_detector,
             ),
         ):

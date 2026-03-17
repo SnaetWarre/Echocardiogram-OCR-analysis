@@ -14,11 +14,16 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from app.pipeline.echo_ocr_pipeline import EchoOcrPipeline  # noqa: E402
+from app.pipeline.echo_ocr_pipeline import (  # noqa: E402
+    DEFAULT_FALLBACK_OCR_ENGINE,
+    DEFAULT_OCR_ENGINE,
+    DEFAULT_PARSER_MODE,
+    EchoOcrPipeline,
+)
 from app.pipeline.ai_pipeline import PipelineConfig  # noqa: E402
 from app.pipeline.line_segmenter import SegmentationResult  # noqa: E402
 from app.pipeline.measurement_decoder import parse_measurement_line  # noqa: E402
-from app.tools.echo_ocr_eval_labels import (  # noqa: E402
+from app.validation.datasets import (  # noqa: E402
     DEFAULT_LABELS_PATH,
     LabeledFile,
     parse_labels,
@@ -133,7 +138,7 @@ def evaluate_line_transcription(
     parameters: dict[str, object] = {
         "ocr_engine": engine_name,
         "fallback_ocr_engine": fallback_engine_name,
-        "parser_mode": "regex",
+        "parser_mode": DEFAULT_PARSER_MODE,
         "max_frames": 1,
     }
     if pipeline_parameters:
@@ -263,13 +268,17 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Evaluate line-first OCR transcription metrics")
     parser.add_argument("--labels", default=str(DEFAULT_LABELS_PATH), help="Path to exact_lines.json")
     parser.add_argument("--split", default="validation", help="Optional comma separated split filter")
-    parser.add_argument("--engine", default="easyocr", help="Primary OCR engine")
-    parser.add_argument("--fallback-engine", default="", help="Fallback OCR engine")
+    parser.add_argument("--engine", default=DEFAULT_OCR_ENGINE, help="Primary OCR engine")
+    parser.add_argument(
+        "--fallback-engine",
+        default=DEFAULT_FALLBACK_OCR_ENGINE,
+        help="Fallback OCR engine",
+    )
     parser.add_argument("--max-files", type=int, default=0, help="Optional file limit for quick runs")
     parser.add_argument("--output", default="", help="Optional JSON output path")
     parser.add_argument("--debug-dir", default="", help="Optional directory for segmentation debug images")
     parser.add_argument("--hard-case-limit", type=int, default=0, help="Optional maximum number of hard-case debug exports; 0 means no limit")
-    parser.add_argument("--parser-mode", default="regex", help="Pipeline parser mode")
+    parser.add_argument("--parser-mode", default=DEFAULT_PARSER_MODE, help="Pipeline parser mode")
     parser.add_argument("--llm-model", default="qwen2.5:7b-instruct-q4_K_M", help="Local text model for parser/panel validation")
     parser.add_argument("--llm-command", default="ollama", help="Local text model command")
     parser.add_argument("--panel-validation-mode", default="off", help="Panel validation mode (off, selective, always)")

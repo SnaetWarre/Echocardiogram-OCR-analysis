@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from app.pipeline.measurement_decoder import label_family_key, line_pattern, parse_measurement_line
-from app.pipeline.validation_label_writer import DATASET_TASK, DATASET_VERSION
+from app.validation.datasets import DATASET_TASK, DATASET_VERSION
 
 
 @dataclass(frozen=True)

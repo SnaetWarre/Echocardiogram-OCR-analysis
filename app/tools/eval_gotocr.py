@@ -19,13 +19,12 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from app.tools.echo_ocr_eval_labels import (
-    parse_labels,
-    run_evaluation,
-    _print_summary,
-)
+from app.ocr.preprocessing import preprocess_roi
 from app.pipeline.ocr_engines import OcrEngine, OcrResult
 from app.pipeline.gotocr_normalizer import normalize_gotocr_text
+from app.repo_paths import DEFAULT_EXACT_LINES_PATH
+from app.validation.datasets import parse_labels
+from app.validation.evaluation import print_summary, run_evaluation
 
 
 # ---------------------------------------------------------------------------
@@ -158,7 +157,6 @@ class SequentialGoTocrEngine(OcrEngine):
 
 def preload_gotocr_batch(labeled_files) -> dict:
     """Pre-runs GOT-OCR on the entire dataset in ONE subprocess call using the strict measurement ROI detector."""
-    from app.pipeline.echo_ocr_pipeline import preprocess_roi
     from app.pipeline.echo_ocr_box_detector import TopLeftBlueGrayBoxDetector
     from app.io.dicom_loader import load_dicom_series
     import cv2
@@ -243,7 +241,7 @@ def preload_gotocr_batch(labeled_files) -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--labels", default=str(PROJECT_ROOT / "labels" / "exact_lines.json"))
+    parser.add_argument("--labels", default=str(DEFAULT_EXACT_LINES_PATH))
     parser.add_argument("--split", default="validation")
     parser.add_argument("--parser", default="local_llm")
     parser.add_argument("--no-normalize", action="store_true", help="Disable GOT-OCR normalizer (for comparison)")
@@ -272,7 +270,7 @@ def main() -> None:
             self.parser = p
 
     scores = run_evaluation(labeled_files, seq_engine, verbose=True, args=DummyArgs(args.parser))
-    _print_summary("gotocr-2.0", scores)
+    print_summary("gotocr-2.0", scores)
 
 
 if __name__ == "__main__":

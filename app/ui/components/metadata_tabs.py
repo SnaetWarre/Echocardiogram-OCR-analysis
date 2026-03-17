@@ -9,6 +9,7 @@ import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from app.models.types import AiResult, DicomSeries, OverlayBox
+from app.ocr.preprocessing import preprocess_roi
 from app.utils.image import qimage_from_array
 
 if TYPE_CHECKING:
@@ -252,7 +253,6 @@ class MetadataTabsWidget(QtWidgets.QTabWidget):
         if show_preprocessed:
             if self._cached_roi_preprocessed is None and self._cached_roi_crop is not None:
                 try:
-                    from app.pipeline.echo_ocr_pipeline import preprocess_roi
                     self._cached_roi_preprocessed = preprocess_roi(self._cached_roi_crop)
                 except Exception:
                     self._cached_roi_preprocessed = self._cached_roi_crop

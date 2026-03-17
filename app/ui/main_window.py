@@ -10,14 +10,15 @@ from app.io.dicom_loader import load_dicom_series
 from app.io.errors import DicomLoadError
 from app.models.types import AiMeasurement, AiResult, DicomSeries, OverlayBox, PipelineRequest, PipelineResult
 from app.pipeline.ai_pipeline import PipelineManager
-from app.pipeline.startup_services import StartupServices
-from app.pipeline.validation_label_writer import ValidationLabelWriter
-from app.pipeline.validation_pipeline import (
+from app.runtime.pipeline_presets import (
     DEFAULT_GUI_OCR_ENGINE,
     GUI_OCR_ENGINE_NAMES,
     build_gui_ocr_comparison_manager,
     build_gui_ocr_manager,
 )
+from app.runtime.startup_services import StartupServices
+from app.validation.label_writer import ValidationLabelWriter
+from app.validation.queue import build_validation_queue
 from app.ui.components.controls import ControlsWidget
 from app.ui.components.metadata_tabs import MetadataTabsWidget
 from app.ui.components.sidebar import SidebarWidget
@@ -25,7 +26,6 @@ from app.ui.components.validation_stats import ValidationStatsWidget
 from app.ui.dialogs.validation_dialog import ValidationDialog
 from app.ui.state import ViewerState
 from app.ui.theme import apply_theme
-from app.ui.validation_queue import build_validation_queue
 from app.ui.widgets.image_viewer import ImageViewer
 from app.ui.workers import AiRunWorker, BatchTestWorker, DicomLoadWorker, PrefetchTask, ValidationPrefetchWorker
 from app.utils.cache import LruFrameCache

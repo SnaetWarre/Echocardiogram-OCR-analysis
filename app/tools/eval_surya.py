@@ -7,13 +7,11 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from app.tools.echo_ocr_eval_labels import (
-    parse_labels,
-    run_evaluation,
-    _print_summary,
-)
 from app.pipeline.ocr_engines import OcrResult, SuryaOcrEngine
 from app.pipeline.gotocr_normalizer import normalize_gotocr_text
+from app.repo_paths import DEFAULT_EXACT_LINES_PATH
+from app.validation.datasets import parse_labels
+from app.validation.evaluation import print_summary, run_evaluation
 
 
 class NormalizedSuryaEngine:
@@ -44,7 +42,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--labels",
-        default=str(PROJECT_ROOT / "labels" / "exact_lines.json"),
+        default=str(DEFAULT_EXACT_LINES_PATH),
     )
     parser.add_argument(
         "--split",
@@ -76,7 +74,7 @@ def main() -> None:
         verbose=True,
         args=DummyArgs(args.parser),
     )
-    _print_summary("surya", scores)
+    print_summary("surya", scores)
 
 
 if __name__ == "__main__":

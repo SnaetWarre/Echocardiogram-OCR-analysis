@@ -1,0 +1,18 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+LABELS_DIR = PROJECT_ROOT / "labels"
+ARTIFACTS_DIR = PROJECT_ROOT / "artifacts"
+OCR_REDESIGN_ARTIFACTS_DIR = ARTIFACTS_DIR / "ocr_redesign"
+
+DEFAULT_EXACT_LINES_PATH = LABELS_DIR / "exact_lines.json"
+DEFAULT_OCR_REDESIGN_LEXICON_PATH = OCR_REDESIGN_ARTIFACTS_DIR / "exact_lines_lexicon.json"
+DEFAULT_LINE_TRAINING_DATA_PATH = OCR_REDESIGN_ARTIFACTS_DIR / "line_training_data.jsonl"
+DEFAULT_LINE_RECOGNIZER_MANIFEST_PATH = OCR_REDESIGN_ARTIFACTS_DIR / "line_recognizer_manifest.jsonl"
+DEFAULT_LINE_RECOGNIZER_CROPS_DIR = OCR_REDESIGN_ARTIFACTS_DIR / "line_recognizer_crops"
+DEFAULT_LINE_RECOGNIZER_TRAINING_DIR = OCR_REDESIGN_ARTIFACTS_DIR / "line_recognizer_training"
+DEFAULT_OCR_REDESIGN_RUN_LOG_PATH = OCR_REDESIGN_ARTIFACTS_DIR / "run_log.jsonl"

@@ -10,6 +10,11 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from app.repo_paths import (  # noqa: E402
+    DEFAULT_LINE_RECOGNIZER_MANIFEST_PATH,
+    DEFAULT_LINE_RECOGNIZER_TRAINING_DIR,
+)
+
 
 def _read_manifest(path: Path) -> list[dict[str, object]]:
     rows: list[dict[str, object]] = []
@@ -27,11 +32,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Prepare a line recognizer fine-tuning run skeleton")
     parser.add_argument(
         "--manifest",
-        default=str(PROJECT_ROOT / "docs" / "ocr_redesign" / "line_recognizer_manifest.jsonl"),
+        default=str(DEFAULT_LINE_RECOGNIZER_MANIFEST_PATH),
     )
     parser.add_argument(
         "--output-dir",
-        default=str(PROJECT_ROOT / "docs" / "ocr_redesign" / "line_recognizer_training"),
+        default=str(DEFAULT_LINE_RECOGNIZER_TRAINING_DIR),
     )
     parser.add_argument("--framework", default="trocr", help="Training target framework label")
     parser.add_argument("--base-model", default="microsoft/trocr-base-stage1")

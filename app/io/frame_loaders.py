@@ -88,7 +88,7 @@ def build_subprocess_frame_loader(
             cmd = [
                 sys.executable,
                 "-m",
-                "app.tools.dicom_decode_frame",
+                "app.io.subprocess_decode",
                 str(path),
                 "--frame",
                 str(index),

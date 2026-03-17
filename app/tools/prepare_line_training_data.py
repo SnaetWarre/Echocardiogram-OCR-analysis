@@ -9,13 +9,14 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from app.tools.echo_ocr_eval_labels import parse_labels  # noqa: E402
+from app.repo_paths import DEFAULT_EXACT_LINES_PATH, DEFAULT_LINE_TRAINING_DATA_PATH  # noqa: E402
+from app.validation.datasets import parse_labels  # noqa: E402
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Prepare line-level OCR training examples from exact lines")
-    parser.add_argument("--labels", default=str(PROJECT_ROOT / "labels" / "exact_lines.json"))
-    parser.add_argument("--output", default=str(PROJECT_ROOT / "docs" / "ocr_redesign" / "line_training_data.jsonl"))
+    parser.add_argument("--labels", default=str(DEFAULT_EXACT_LINES_PATH))
+    parser.add_argument("--output", default=str(DEFAULT_LINE_TRAINING_DATA_PATH))
     parser.add_argument("--split", default="", help="Optional split filter")
     args = parser.parse_args()
 

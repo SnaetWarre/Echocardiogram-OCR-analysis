@@ -75,7 +75,7 @@ class DicomSeries:
 
 
 @dataclass
-class ViewerState:
+class ViewerViewportState:
     current_path: Path | None = None
     frame_index: int = 0
     fps: float = 30.0

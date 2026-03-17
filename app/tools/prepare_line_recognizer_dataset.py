@@ -15,19 +15,24 @@ from app.io.dicom_loader import load_dicom_series  # noqa: E402
 from app.pipeline.echo_ocr_box_detector import TopLeftBlueGrayBoxDetector  # noqa: E402
 from app.pipeline.line_segmenter import DEFAULT_HEADER_TRIM_PX, LineSegmenter  # noqa: E402
 from app.pipeline.line_transcriber import crop_segment  # noqa: E402
-from app.tools.echo_ocr_eval_labels import parse_labels  # noqa: E402
+from app.repo_paths import (  # noqa: E402
+    DEFAULT_EXACT_LINES_PATH,
+    DEFAULT_LINE_RECOGNIZER_CROPS_DIR,
+    DEFAULT_LINE_RECOGNIZER_MANIFEST_PATH,
+)
+from app.validation.datasets import parse_labels  # noqa: E402
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Export line crops and manifest for line recognizer training")
-    parser.add_argument("--labels", default=str(PROJECT_ROOT / "labels" / "exact_lines.json"))
+    parser.add_argument("--labels", default=str(DEFAULT_EXACT_LINES_PATH))
     parser.add_argument(
         "--manifest",
-        default=str(PROJECT_ROOT / "docs" / "ocr_redesign" / "line_recognizer_manifest.jsonl"),
+        default=str(DEFAULT_LINE_RECOGNIZER_MANIFEST_PATH),
     )
     parser.add_argument(
         "--crops-dir",
-        default=str(PROJECT_ROOT / "docs" / "ocr_redesign" / "line_recognizer_crops"),
+        default=str(DEFAULT_LINE_RECOGNIZER_CROPS_DIR),
     )
     parser.add_argument("--split", default="", help="Optional comma separated split filter")
     parser.add_argument("--max-files", type=int, default=0, help="Optional file limit for quick exports")

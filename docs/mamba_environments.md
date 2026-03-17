@@ -32,4 +32,4 @@ mamba create -n gotocr python=3.11 pillow transformers pytorch
 
 - Prefer `mamba run -n <env>` instead of undocumented shell activation assumptions
 - Keep heavyweight OCR dependencies isolated when they conflict with UI/runtime packages
-- Record all benchmark and evaluation runs in `docs/ocr_redesign_run_log.jsonl`
+- Record all benchmark and evaluation runs in `artifacts/ocr_redesign/run_log.jsonl`

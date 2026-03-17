@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from app.pipeline.startup_services import ServiceProcessManager, StartupServices
+from app.runtime.startup_services import ServiceProcessManager, StartupServices
 
 
 class _StartupWorker(QtCore.QObject):

@@ -19,15 +19,17 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from app.io.dicom_loader import load_dicom_series
+from app.ocr.preprocessing import preprocess_roi
 from app.pipeline.echo_ocr_box_detector import TopLeftBlueGrayBoxDetector
-from app.pipeline.echo_ocr_pipeline import preprocess_roi
 from app.pipeline.measurement_parsers import (
     LocalLlmMeasurementParser,
     LocalLlmParserConfig,
     _postprocess_measurements,
 )
 from app.pipeline.ocr_engines import build_engine
-from app.tools.echo_ocr_eval_labels import parse_labels, run_evaluation
+from app.repo_paths import DEFAULT_EXACT_LINES_PATH
+from app.validation.datasets import parse_labels
+from app.validation.evaluation import run_evaluation
 
 HEADER_TRIM_PX = 14
 DATASET_TASK = "exact_roi_measurement_transcription"
@@ -1114,7 +1116,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--labels",
-        default=str(PROJECT_ROOT / "labels" / "exact_lines.json"),
+        default=str(DEFAULT_EXACT_LINES_PATH),
         help="Path to the canonical JSON label file",
     )
     parser.add_argument(

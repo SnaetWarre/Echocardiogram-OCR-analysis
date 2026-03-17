@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from app.ui.validation_queue import collect_dicom_files
+from app.validation.queue import collect_dicom_files
 from app.ui.widgets.file_browser import FileFilterProxyModel
 
 if TYPE_CHECKING:

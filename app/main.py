@@ -9,7 +9,7 @@ from pathlib import Path
 
 from PySide6 import QtWidgets
 
-from app.pipeline.startup_services import ServiceProcessManager, StartupServices
+from app.runtime.startup_services import ServiceProcessManager, StartupServices
 from app.ui.dialogs.startup_dialog import StartupDialog
 from app.ui.main_window import MainWindow
 

@@ -7,6 +7,11 @@ import numpy as np
 from app.models.types import AiMeasurement
 from app.pipeline.ai_pipeline import PipelineConfig
 from app.pipeline.echo_ocr_pipeline import (
+    DEFAULT_FALLBACK_OCR_ENGINE,
+    DEFAULT_OCR_ENGINE,
+    DEFAULT_PARSER_MODE,
+    DEFAULT_SEGMENTATION_MODE,
+    DEFAULT_TARGET_LINE_HEIGHT_PX,
     EchoOcrPipeline,
     RegexMeasurementParser,
     RoiDetection,
@@ -307,6 +312,16 @@ def test_pipeline_supports_strict_engine_selection_flag() -> None:
     )
 
     assert pipeline._strict_ocr_engine_selection is True
+
+
+def test_pipeline_defaults_match_line_first_validation_configuration() -> None:
+    pipeline = EchoOcrPipeline()
+
+    assert pipeline._default_engine == DEFAULT_OCR_ENGINE
+    assert pipeline._fallback_engine_name == DEFAULT_FALLBACK_OCR_ENGINE
+    assert pipeline._parser_mode == DEFAULT_PARSER_MODE
+    assert pipeline._segmentation_mode == DEFAULT_SEGMENTATION_MODE
+    assert pipeline._target_line_height_px == DEFAULT_TARGET_LINE_HEIGHT_PX
 
 
 def test_panel_validator_results_are_reattached_to_exact_lines() -> None:

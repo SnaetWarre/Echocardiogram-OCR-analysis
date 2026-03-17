@@ -10,6 +10,7 @@ from app.runtime.pipeline_presets import (
     build_gui_ocr_manager,
     build_validation_manager,
 )
+from app.runtime.startup_services import ServiceProcessManager, StartupServices
 
 __all__ = [
     "DEFAULT_GUI_MAX_FRAMES",
@@ -19,6 +20,8 @@ __all__ = [
     "DEFAULT_GUI_TARGET_LINE_HEIGHT_PX",
     "GUI_OCR_ENGINE_NAMES",
     "GuiOcrComparisonPipeline",
+    "ServiceProcessManager",
+    "StartupServices",
     "build_gui_ocr_comparison_manager",
     "build_gui_ocr_manager",
     "build_validation_manager",

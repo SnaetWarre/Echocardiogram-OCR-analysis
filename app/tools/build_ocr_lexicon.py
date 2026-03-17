@@ -4,6 +4,7 @@ import argparse
 from pathlib import Path
 
 from app.pipeline.lexicon_builder import build_lexicon_artifact
+from app.repo_paths import DEFAULT_EXACT_LINES_PATH, DEFAULT_OCR_REDESIGN_LEXICON_PATH
 
 
 def main() -> None:
@@ -12,12 +13,12 @@ def main() -> None:
     )
     parser.add_argument(
         "--labels",
-        default="labels/exact_lines.json",
+        default=str(DEFAULT_EXACT_LINES_PATH),
         help="Path to the exact-line labels JSON",
     )
     parser.add_argument(
         "--output",
-        default="docs/ocr_redesign/exact_lines_lexicon.json",
+        default=str(DEFAULT_OCR_REDESIGN_LEXICON_PATH),
         help="Output artifact path",
     )
     args = parser.parse_args()

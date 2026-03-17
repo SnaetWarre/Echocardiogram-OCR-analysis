@@ -1,17 +1,22 @@
 from __future__ import annotations
 
-import importlib
 import os
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Protocol
 
 import numpy as np
 
 from app.io.dicom_loader import load_dicom_series
 from app.models.types import AiMeasurement, AiResult, DicomSeries, OverlayBox, PipelineRequest, PipelineResult
+from app.ocr.preprocessing import (
+    DEFAULT_CONTRAST_MODE,
+    DEFAULT_SCALE_ALGO,
+    DEFAULT_SCALE_FACTOR,
+    preprocess_roi,
+)
 from app.pipeline.ai_pipeline import BasePipeline, PipelineConfig
 from app.pipeline.echo_ocr_box_detector import (
     RoiDetection,
@@ -30,112 +35,21 @@ from app.pipeline.ocr_engines import OcrEngine, OcrResult, OcrToken, build_engin
 from app.pipeline.panel_validator import LocalLlmPanelValidator, PanelValidatorConfig
 from app.pipeline.study_companion_discovery import StudyCompanionDiscovery
 from app.pipeline.vision_llm import OllamaVisionLineExpert, VisionLineExpert, VisionLineExpertConfig
+from app.repo_paths import DEFAULT_OCR_REDESIGN_LEXICON_PATH
 
 
-DEFAULT_LEXICON_PATH = Path("docs/ocr_redesign/exact_lines_lexicon.json")
+DEFAULT_OCR_ENGINE = "surya"
+DEFAULT_FALLBACK_OCR_ENGINE = "paddleocr"
+DEFAULT_PARSER_MODE = "off"
+DEFAULT_SEGMENTATION_MODE = "fixed_pitch"
+DEFAULT_TARGET_LINE_HEIGHT_PX = 20.0
+
+DEFAULT_LEXICON_PATH = DEFAULT_OCR_REDESIGN_LEXICON_PATH
 MEASUREMENT_BOX_RGB = (0x1A, 0x21, 0x29)
-
-
-def _to_gray(image: np.ndarray) -> np.ndarray:
-    if image.ndim == 2:
-        return image.astype(np.uint8, copy=False)
-    if image.ndim == 3 and image.shape[-1] >= 3:
-        rgb = image[..., :3].astype(np.float32)
-        gray = 0.299 * rgb[..., 0] + 0.587 * rgb[..., 1] + 0.114 * rgb[..., 2]
-        return np.clip(gray, 0, 255).astype(np.uint8)
-    raise ValueError(f"Unsupported frame shape: {image.shape}")
 
 
 class MeasurementBoxDetector(Protocol):
     def detect(self, frame: np.ndarray) -> RoiDetection: ...
-
-
-def preprocess_roi(
-    roi: np.ndarray,
-    scale_factor: int | None = 3,
-    scale_algo: str | None = "lanczos",
-    contrast_mode: str | None = "none",
-    smooth: bool = False,
-) -> np.ndarray:
-    if scale_factor is None:
-        try:
-            scale_factor = int(os.getenv("ECHO_OCR_UPSCALE_FACTOR", "2"))
-        except:
-            scale_factor = 2
-    if scale_algo is None:
-        scale_algo = os.getenv("ECHO_OCR_UPSCALE_INTERPOLATION", "cubic").lower()
-    if contrast_mode is None:
-        contrast_mode = os.getenv("ECHO_OCR_CONTRAST_MODE", "clahe").lower()
-
-    gray = _to_gray(roi)
-    if gray.size == 0:
-        return gray
-
-    try:
-        cv2: Any = importlib.import_module("cv2")
-
-        # 1. Contrast Adjustment
-        if contrast_mode == "clahe":
-            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-            enhanced = clahe.apply(gray)
-        elif contrast_mode == "adaptive_threshold":
-            # Just mild equalization before the blur
-            enhanced = cv2.equalizeHist(gray)
-        else:  # "none" or default
-            enhanced = gray
-
-        # 2. Unsharp masking to sharpen text edges
-        gaussian = cv2.GaussianBlur(enhanced, (5, 5), 1.0)
-        unsharp = cv2.addWeighted(enhanced, 1.5, gaussian, -0.5, 0)
-
-        # 3. Upscale BEFORE thresholding to prevent jagged edges on small text
-        scale = max(1, min(scale_factor, 6))
-        if scale > 1:
-            interpolation_map = {
-                "linear": cv2.INTER_LINEAR,
-                "cubic": cv2.INTER_CUBIC,
-                "lanczos": cv2.INTER_LANCZOS4,
-            }
-            inter_flag = interpolation_map.get(scale_algo, cv2.INTER_CUBIC)
-
-            w = int(unsharp.shape[1] * scale)
-            h = int(unsharp.shape[0] * scale)
-            unsharp = cv2.resize(unsharp, (w, h), interpolation=inter_flag)
-
-        if contrast_mode == "adaptive_threshold":
-            # 4. Adaptive thresholding instead of Otsu's
-            thresh = cv2.adaptiveThreshold(
-                unsharp, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2
-            )
-        else:
-            # 4. Otsu's thresholding for pure B&W text
-            _, thresh = cv2.threshold(unsharp, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-
-        # 5. Mild morphological closing to bridge gaps in thin fonts
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
-        clean = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
-
-        # 6. Optional edge smoothing: light blur + re-threshold to reduce
-        #    jagged stroke edges without merging neighbouring glyphs.
-        if smooth:
-            blurred = cv2.GaussianBlur(clean, (3, 3), 0.6)
-            _, clean = cv2.threshold(blurred, 127, 255, cv2.THRESH_BINARY)
-
-        return clean
-
-    except ImportError:
-        # Fallback to pure numpy stretching and basic nearest upscale
-        p5 = np.percentile(gray, 5)
-        p95 = np.percentile(gray, 95)
-        if p95 <= p5:
-            stretched = gray
-        else:
-            stretched = (((gray.astype(np.float32) - p5) * (255.0 / (p95 - p5))).clip(0, 255).astype(np.uint8))
-
-        scale = max(1, min(scale_factor, 6))
-        if scale <= 1:
-            return stretched
-        return np.repeat(np.repeat(stretched, scale, axis=0), scale, axis=1)
 
 
 class NoopOcrEngine:
@@ -181,24 +95,24 @@ class EchoOcrPipeline(BasePipeline):
         self._provided_ocr_engine = ocr_engine
         self._provided_parser = parser
         self._default_engine = (
-            str(parameters.get("ocr_engine", os.getenv("ECHO_OCR_ENGINE", "easyocr")))
+            str(parameters.get("ocr_engine", os.getenv("ECHO_OCR_ENGINE", DEFAULT_OCR_ENGINE)))
             .strip()
             .lower()
         )
         self._parser_mode = (
-            str(parameters.get("parser_mode", os.getenv("ECHO_PARSER_MODE", "regex")))
+            str(parameters.get("parser_mode", os.getenv("ECHO_PARSER_MODE", DEFAULT_PARSER_MODE)))
             .strip()
             .lower()
         )
         self._parser_parameters = dict(parameters)
-        self._scale_factor = self._read_int_parameter(parameters, "scale_factor", default=3)
-        self._scale_algo = str(parameters.get("scale_algo", "lanczos")).strip().lower()
-        self._contrast_mode = str(parameters.get("contrast_mode", "none")).strip().lower()
-        self._segmentation_mode = str(parameters.get("segmentation_mode", "fixed_pitch")).strip().lower()
+        self._scale_factor = self._read_int_parameter(parameters, "scale_factor", default=DEFAULT_SCALE_FACTOR)
+        self._scale_algo = str(parameters.get("scale_algo", DEFAULT_SCALE_ALGO)).strip().lower()
+        self._contrast_mode = str(parameters.get("contrast_mode", DEFAULT_CONTRAST_MODE)).strip().lower()
+        self._segmentation_mode = str(parameters.get("segmentation_mode", DEFAULT_SEGMENTATION_MODE)).strip().lower()
         self._target_line_height_px = self._read_float_parameter(
             parameters,
             "target_line_height_px",
-            default=20.0,
+            default=DEFAULT_TARGET_LINE_HEIGHT_PX,
         )
         self._strict_ocr_engine_selection = self._read_bool_parameter(
             parameters,
@@ -206,7 +120,10 @@ class EchoOcrPipeline(BasePipeline):
             default=False,
         )
         self._fallback_engine_name = str(
-            parameters.get("fallback_ocr_engine", os.getenv("ECHO_OCR_FALLBACK_ENGINE", ""))
+            parameters.get(
+                "fallback_ocr_engine",
+                os.getenv("ECHO_OCR_FALLBACK_ENGINE", DEFAULT_FALLBACK_OCR_ENGINE),
+            )
         ).strip().lower()
         self._lexicon_path = Path(str(parameters.get("lexicon_path", DEFAULT_LEXICON_PATH))).expanduser()
         self._segmentation_debug_dir = str(parameters.get("segmentation_debug_dir", "")).strip()
