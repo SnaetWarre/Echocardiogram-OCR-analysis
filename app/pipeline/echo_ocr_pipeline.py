@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import time
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -38,7 +39,7 @@ from app.pipeline.vision_llm import OllamaVisionLineExpert, VisionLineExpert, Vi
 from app.repo_paths import DEFAULT_OCR_REDESIGN_LEXICON_PATH
 
 
-DEFAULT_OCR_ENGINE = "surya"
+DEFAULT_OCR_ENGINE = "glm-ocr"
 DEFAULT_FALLBACK_OCR_ENGINE = "paddleocr"
 DEFAULT_PARSER_MODE = "off"
 DEFAULT_SEGMENTATION_MODE = "fixed_pitch"
@@ -99,6 +100,12 @@ class EchoOcrPipeline(BasePipeline):
             .strip()
             .lower()
         )
+        self._requested_engine = (
+            str(parameters.get("requested_ocr_engine", self._default_engine))
+            .strip()
+            .lower()
+        )
+        self._startup_warning = str(parameters.get("startup_warning", "")).strip()
         self._parser_mode = (
             str(parameters.get("parser_mode", os.getenv("ECHO_PARSER_MODE", DEFAULT_PARSER_MODE)))
             .strip()
@@ -215,6 +222,7 @@ class EchoOcrPipeline(BasePipeline):
         self._line_first_parser = LineFirstParser(fallback_parser=None)
         self._lexicon: LexiconArtifact | None = None
         self._reranker: LexiconReranker | None = None
+        self._frame_benchmarks: list[dict[str, object]] = []
 
     @staticmethod
     def _read_int_parameter(parameters: dict[str, object], key: str, *, default: int) -> int:
@@ -295,6 +303,7 @@ class EchoOcrPipeline(BasePipeline):
 
     def run(self, request: PipelineRequest) -> PipelineResult:
         try:
+            self._frame_benchmarks = []
             self._ensure_components()
             series = load_dicom_series(request.dicom_path, load_pixels=False)
             output_dir = self._resolve_output_dir(request)
@@ -487,8 +496,30 @@ class EchoOcrPipeline(BasePipeline):
             frame_count = min(frame_count, max_frames)
         for frame_index in range(frame_count):
             frame = series.get_frame(frame_index)
+            frame_started_at = time.perf_counter()
             ocr, panel, measurements, bbox = self._extract_measurements_for_frame(
                 frame, self.box_detector.detect(frame)
+            )
+            frame_latency_ms = (time.perf_counter() - frame_started_at) * 1000.0
+            effective_engine = (
+                str(ocr.engine_name).strip()
+                if ocr is not None and str(ocr.engine_name).strip()
+                else str(self.ocr_engine.name).strip()
+            )
+            self._frame_benchmarks.append(
+                {
+                    "frame_index": frame_index,
+                    "latency_ms": round(frame_latency_ms, 3),
+                    "ocr_engine": effective_engine,
+                    "line_count": len(panel.lines),
+                    "measurement_count": len(measurements),
+                    "ocr_confidence": float(ocr.confidence) if ocr is not None else 0.0,
+                    "uncertain_line_count": panel.uncertain_line_count,
+                    "fallback_invocations": panel.fallback_invocations,
+                    "engine_disagreement_count": panel.engine_disagreement_count,
+                    "vision_invocations": panel.vision_invocations,
+                    "used_detection": bool(bbox is not None),
+                }
             )
             if ocr is None or bbox is None or not measurements:
                 continue
@@ -616,6 +647,24 @@ class EchoOcrPipeline(BasePipeline):
         source_kinds = sorted({record.source_kind or "pixel_ocr" for _, record in ordered})
         parser_sources = sorted({record.parser_source for _, record in ordered if record.parser_source})
         model_suffix = self.ocr_engine.name if source_kinds == ["pixel_ocr"] else "+".join(source_kinds)
+        engine_usage: dict[str, int] = {}
+        latency_values: list[float] = []
+        for frame_benchmark in self._frame_benchmarks:
+            engine_name = str(frame_benchmark.get("ocr_engine", "")).strip() or "unknown"
+            engine_usage[engine_name] = engine_usage.get(engine_name, 0) + 1
+            latency_raw = frame_benchmark.get("latency_ms", 0.0)
+            if isinstance(latency_raw, (int, float, str, bytes, bytearray)):
+                try:
+                    latency_values.append(float(latency_raw))
+                except (TypeError, ValueError):
+                    pass
+        total_latency_ms = float(sum(latency_values)) if latency_values else 0.0
+        mean_latency_ms = (total_latency_ms / len(latency_values)) if latency_values else 0.0
+        if latency_values:
+            latency_array = np.asarray(latency_values, dtype=np.float64)
+            p95_latency_ms = float(np.percentile(latency_array, 95).item())
+        else:
+            p95_latency_ms = 0.0
 
         return AiResult(
             model_name=f"{self.name}:{model_suffix}",
@@ -659,6 +708,21 @@ class EchoOcrPipeline(BasePipeline):
                 ],
                 "uncertain_line_count": sum(1 for _, record in ordered if record.line_uncertain),
                 "study_companion_used": any(record.source_kind != "pixel_ocr" for _, record in ordered),
+                "ocr_engine_config": {
+                    "requested": self._requested_engine,
+                    "selected": self._default_engine,
+                    "active": self.ocr_engine.name,
+                    "fallback": self._fallback_ocr_engine.name if self._fallback_ocr_engine is not None else "",
+                },
+                "ocr_benchmark": {
+                    "frame_count": len(self._frame_benchmarks),
+                    "engine_usage": engine_usage,
+                    "total_latency_ms": round(total_latency_ms, 3),
+                    "mean_latency_ms": round(mean_latency_ms, 3),
+                    "p95_latency_ms": round(p95_latency_ms, 3),
+                    "frames": list(self._frame_benchmarks),
+                },
+                "startup_warning": self._startup_warning,
             },
         )
 

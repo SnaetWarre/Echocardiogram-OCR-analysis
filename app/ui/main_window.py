@@ -39,6 +39,7 @@ OVERLAY_MODE_LABELS: dict[str, str] = {
     "detailed": "Detailed",
 }
 ENGINE_OVERLAY_COLORS: dict[str, str] = {
+    "glm-ocr": "#C2410C",
     "surya": "#F59E0B",
     "paddleocr": "#3B82F6",
     "easyocr": "#10B981",
@@ -97,6 +98,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._overlay_mode = "off"
         self._overlay_mode_button: QtWidgets.QToolButton | None = None
         self._overlay_mode_actions: dict[str, QtGui.QAction] = {}
+        self._runtime_warnings_seen: set[str] = set()
 
         # Logs & Error state
         self._log_dir = Path.cwd() / "logs"
@@ -124,6 +126,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._state.loading_state_changed.connect(self._on_loading_state_changed)
 
         self._update_status()
+        self._show_startup_warnings()
 
     def _apply_theme(self) -> None:
         apply_theme(self)
@@ -268,12 +271,35 @@ class MainWindow(QtWidgets.QMainWindow):
     @staticmethod
     def _ocr_engine_label(engine_name: str) -> str:
         labels = {
+            "glm-ocr": "GLM-OCR",
             "surya": "Surya",
             "paddleocr": "PaddleOCR",
             "easyocr": "EasyOCR",
             "tesseract": "Tesseract",
         }
         return labels.get(engine_name, engine_name)
+
+    def _show_runtime_warning(self, message: str, *, timeout_ms: int = 9000) -> None:
+        normalized = message.strip()
+        if not normalized:
+            return
+        if normalized in self._runtime_warnings_seen:
+            return
+        self._runtime_warnings_seen.add(normalized)
+        self._log_event(f"Runtime warning: {normalized}")
+        self.statusBar().showMessage(normalized, timeout_ms)
+
+    def _show_startup_warnings(self) -> None:
+        if self._startup_services is None:
+            return
+        raw_warnings = getattr(self._startup_services, "startup_warnings", ())
+        warnings: list[str] = []
+        if isinstance(raw_warnings, (list, tuple)):
+            warnings = [str(item).strip() for item in raw_warnings if str(item).strip()]
+        if not warnings:
+            return
+        for warning in warnings:
+            self._show_runtime_warning(warning)
 
     def _add_ocr_engine_selector(self, toolbar: QtWidgets.QToolBar) -> None:
         button = QtWidgets.QToolButton(self)
@@ -1108,15 +1134,18 @@ class MainWindow(QtWidgets.QMainWindow):
             and self._validation_manager_selection == selected_engines
         ):
             return self._validation_pipeline_manager
+        glm_ocr_engine = self._startup_services.glm_ocr_engine if self._startup_services else None
         surya_engine = self._startup_services.surya_engine if self._startup_services else None
         if len(selected_engines) > 1:
             self._validation_pipeline_manager = build_gui_ocr_comparison_manager(
                 ocr_engine_names=selected_engines,
+                glm_ocr_engine=glm_ocr_engine,
                 surya_engine=surya_engine,
             )
         else:
             self._validation_pipeline_manager = build_gui_ocr_manager(
                 ocr_engine_name=selected_engines[0],
+                glm_ocr_engine=glm_ocr_engine,
                 surya_engine=surya_engine,
             )
         self._validation_manager_selection = selected_engines
@@ -1146,7 +1175,11 @@ class MainWindow(QtWidgets.QMainWindow):
 
         ai_result = result.ai_result
         self._log_event(f"AI completed with {len(ai_result.measurements)} measurements.")
+        startup_warning = str(ai_result.raw.get("startup_warning", "")).strip()
+        if startup_warning:
+            self._show_runtime_warning(startup_warning)
         self._state.apply_ai_result(ai_result)
+        self._report_ocr_benchmark(ai_result)
         if self._ai_run_mode == "validation":
             self._open_validation_dialog(result.dicom_path, ai_result)
             return
@@ -1170,6 +1203,34 @@ class MainWindow(QtWidgets.QMainWindow):
                     f"{remaining} files remaining.",
                     2500,
                 )
+
+    def _report_ocr_benchmark(self, ai_result: AiResult) -> None:
+        raw = ai_result.raw if isinstance(ai_result.raw, dict) else {}
+        benchmark = raw.get("ocr_benchmark") if isinstance(raw.get("ocr_benchmark"), dict) else {}
+        engine_cfg = raw.get("ocr_engine_config") if isinstance(raw.get("ocr_engine_config"), dict) else {}
+        frame_count = benchmark.get("frame_count") if isinstance(benchmark, dict) else None
+        mean_latency = benchmark.get("mean_latency_ms") if isinstance(benchmark, dict) else None
+        p95_latency = benchmark.get("p95_latency_ms") if isinstance(benchmark, dict) else None
+        if not isinstance(frame_count, int) or frame_count <= 0:
+            return
+        active_engine = str(engine_cfg.get("active", "")).strip() if isinstance(engine_cfg, dict) else ""
+        selected_engine = str(engine_cfg.get("selected", "")).strip() if isinstance(engine_cfg, dict) else ""
+        requested_engine = str(engine_cfg.get("requested", "")).strip() if isinstance(engine_cfg, dict) else ""
+        active_label = self._ocr_engine_label(active_engine) if active_engine else ai_result.model_name
+        benchmark_bits = [f"OCR benchmark: {active_label}", f"frames={frame_count}"]
+        if isinstance(mean_latency, (int, float)):
+            benchmark_bits.append(f"mean={float(mean_latency):.1f}ms")
+        if isinstance(p95_latency, (int, float)):
+            benchmark_bits.append(f"p95={float(p95_latency):.1f}ms")
+        benchmark_message = ", ".join(benchmark_bits)
+        self._log_event(benchmark_message)
+
+        if requested_engine and selected_engine and requested_engine != selected_engine:
+            requested_label = self._ocr_engine_label(requested_engine)
+            selected_label = self._ocr_engine_label(selected_engine)
+            self._show_runtime_warning(
+                f"Requested OCR engine {requested_label} is unavailable; using {selected_label}."
+            )
 
     @QtCore.Slot()
     def _on_loader_thread_finished(self) -> None:

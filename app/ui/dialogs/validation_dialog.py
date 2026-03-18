@@ -469,6 +469,7 @@ class ValidationDialog(QtWidgets.QDialog):
         return frame
 
     _ENGINE_COLORS: dict[str, str] = {
+        "glm-ocr": "#C2410C",
         "surya": "#B45309",
         "paddleocr": "#1D4ED8",
         "easyocr": "#047857",

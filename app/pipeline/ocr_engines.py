@@ -45,6 +45,32 @@ def _resolve_surya_worker_cmd(worker_script: Path) -> list[str]:
     return [sys.executable, str(worker_script)]
 
 
+def _resolve_glm_ocr_worker_cmd(worker_script: Path) -> list[str]:
+    """
+    Build the command to run the GLM-OCR worker.
+    """
+    env_name = os.getenv("GLM_OCR_ENV", "glm_ocr").strip()
+    runner_override = os.getenv("GLM_OCR_RUNNER", "").strip().lower()
+
+    if runner_override == "python":
+        return [sys.executable, str(worker_script)]
+
+    if runner_override in ("mamba", "conda", "micromamba"):
+        runner = shutil.which(runner_override)
+        if runner:
+            return [runner, "run", "-n", env_name, "python", str(worker_script)]
+        raise UnavailableOcrEngineError(
+            f"GLM_OCR_RUNNER={runner_override} but '{runner_override}' not found in PATH."
+        )
+
+    for runner_name in ("mamba", "conda", "micromamba"):
+        runner = shutil.which(runner_name)
+        if runner:
+            return [runner, "run", "-n", env_name, "python", str(worker_script)]
+
+    return [sys.executable, str(worker_script)]
+
+
 @dataclass(frozen=True)
 class OcrToken:
     text: str
@@ -354,6 +380,125 @@ class SuryaOcrEngine:
     def __del__(self):
         self._stop_worker()
 
+class GlmOcrEngine:
+    name = "glm-ocr"
+
+    def __init__(self) -> None:
+        self._worker_process: Optional[subprocess.Popen] = None
+        self._start_worker()
+
+    def _start_worker(self) -> None:
+        if self._worker_process is not None:
+            self._stop_worker()
+
+        worker_script = Path(__file__).parent / "glm_ocr_worker.py"
+        cmd = _resolve_glm_ocr_worker_cmd(worker_script)
+
+        self._worker_process = subprocess.Popen(
+            cmd,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            text=True,
+            bufsize=1,
+        )
+        
+        start_time = time.time()
+        while time.time() - start_time < 120:  # 120 second timeout for model loading (since it's larger)
+            line = self._worker_process.stdout.readline()
+            if not line:
+                self._check_process()
+                continue
+                
+            try:
+                data = json.loads(line)
+                if data.get("status") == "ready":
+                    return
+                if "error" in data:
+                    raise UnavailableOcrEngineError(f"GLM-OCR worker failed to start: {data['error']}")
+            except json.JSONDecodeError:
+                pass
+                
+        raise UnavailableOcrEngineError("GLM-OCR worker startup timed out after 120 seconds")
+
+    def _stop_worker(self) -> None:
+        if self._worker_process:
+            if self._worker_process.stdin:
+                self._worker_process.stdin.close()
+            self._worker_process.terminate()
+            try:
+                self._worker_process.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                self._worker_process.kill()
+            self._worker_process = None
+
+    def _check_process(self) -> None:
+        if self._worker_process is None or self._worker_process.poll() is not None:
+            print("GLM-OCR worker subprocess died. Restarting...")
+            self._start_worker()
+
+    def extract(self, image: np.ndarray) -> OcrResult:
+        self._check_process()
+        
+        success, encoded_image = cv2.imencode('.png', image)
+        if not success:
+            raise RuntimeError("Failed to encode image for GLM-OCR worker")
+            
+        b64_string = base64.b64encode(encoded_image).decode('utf-8')
+        req_id = str(uuid.uuid4())
+        
+        payload = json.dumps({
+            "id": req_id,
+            "image_base64": b64_string
+        })
+        
+        try:
+            self._worker_process.stdin.write(payload + "\n")
+            self._worker_process.stdin.flush()
+        except BrokenPipeError:
+            self._check_process()
+            self._worker_process.stdin.write(payload + "\n")
+            self._worker_process.stdin.flush()
+            
+        while True:
+            line = self._worker_process.stdout.readline()
+            if not line:
+                self._check_process()
+                raise RuntimeError("GLM-OCR worker disconnected unexpectedly")
+                
+            line = line.strip()
+            if not line:
+                continue
+                
+            try:
+                res = json.loads(line)
+                if res.get("id") == req_id:
+                    if "error" in res:
+                        print(f"GLM-OCR error: {res['error']}")
+                        print(f"Traceback: {res.get('traceback', '')}")
+                        return OcrResult(text="", confidence=0.0, tokens=[], engine_name=self.name)
+                        
+                    return OcrResult(
+                        text=res.get("text", ""),
+                        confidence=res.get("confidence", 0.0),
+                        tokens=[
+                            OcrToken(
+                                text=str(token.get("text", "")).strip(),
+                                confidence=float(token.get("confidence", 0.0) or 0.0),
+                                bbox=tuple(token.get("bbox")) if isinstance(token.get("bbox"), list) and len(token.get("bbox")) == 4 else None,
+                            )
+                            for token in res.get("tokens", [])
+                            if str(token.get("text", "")).strip()
+                        ],
+                        engine_name=self.name
+                    )
+                else:
+                    print(f"Warning: Discarded mismatched GLM-OCR response (expected {req_id}, got {res.get('id')})")
+            except json.JSONDecodeError:
+                print(f"GLM-OCR worker non-JSON output: {line}")
+
+    def __del__(self):
+        self._stop_worker()
+
 def build_engine(name: str) -> OcrEngine:
     lowered = name.strip().lower()
     if lowered == "tesseract":
@@ -364,4 +509,6 @@ def build_engine(name: str) -> OcrEngine:
         return PaddleOcrEngine()
     if lowered == "surya":
         return SuryaOcrEngine()
+    if lowered == "glm-ocr":
+        return GlmOcrEngine()
     raise ValueError(f"Unsupported OCR engine: {name}")

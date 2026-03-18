@@ -8,13 +8,15 @@ from dataclasses import dataclass
 from urllib.error import URLError
 from urllib.request import Request, urlopen
 
-from app.pipeline.ocr_engines import SuryaOcrEngine
+from app.pipeline.ocr_engines import GlmOcrEngine, SuryaOcrEngine
 
 
 @dataclass
 class StartupServices:
+    glm_ocr_engine: GlmOcrEngine | None = None
     surya_engine: SuryaOcrEngine | None = None
     managed_ollama_process: subprocess.Popen[str] | None = None
+    startup_warnings: tuple[str, ...] = ()
 
 
 class ServiceProcessManager:
@@ -34,17 +36,58 @@ class ServiceProcessManager:
             on_progress("AI services disabled.", 1, 1)
             return StartupServices()
 
-        on_progress("Checking Ollama service...", 1, 3)
+        startup_warnings: list[str] = []
+
+        on_progress("Checking Ollama service...", 1, 4)
         managed_ollama = self._ensure_ollama_running()
 
-        on_progress("Loading Surya models...", 2, 3)
-        surya_engine = self._ensure_surya_worker()
+        on_progress("Loading GLM-OCR models...", 2, 4)
+        glm_ocr_engine: GlmOcrEngine | None = None
+        try:
+            glm_ocr_engine = self._ensure_glm_ocr_worker()
+        except Exception as exc:
+            startup_warnings.append(
+                "GLM-OCR could not be preloaded at startup. "
+                "HITL OCR will auto-fallback to another engine. "
+                f"Details: {exc}"
+            )
 
-        on_progress("Ready!", 3, 3)
+        on_progress("Loading Surya models...", 3, 4)
+        surya_engine: SuryaOcrEngine | None = None
+        try:
+            surya_engine = self._ensure_surya_worker()
+        except Exception as exc:
+            startup_warnings.append(
+                "Surya could not be preloaded at startup. "
+                "Fallback engines remain available. "
+                f"Details: {exc}"
+            )
+
+        on_progress("Ready!", 4, 4)
         return StartupServices(
+            glm_ocr_engine=glm_ocr_engine,
             surya_engine=surya_engine,
             managed_ollama_process=managed_ollama,
+            startup_warnings=tuple(startup_warnings),
         )
+
+    @staticmethod
+    def _ensure_glm_ocr_worker() -> GlmOcrEngine:
+        try:
+            return GlmOcrEngine()
+        except FileNotFoundError as exc:
+            raise RuntimeError(
+                "GLM-OCR startup failed because the required executable was not found. "
+                "Ensure mamba/conda is installed and the glm_ocr environment exists, "
+                "or set GLM_OCR_RUNNER=python to use the current Python."
+            ) from exc
+        except Exception as exc:
+            raise RuntimeError(
+                "GLM-OCR startup failed. "
+                "The app defaults to GLM-OCR for HITL validation. "
+                "Fix GLM_OCR_ENV/GLM_OCR_RUNNER or switch OCR engine in the GUI menu. "
+                f"Original error: {exc}"
+            ) from exc
 
     def _ensure_ollama_running(self) -> subprocess.Popen[str] | None:
         if self._is_ollama_healthy():
@@ -123,7 +166,9 @@ class ServiceProcessManager:
         return (
             "Troubleshooting:\n"
             "1) Confirm `ollama` is installed and `ollama serve` runs.\n"
-            "2) Confirm the Surya environment exists (mamba/conda env list).\n"
-            "3) Ensure the worker can run. Auto-detects mamba, conda, micromamba;\n"
-            "   else uses current Python. Override with SURYA_RUNNER, SURYA_ENV.\n"
+            "2) Confirm the GLM-OCR environment exists (mamba/conda env list).\n"
+            "3) Ensure GLM worker can run. Auto-detects mamba, conda, micromamba;\n"
+            "   else uses current Python. Override with GLM_OCR_RUNNER, GLM_OCR_ENV.\n"
+            "4) Confirm the Surya environment exists if you use Surya fallback.\n"
+            "5) Ensure Surya worker can run. Override with SURYA_RUNNER, SURYA_ENV.\n"
         )

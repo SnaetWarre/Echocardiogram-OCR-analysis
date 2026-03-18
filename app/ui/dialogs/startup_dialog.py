@@ -52,7 +52,7 @@ class StartupDialog(QtWidgets.QDialog):
         self._title.setStyleSheet("font-size: 16px; font-weight: 600;")
         self._status = QtWidgets.QLabel("Preparing startup checks...")
         self._bar = QtWidgets.QProgressBar()
-        self._bar.setRange(0, 3)
+        self._bar.setRange(0, 4)
         self._bar.setValue(0)
 
         self._troubleshooting = QtWidgets.QPlainTextEdit()
