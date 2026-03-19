@@ -62,12 +62,15 @@ Use these defaults when adding or updating scripts:
 
 ## Common Commands
 
+Create the primary app environment with `mamba env create -f envs/dl.yml`.
+See `docs/mamba_environments.md` for the full multi-environment setup.
+
 ```bash
-python -m app.main
-pytest
-python -m app.tools.echo_ocr_eval_labels --split validation --engine surya
-python -m app.tools.eval_line_transcription --split validation
-python -m app.tools.build_ocr_lexicon
+mamba run -n DL python -m app.main
+mamba run -n DL python -m pytest
+mamba run -n DL python -m app.tools.echo_ocr_eval_labels --split validation --engine surya
+mamba run -n DL python -m app.tools.eval_line_transcription --split validation
+mamba run -n DL python -m app.tools.build_ocr_lexicon
 ```
 
 ## Notes

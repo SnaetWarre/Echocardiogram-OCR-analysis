@@ -1,0 +1,11 @@
+name: paddleocr_eval
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+  - numpy<2
+  - pillow
+  - pip:
+      - paddlepaddle==2.6.2
+      - paddleocr==2.7.3

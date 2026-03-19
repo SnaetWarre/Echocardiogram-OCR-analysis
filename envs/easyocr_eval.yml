@@ -1,0 +1,10 @@
+name: easyocr_eval
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+  - numpy<2
+  - pillow
+  - pip:
+      - easyocr==1.7.2

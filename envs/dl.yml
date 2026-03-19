@@ -1,0 +1,16 @@
+name: DL
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+  - numpy<2
+  - pyside6
+  - pydicom
+  - pillow
+  - matplotlib
+  - pytest
+  - requests
+  - pip:
+      - opencv-python
+      - pytesseract

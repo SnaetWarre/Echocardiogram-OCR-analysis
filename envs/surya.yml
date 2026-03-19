@@ -1,0 +1,10 @@
+name: surya
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip
+  - numpy<2
+  - pillow
+  - pip:
+      - surya-ocr==0.17.1
