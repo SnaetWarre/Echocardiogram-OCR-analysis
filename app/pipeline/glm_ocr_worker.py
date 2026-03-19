@@ -17,7 +17,9 @@ def load_glm_ocr_model():
     try:
         from transformers import AutoProcessor, AutoModelForImageTextToText
 
-        MODEL_PATH = "zai-org/GLM-OCR"
+        # Hub id or local directory (snapshots use cache after first download).
+        _model = os.environ.get("GLM_OCR_MODEL", "").strip()
+        MODEL_PATH = _model if _model else "zai-org/GLM-OCR"
         
         with (
             open(os.devnull, "w", encoding="utf-8") as devnull,

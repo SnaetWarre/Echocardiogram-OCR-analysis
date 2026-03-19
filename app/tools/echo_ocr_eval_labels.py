@@ -14,6 +14,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from app.ocr.preprocessing import preprocess_roi  # noqa: E402
 from app.pipeline.echo_ocr_box_detector import TopLeftBlueGrayBoxDetector  # noqa: E402
+from app.pipeline.echo_ocr_pipeline import DEFAULT_OCR_ENGINE  # noqa: E402
 from app.pipeline.ocr_engines import build_engine  # noqa: E402
 from app.validation.datasets import (  # noqa: E402
     DATASET_TASK,
@@ -59,8 +60,8 @@ def main() -> None:
     )
     parser.add_argument(
         "--engine",
-        default="easyocr",
-        help="OCR engine to use (tesseract, easyocr, paddleocr, surya)",
+        default=DEFAULT_OCR_ENGINE,
+        help="OCR engine to use (glm-ocr, surya, tesseract, easyocr, paddleocr)",
     )
     parser.add_argument(
         "--all-engines",
@@ -87,6 +88,11 @@ def main() -> None:
         default="",
         help="Optional path to write the full evaluation payload as JSON",
     )
+    parser.add_argument(
+        "--quiet",
+        action="store_true",
+        help="Suppress per-file OCR dump (still prints summary and json-out path)",
+    )
     args = parser.parse_args()
 
     labels_path = Path(args.labels)
@@ -100,12 +106,14 @@ def main() -> None:
         print(f"Loaded split filter: {', '.join(sorted(requested_splits))}")
     print(f"Loaded {len(labeled_files)} labeled files")
 
-    engine_names = ["tesseract", "easyocr", "paddleocr", "surya"] if args.all_engines else [args.engine]
+    engine_names = (
+        ["glm-ocr", "surya", "tesseract", "easyocr", "paddleocr"] if args.all_engines else [args.engine]
+    )
     all_scores: dict[str, dict[str, Any]] = {}
     for engine_name in engine_names:
         print(f"\n--- Evaluating with: {engine_name} ---")
         engine = build_engine(engine_name)
-        scores = run_evaluation(labeled_files, engine, verbose=True, args=args)
+        scores = run_evaluation(labeled_files, engine, verbose=not args.quiet, args=args)
         print_summary(engine_name, scores)
         all_scores[engine_name] = scores
 

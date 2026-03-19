@@ -63,6 +63,16 @@ mamba env update -f envs/paddleocr_eval.yml --prune
 
 ## Notes
 
+- **GLM-OCR model source**: the worker loads weights via Hugging Face (`zai-org/GLM-OCR` by default). The first run downloads into the Hub cache (typically `~/.cache/huggingface/hub`); later runs are read from disk unless you bump revisions. Override with a **local folder** (full model checkout) if you want no Hub id in code:
+  ```bash
+  export GLM_OCR_MODEL=/path/to/local/GLM-OCR-snapshot
+  ```
+  For air-gapped use after a one-time download: `export HF_HUB_OFFLINE=1` (and keep the cache).
+- **GLM-OCR worker** (`glm_ocr`): if `AutoProcessor.from_pretrained` fails with `TypeError: argument of type 'NoneType' is not iterable` in `video_processing_auto.py`, install **torchvision** (transformers maps video processors to `None` without it). Fix:
+  ```bash
+  mamba run -n glm_ocr pip install torchvision==0.20.1
+  ```
+  Or refresh from the spec (now includes `torchvision`): `mamba env update -f envs/glm_ocr.yml --prune`
 - `easyocr_eval` and `paddleocr_eval` pin `numpy<2` to avoid OpenCV wheel ABI mismatches
 - Keep heavyweight OCR dependencies isolated when they conflict with UI/runtime packages
 - Record all benchmark and evaluation runs in `artifacts/ocr_redesign/run_log.jsonl`

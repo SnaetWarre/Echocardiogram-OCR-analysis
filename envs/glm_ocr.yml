@@ -6,7 +6,10 @@ dependencies:
   - pip
   - pillow
   - pip:
+      # torchvision required: without it, transformers' video_processor auto-mapping
+      # leaves extractors=None and AutoProcessor.from_pretrained crashes (GLM-OCR, etc.).
       - torch==2.5.1
+      - torchvision==0.20.1
       - transformers==5.2.0
       - accelerate==1.12.0
       - safetensors==0.7.0

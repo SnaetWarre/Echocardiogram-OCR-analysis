@@ -40,7 +40,7 @@ from app.repo_paths import DEFAULT_OCR_REDESIGN_LEXICON_PATH
 
 
 DEFAULT_OCR_ENGINE = "glm-ocr"
-DEFAULT_FALLBACK_OCR_ENGINE = "paddleocr"
+DEFAULT_FALLBACK_OCR_ENGINE = "surya"
 DEFAULT_PARSER_MODE = "off"
 DEFAULT_SEGMENTATION_MODE = "fixed_pitch"
 DEFAULT_TARGET_LINE_HEIGHT_PX = 20.0
@@ -277,7 +277,14 @@ class EchoOcrPipeline(BasePipeline):
     def _build_ocr_engine_with_fallback(self, preferred_engine: str) -> OcrEngine:
         if self._strict_ocr_engine_selection:
             return build_engine(preferred_engine)
-        for name in (preferred_engine, "easyocr", "paddleocr", "tesseract"):
+        chain: list[str] = [preferred_engine]
+        fb = self._fallback_engine_name
+        if fb and fb != preferred_engine:
+            chain.append(fb)
+        for extra in ("easyocr", "paddleocr", "tesseract"):
+            if extra not in chain:
+                chain.append(extra)
+        for name in chain:
             try:
                 return build_engine(name)
             except Exception:

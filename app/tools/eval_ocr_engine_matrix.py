@@ -1126,7 +1126,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--engines",
-        default="easyocr,tesseract,paddleocr,surya",
+        default="glm-ocr,surya,easyocr,tesseract,paddleocr",
         help="Comma separated engines",
     )
     parser.add_argument(

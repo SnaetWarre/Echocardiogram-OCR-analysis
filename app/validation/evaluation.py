@@ -375,6 +375,8 @@ def run_evaluation(
         elapsed = time.perf_counter() - started
         elapsed_total += elapsed
 
+        # Count label files where TopLeftBlueGrayBoxDetector found a panel ROI on at least one
+        # frame (so OCR ran and produced predictions). Not related to discovering files on disk.
         if all_predictions:
             total_files_with_detections += 1
 
@@ -552,8 +554,11 @@ def print_summary(engine_name: str, scores: dict[str, float]) -> None:
 
     print(f"\n{'=' * 60}")
     print(f"  Engine: {engine_name}")
-    print(f"  Files evaluated:       {files}")
-    print(f"  Files with detections: {detected} ({scores['detection_rate']:.0%})")
+    print(f"  Label files evaluated:              {files}")
+    print(
+        f"  Files with panel ROI (≥1 frame):    {detected}/{files} "
+        f"({scores['detection_rate']:.0%})  [TopLeftBlueGrayBoxDetector]"
+    )
     print(f"  Total labels:          {total}")
     print(f"  Total predictions:     {predictions}")
     print(f"  Exact line matches:    {full}/{total} ({scores['full_match_rate']:.1%})")
