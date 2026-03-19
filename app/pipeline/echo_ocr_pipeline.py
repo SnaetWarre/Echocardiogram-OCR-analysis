@@ -44,6 +44,7 @@ DEFAULT_FALLBACK_OCR_ENGINE = "surya"
 DEFAULT_PARSER_MODE = "off"
 DEFAULT_SEGMENTATION_MODE = "fixed_pitch"
 DEFAULT_TARGET_LINE_HEIGHT_PX = 20.0
+DEFAULT_SEGMENTATION_EXTRA_LEFT_PAD_PX = 16
 
 DEFAULT_LEXICON_PATH = DEFAULT_OCR_REDESIGN_LEXICON_PATH
 MEASUREMENT_BOX_RGB = (0x1A, 0x21, 0x29)
@@ -121,6 +122,11 @@ class EchoOcrPipeline(BasePipeline):
             "target_line_height_px",
             default=DEFAULT_TARGET_LINE_HEIGHT_PX,
         )
+        self._segmentation_extra_left_pad_px = self._read_int_parameter(
+            parameters,
+            "segmentation_extra_left_pad_px",
+            default=DEFAULT_SEGMENTATION_EXTRA_LEFT_PAD_PX,
+        )
         self._strict_ocr_engine_selection = self._read_bool_parameter(
             parameters,
             "strict_ocr_engine_selection",
@@ -195,6 +201,7 @@ class EchoOcrPipeline(BasePipeline):
             segmentation_mode=self._segmentation_mode,
             target_line_height_px=self._target_line_height_px,
             default_header_trim_px=DEFAULT_HEADER_TRIM_PX,
+            extra_left_pad_px=self._segmentation_extra_left_pad_px,
         )
         self._line_transcriber = LineTranscriber(
             vision_quality_threshold=self._vision_quality_threshold,

@@ -46,6 +46,16 @@ class SegmentationResult:
 
 
 class LineSegmenter:
+    """Split a measurement-panel ROI into horizontal text lines.
+
+    *Vertical* placement: optional header trim (`detect_header_trim`), then fixed-pitch
+    stripes (~`target_line_height_px`, often 20px) or projection/token clustering.
+
+    *Horizontal* extent per line: tight bbox from `_text_mask` ink columns in that stripe
+    (``xs.min`` … ``xs.max``) plus `line_padding_px` (default 2). Faint leftmost glyphs can
+    fall outside the mask and be cropped; use `extra_left_pad_px` to widen leftward.
+    """
+
     def __init__(
         self,
         *,
@@ -59,6 +69,7 @@ class LineSegmenter:
         max_header_fraction: float = 0.45,
         refine_split_min_height_px: int = 10,
         snap_to_valleys: bool = False,
+        extra_left_pad_px: int = 0,
     ) -> None:
         self.segmentation_mode = str(segmentation_mode).strip().lower() or "fixed_pitch"
         self.target_line_height_px = max(1.0, float(target_line_height_px))
@@ -66,6 +77,8 @@ class LineSegmenter:
         self.projection_threshold_ratio = max(0.001, float(projection_threshold_ratio))
         self.min_line_height_px = max(1, int(min_line_height_px))
         self.line_padding_px = max(0, int(line_padding_px))
+        # Pixels subtracted from x1 (expand crop left) after mask/tight bbox; helps faint leading text.
+        self.extra_left_pad_px = max(0, int(extra_left_pad_px))
         self.merge_gap_px = max(0, int(merge_gap_px))
         self.max_header_fraction = min(max(float(max_header_fraction), 0.0), 1.0)
         self.refine_split_min_height_px = max(self.min_line_height_px * 2, int(refine_split_min_height_px))
@@ -189,7 +202,7 @@ class LineSegmenter:
                 x1 = 0
                 x2 = content_width
             else:
-                x1 = max(0, int(xs.min()) - self.line_padding_px)
+                x1 = max(0, int(xs.min()) - self.line_padding_px - self.extra_left_pad_px)
                 x2 = min(content_width, int(xs.max()) + self.line_padding_px + 1)
             y1 = start + header_trim_px
             y2 = end + header_trim_px
@@ -403,7 +416,7 @@ class LineSegmenter:
 
         lines: list[SegmentedLine] = []
         for order, row in enumerate(rows):
-            x1 = max(0, min(item[0] for item in row) - self.line_padding_px)
+            x1 = max(0, min(item[0] for item in row) - self.line_padding_px - self.extra_left_pad_px)
             y1 = max(0, min(item[1] for item in row) - self.line_padding_px)
             x2 = min(width, max(item[0] + item[2] for item in row) + self.line_padding_px)
             y2 = min(height, max(item[1] + item[3] for item in row) + self.line_padding_px)
@@ -494,7 +507,7 @@ class LineSegmenter:
             if xs.size == 0:
                 x1, x2 = 0, int(content.shape[1])
             else:
-                x1 = max(0, int(xs.min()) - self.line_padding_px)
+                x1 = max(0, int(xs.min()) - self.line_padding_px - self.extra_left_pad_px)
                 x2 = min(int(content.shape[1]), int(xs.max()) + self.line_padding_px + 1)
             y1 = max(0, start - self.line_padding_px)
             y2 = min(int(content.shape[0]), end + self.line_padding_px + 1)
@@ -617,7 +630,7 @@ class LineSegmenter:
                 split_x1 = x1
                 split_x2 = x2
             else:
-                split_x1 = max(0, x1 + int(xs.min()) - self.line_padding_px)
+                split_x1 = max(0, x1 + int(xs.min()) - self.line_padding_px - self.extra_left_pad_px)
                 split_x2 = min(int(gray.shape[1]), x1 + int(xs.max()) + self.line_padding_px + 1)
             split_y1 = max(0, y1 + band_top)
             split_y2 = min(int(gray.shape[0]), y1 + band_bottom)

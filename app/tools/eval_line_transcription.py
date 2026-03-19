@@ -15,9 +15,9 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from app.pipeline.echo_ocr_pipeline import (  # noqa: E402
-    DEFAULT_FALLBACK_OCR_ENGINE,
     DEFAULT_OCR_ENGINE,
     DEFAULT_PARSER_MODE,
+    DEFAULT_SEGMENTATION_EXTRA_LEFT_PAD_PX,
     EchoOcrPipeline,
 )
 from app.pipeline.ai_pipeline import PipelineConfig  # noqa: E402
@@ -140,6 +140,8 @@ def evaluate_line_transcription(
         "fallback_ocr_engine": fallback_engine_name,
         "parser_mode": DEFAULT_PARSER_MODE,
         "max_frames": 1,
+        # Avoid silent chain to tesseract/easyocr/paddle when the requested fallback fails to load.
+        "strict_ocr_engine_selection": True,
     }
     if pipeline_parameters:
         parameters.update(pipeline_parameters)
@@ -271,8 +273,8 @@ def main() -> None:
     parser.add_argument("--engine", default=DEFAULT_OCR_ENGINE, help="Primary OCR engine")
     parser.add_argument(
         "--fallback-engine",
-        default=DEFAULT_FALLBACK_OCR_ENGINE,
-        help="Fallback OCR engine",
+        default="",
+        help="Optional per-line fallback (e.g. surya). Default empty = primary engine only (no tesseract chain).",
     )
     parser.add_argument("--max-files", type=int, default=0, help="Optional file limit for quick runs")
     parser.add_argument("--output", default="", help="Optional JSON output path")
@@ -286,6 +288,12 @@ def main() -> None:
     parser.add_argument("--vision-model", default="qwen2.5vl:3b-q4_K_M", help="Local vision model for hard lines")
     parser.add_argument("--vision-ollama-url", default="http://127.0.0.1:11434", help="Ollama base URL for vision fallback")
     parser.add_argument("--study-companion", action="store_true", help="Enable study companion discovery during evaluation")
+    parser.add_argument(
+        "--segmentation-extra-left-pad",
+        type=int,
+        default=DEFAULT_SEGMENTATION_EXTRA_LEFT_PAD_PX,
+        help="Widen line crops left (segmentation_extra_left_pad_px); 0 disables extra margin",
+    )
     args = parser.parse_args()
 
     split_filter = {item.strip().lower() for item in args.split.split(",") if item.strip()}
@@ -305,6 +313,7 @@ def main() -> None:
             "vision_model": args.vision_model,
             "vision_ollama_url": args.vision_ollama_url,
             "study_companion_enabled": args.study_companion,
+            "segmentation_extra_left_pad_px": max(0, int(args.segmentation_extra_left_pad)),
         },
         max_files=args.max_files or None,
         debug_dir=Path(args.debug_dir) if args.debug_dir else None,

@@ -116,6 +116,22 @@ def test_line_segmenter_fixed_pitch_uses_twenty_pixel_stripes() -> None:
     assert result.lines[0].metadata.get("estimated_line_count") == 2
 
 
+def test_line_segmenter_extra_left_pad_expands_crop_left() -> None:
+    roi = np.zeros((64, 120, 3), dtype=np.uint8)
+    roi[:, :, :] = (0x1A, 0x21, 0x29)
+    roi[24:28, 10:100, :] = 255
+    roi[44:48, 12:102, :] = 255
+
+    tight = LineSegmenter(target_line_height_px=20.0, extra_left_pad_px=0)
+    tight.detect_header_trim = lambda _roi: 24  # type: ignore[method-assign]
+    loose = LineSegmenter(target_line_height_px=20.0, extra_left_pad_px=16)
+    loose.detect_header_trim = lambda _roi: 24  # type: ignore[method-assign]
+
+    r_tight = tight.segment(roi)
+    r_loose = loose.segment(roi)
+    assert r_loose.lines[0].bbox[0] < r_tight.lines[0].bbox[0]
+
+
 def test_line_segmenter_fixed_pitch_snap_to_valleys() -> None:
     """With snap_to_valleys=True, stripes adjust to density valleys."""
     roi = np.zeros((64, 120, 3), dtype=np.uint8)

@@ -10,6 +10,7 @@ from app.pipeline.echo_ocr_pipeline import (
     DEFAULT_FALLBACK_OCR_ENGINE,
     DEFAULT_OCR_ENGINE,
     DEFAULT_PARSER_MODE,
+    DEFAULT_SEGMENTATION_EXTRA_LEFT_PAD_PX,
     DEFAULT_SEGMENTATION_MODE,
     DEFAULT_TARGET_LINE_HEIGHT_PX,
     EchoOcrPipeline,
@@ -322,6 +323,8 @@ def test_pipeline_defaults_match_line_first_validation_configuration() -> None:
     assert pipeline._parser_mode == DEFAULT_PARSER_MODE
     assert pipeline._segmentation_mode == DEFAULT_SEGMENTATION_MODE
     assert pipeline._target_line_height_px == DEFAULT_TARGET_LINE_HEIGHT_PX
+    assert pipeline._segmentation_extra_left_pad_px == DEFAULT_SEGMENTATION_EXTRA_LEFT_PAD_PX
+    assert pipeline._line_segmenter.extra_left_pad_px == DEFAULT_SEGMENTATION_EXTRA_LEFT_PAD_PX
 
 
 def test_panel_validator_results_are_reattached_to_exact_lines() -> None:

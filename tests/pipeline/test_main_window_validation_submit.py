@@ -45,7 +45,44 @@ def test_validation_submit_skips_output_when_false_positive(tmp_path: Path) -> N
     assert window._state.validation_session.total_ai_incorrect == 1
 
 
-def test_ensure_validation_manager_uses_selected_single_engine() -> None:
+def test_ensure_validation_manager_uses_selected_single_engine(monkeypatch) -> None:
+    from app.pipeline.ai_pipeline import PipelineConfig, PipelineManager
+    from app.pipeline.echo_ocr_pipeline import EchoOcrPipeline
+    from app.pipeline.ocr_engines import OcrResult
+
+    def _fake_build_gui_ocr_manager(
+        *,
+        ocr_engine_name: str = "glm-ocr",
+        glm_ocr_engine=None,
+        surya_engine=None,
+        **kwargs: object,
+    ) -> PipelineManager:
+        _ = glm_ocr_engine, surya_engine, kwargs
+
+        class _StubEngine:
+            name = ocr_engine_name
+
+            def extract(self, image: object) -> OcrResult:
+                _ = image
+                return OcrResult(text="", confidence=1.0, tokens=[], engine_name=self.name)
+
+        pipeline = EchoOcrPipeline(
+            ocr_engine=_StubEngine(),
+            config=PipelineConfig(
+                parameters={
+                    "ocr_engine": ocr_engine_name,
+                    "parser_mode": "off",
+                    "target_line_height_px": 20.0,
+                }
+            ),
+        )
+        mgr = PipelineManager()
+        mgr.register(pipeline)
+        mgr.set_active(pipeline.name)
+        return mgr
+
+    monkeypatch.setattr("app.ui.main_window.build_gui_ocr_manager", _fake_build_gui_ocr_manager)
+
     _ = _get_app()
     window = MainWindow()
     window._set_selected_ocr_engines(("easyocr",))

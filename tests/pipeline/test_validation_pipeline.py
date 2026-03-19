@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 
 from app.models.types import PipelineRequest
-from app.pipeline.echo_ocr_pipeline import EchoOcrPipeline
+from app.pipeline.echo_ocr_pipeline import DEFAULT_SEGMENTATION_EXTRA_LEFT_PAD_PX, EchoOcrPipeline
 from app.pipeline.ocr_engines import OcrResult
 from app.pipeline.validation_pipeline import (
     build_gui_ocr_comparison_manager,
@@ -23,8 +23,17 @@ class _FakeSuryaEngine:
         return OcrResult(text="", confidence=1.0, tokens=[], engine_name=self.name)
 
 
+class _FakeGlmEngine:
+    name = "glm-ocr"
+
+    def extract(self, image: np.ndarray) -> OcrResult:
+        _ = image
+        return OcrResult(text="", confidence=1.0, tokens=[], engine_name=self.name)
+
+
 def test_build_validation_manager_forces_expected_configuration() -> None:
     manager = build_validation_manager(
+        glm_ocr_engine=_FakeGlmEngine(),
         surya_engine=_FakeSuryaEngine(),
         llm_model="demo-model",
         llm_command="ollama",
@@ -32,7 +41,7 @@ def test_build_validation_manager_forces_expected_configuration() -> None:
     pipeline = manager.active()
 
     assert isinstance(pipeline, EchoOcrPipeline)
-    assert pipeline.config.parameters["ocr_engine"] == "surya"
+    assert pipeline.config.parameters["ocr_engine"] == "glm-ocr"
     assert pipeline.config.parameters["parser_mode"] == "local_llm"
     assert pipeline.config.parameters["scale_factor"] == 3
     assert pipeline.config.parameters["scale_algo"] == "lanczos"
@@ -42,26 +51,34 @@ def test_build_validation_manager_forces_expected_configuration() -> None:
     assert pipeline.config.parameters["panel_validation_model"] == "demo-model"
     assert pipeline.config.parameters["vision_fallback_enabled"] is True
     assert pipeline.config.parameters["vision_model"] == "qwen2.5vl:3b-q4_K_M"
+    assert (
+        pipeline.config.parameters["segmentation_extra_left_pad_px"]
+        == DEFAULT_SEGMENTATION_EXTRA_LEFT_PAD_PX
+    )
 
     pipeline._ensure_components()
-    assert pipeline.ocr_engine.name == "surya-fake"
+    assert pipeline.ocr_engine.name == "glm-ocr"
     assert pipeline.parser.__class__.__name__ == "LocalLlmMeasurementParser"
 
 
-def test_build_gui_ocr_manager_defaults_to_surya_no_parser_fixed_pitch_20px() -> None:
-    manager = build_gui_ocr_manager(surya_engine=_FakeSuryaEngine())
+def test_build_gui_ocr_manager_defaults_to_glm_no_parser_fixed_pitch_20px() -> None:
+    manager = build_gui_ocr_manager(glm_ocr_engine=_FakeGlmEngine(), surya_engine=_FakeSuryaEngine())
     pipeline = manager.active()
 
     assert isinstance(pipeline, EchoOcrPipeline)
-    assert pipeline.config.parameters["ocr_engine"] == "surya"
+    assert pipeline.config.parameters["ocr_engine"] == "glm-ocr"
     assert pipeline.config.parameters["parser_mode"] == "off"
     assert pipeline.config.parameters["segmentation_mode"] == "fixed_pitch"
     assert pipeline.config.parameters["target_line_height_px"] == 20.0
     assert pipeline.config.parameters["panel_validation_mode"] == "off"
     assert pipeline.config.parameters["vision_fallback_enabled"] is False
+    assert (
+        pipeline.config.parameters["segmentation_extra_left_pad_px"]
+        == DEFAULT_SEGMENTATION_EXTRA_LEFT_PAD_PX
+    )
 
     pipeline._ensure_components()
-    assert pipeline.ocr_engine.name == "surya-fake"
+    assert pipeline.ocr_engine.name == "glm-ocr"
     assert pipeline.parser.__class__.__name__ == "NoopMeasurementParser"
 
 
