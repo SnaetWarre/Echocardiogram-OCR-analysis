@@ -294,26 +294,6 @@ class ValidationDialog(QtWidgets.QDialog):
         if comparison_summary is not None:
             layout.addWidget(comparison_summary)
 
-        legend = QtWidgets.QFrame()
-        legend.setFrameShape(QtWidgets.QFrame.Shape.StyledPanel)
-        legend.setStyleSheet("QFrame { background: #F8F9FA; border: 1px solid #DDD; border-radius: 6px; padding: 8px; }")
-        legend_layout = QtWidgets.QVBoxLayout(legend)
-        legend_layout.setContentsMargins(10, 6, 10, 6)
-        legend_layout.setSpacing(2)
-        legend_layout.addWidget(QtWidgets.QLabel(
-            '<span style="color: #1E8E3E; font-weight: bold;">\u2713 Green border</span>'
-            ' = AI prediction accepted (you didn\'t change it)'
-        ))
-        legend_layout.addWidget(QtWidgets.QLabel(
-            '<span style="color: #0055AA; font-weight: bold;">\u270F Blue border</span>'
-            " = You edited it (your text will be saved)"
-        ))
-        legend_layout.addWidget(QtWidgets.QLabel(
-            '<span style="color: #C44; font-weight: bold;">\u26A0 Red border</span>'
-            " = Empty (row will be skipped)"
-        ))
-        layout.addWidget(legend)
-
         if not ai_result.boxes:
             warning = QtWidgets.QLabel(
                 "No measurement box was detected for this image. "
