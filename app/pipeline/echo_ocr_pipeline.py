@@ -71,6 +71,10 @@ class RoutedOcrEngine:
         return self.primary.extract(image)
 
 
+def _scout_tokens_useful(result: OcrResult) -> bool:
+    return any(str(getattr(token, "text", "") or "").strip() for token in (result.tokens or ()))
+
+
 @dataclass(frozen=True)
 class _ParseSourceInfo:
     parser_source: str
@@ -640,6 +644,10 @@ class EchoOcrPipeline(BasePipeline):
         roi = frame[y : y + bh, x : x + bw]
         primary_engine = self.ocr_engine.primary if isinstance(self.ocr_engine, RoutedOcrEngine) else self.ocr_engine
         scout_result = primary_engine.extract(roi)
+        if self._fallback_ocr_engine is not None and not _scout_tokens_useful(scout_result):
+            alt = self._fallback_ocr_engine.extract(roi)
+            if _scout_tokens_useful(alt):
+                scout_result = alt
         segmentation = self._line_segmenter.segment(roi, tokens=scout_result.tokens)
         panel = self._line_transcriber.transcribe(
             roi,
@@ -766,12 +774,17 @@ class EchoOcrPipeline(BasePipeline):
         roi_boxes: list[OverlayBox] = []
         seen_rois: set[tuple[float, float, float, float]] = set()
         for entry in line_predictions_payload:
+            source_kind_entry = str(entry.get("source_kind", "pixel_ocr")).strip() or "pixel_ocr"
+            if source_kind_entry != "pixel_ocr":
+                continue
             roi_bbox = entry.get("roi_bbox")
             if not isinstance(roi_bbox, list) or len(roi_bbox) != 4:
                 continue
             try:
                 roi_key = tuple(float(value) for value in roi_bbox)
             except (TypeError, ValueError):
+                continue
+            if roi_key[2] <= 0 or roi_key[3] <= 0:
                 continue
             if roi_key in seen_rois:
                 continue

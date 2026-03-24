@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from difflib import SequenceMatcher
 from typing import Iterable
@@ -22,15 +23,35 @@ class RankedCandidate:
     signals: dict[str, float] = field(default_factory=lambda: {})
 
 
+@dataclass(frozen=True)
+class PanelChoice:
+    line: LinePrediction
+    ranked: RankedCandidate
+
+
+@dataclass(frozen=True)
+class _PanelBeamState:
+    score: float
+    previous_line: str | None = None
+    seen_family_prefixes: frozenset[tuple[str, str]] = frozenset()
+    seen_lines: frozenset[str] = frozenset()
+    choices: tuple[PanelChoice, ...] = ()
+
+
 class LexiconReranker:
     def __init__(
         self,
         lexicon: LexiconArtifact,
         *,
         low_confidence_threshold: float = 0.72,
+        panel_beam_width: int = 6,
+        panel_candidate_limit: int = 4,
     ) -> None:
         self.lexicon = lexicon
         self.low_confidence_threshold = float(low_confidence_threshold)
+        self.panel_beam_width = max(1, int(panel_beam_width))
+        self.panel_candidate_limit = max(1, int(panel_candidate_limit))
+        self._family_transition_frequencies = self._build_family_transition_frequencies()
 
     def rank_candidates(
         self,
@@ -50,12 +71,12 @@ class LexiconReranker:
 
     def rerank_panel(self, panel: PanelTranscription) -> PanelTranscription:
         rebuilt_lines: list[LinePrediction] = []
-        previous_line: str | None = None
         disagreement_count = 0
 
-        for line in panel.lines:
-            ranked = self.rank_candidates(line.candidates or (self._as_candidate(line),), line_order=line.order, previous_line=previous_line)
-            best = ranked[0].candidate if ranked else self._as_candidate(line)
+        for choice in self._select_panel_choices(panel):
+            line = choice.line
+            ranked_item = choice.ranked
+            best = ranked_item.candidate
             chosen_text = canonicalize_exact_line(best.text)
             if canonicalize_exact_line(line.text) != chosen_text and len(line.candidates) > 1:
                 disagreement_count += 1
@@ -67,16 +88,15 @@ class LexiconReranker:
                     confidence=max(best.confidence, line.confidence),
                     engine_name=best.engine_name,
                     source=best.source,
-                    uncertain=(ranked[0].score if ranked else 0.0) < self.low_confidence_threshold,
+                    uncertain=ranked_item.score < self.low_confidence_threshold,
                     candidates=line.candidates or (best,),
                     metadata={
                         **line.metadata,
-                        "rerank_score": ranked[0].score if ranked else 0.0,
-                        "rerank_signals": ranked[0].signals if ranked else {},
+                        "rerank_score": ranked_item.score,
+                        "rerank_signals": ranked_item.signals,
                     },
                 )
             )
-            previous_line = chosen_text
 
         combined_text = "\n".join(line.text for line in rebuilt_lines if line.text).strip()
         uncertain_count = sum(1 for line in rebuilt_lines if line.uncertain)
@@ -115,6 +135,7 @@ class LexiconReranker:
         syntax_score = decoded.syntax_confidence * 0.2
         family_similarity = self._best_family_similarity(family) * 0.15 if family else 0.0
         order_consistency = self._order_consistency(previous_line, canonical) * 0.05 if previous_line else 0.0
+        transition_score = self._transition_frequency_score(previous_line, canonical) if previous_line else 0.0
         measurement_shape = 0.0
         if decoded.label:
             measurement_shape += 0.08
@@ -138,9 +159,75 @@ class LexiconReranker:
             "syntax": syntax_score,
             "family_similarity": family_similarity,
             "order_consistency": order_consistency,
+            "transition_frequency": transition_score,
             "measurement_shape": measurement_shape,
             "source_bonus": source_bonus,
         }
+
+    def _select_panel_choices(self, panel: PanelTranscription) -> tuple[PanelChoice, ...]:
+        if not panel.lines:
+            return ()
+
+        beam = [_PanelBeamState(score=0.0)]
+        for line in panel.lines:
+            next_beam: list[_PanelBeamState] = []
+            base_candidates = line.candidates or (self._as_candidate(line),)
+            for state in beam:
+                ranked_candidates = self.rank_candidates(
+                    base_candidates,
+                    line_order=line.order,
+                    previous_line=state.previous_line,
+                )
+                if not ranked_candidates:
+                    ranked_candidates = [
+                        RankedCandidate(
+                            candidate=self._as_candidate(line),
+                            score=0.0,
+                            signals={},
+                        )
+                    ]
+                for ranked_item in ranked_candidates[: self.panel_candidate_limit]:
+                    chosen_text = canonicalize_exact_line(ranked_item.candidate.text)
+                    next_score = state.score + ranked_item.score
+                    next_score += self._panel_repeat_penalty(
+                        chosen_text,
+                        seen_lines=state.seen_lines,
+                        seen_family_prefixes=state.seen_family_prefixes,
+                    )
+                    family_prefix_key = self._family_prefix_key(chosen_text)
+                    next_beam.append(
+                        _PanelBeamState(
+                            score=next_score,
+                            previous_line=chosen_text or state.previous_line,
+                            seen_family_prefixes=(
+                                state.seen_family_prefixes
+                                if family_prefix_key is None
+                                else state.seen_family_prefixes | {family_prefix_key}
+                            ),
+                            seen_lines=(
+                                state.seen_lines
+                                if not chosen_text
+                                else state.seen_lines | {chosen_text}
+                            ),
+                            choices=state.choices + (PanelChoice(line=line, ranked=ranked_item),),
+                        )
+                    )
+            beam = sorted(beam + next_beam, key=lambda state: state.score, reverse=True)[: self.panel_beam_width]
+
+        best_state = max(beam, key=lambda state: state.score, default=None)
+        if best_state is None or len(best_state.choices) != len(panel.lines):
+            return tuple(
+                PanelChoice(
+                    line=line,
+                    ranked=RankedCandidate(
+                        candidate=self._as_candidate(line),
+                        score=0.0,
+                        signals={},
+                    ),
+                )
+                for line in panel.lines
+            )
+        return best_state.choices
 
     def _augment_candidates(
         self,
@@ -408,6 +495,35 @@ class LexiconReranker:
         exemplar_decoded = parse_measurement_line(exemplar_lines[0])
         return exemplar_decoded.prefix is not None
 
+    def _build_family_transition_frequencies(self) -> dict[str, dict[str, int]]:
+        grouped_lines: dict[str, list[tuple[int, str]]] = defaultdict(list)
+        for entry in self.lexicon.source_lines:
+            if entry.order is None:
+                continue
+            canonical = canonicalize_exact_line(entry.text)
+            if not canonical:
+                continue
+            grouped_lines[f"{entry.split}:{entry.file_name}"].append((entry.order, canonical))
+
+        transitions: dict[str, Counter[str]] = defaultdict(Counter)
+        for ordered_lines in grouped_lines.values():
+            ordered_texts = [text for _order, text in sorted(ordered_lines, key=lambda item: item[0])]
+            for previous_text, current_text in zip(ordered_texts, ordered_texts[1:], strict=False):
+                previous_family = self._family_key(previous_text)
+                current_family = self._family_key(current_text)
+                if not previous_family or not current_family:
+                    continue
+                transitions[previous_family][current_family] += 1
+        return {family: dict(counts) for family, counts in transitions.items()}
+
+    def _transition_frequency_score(self, previous_line: str, current_line: str) -> float:
+        previous_family = self._family_key(previous_line)
+        current_family = self._family_key(current_line)
+        if not previous_family or not current_family or previous_family == current_family:
+            return 0.0
+        hits = self._family_transition_frequencies.get(previous_family, {}).get(current_family, 0)
+        return min(hits, 4) * 0.04
+
     def _best_family_similarity(self, family: str) -> float:
         if not family:
             return 0.0
@@ -429,6 +545,35 @@ class LexiconReranker:
                 return 0.0
             return 1.0 if curr_idx >= prev_idx else 0.0
         return 0.0
+
+    def _family_key(self, text: str) -> str:
+        decoded = parse_measurement_line(text)
+        return label_family_key(decoded.label)
+
+    def _family_prefix_key(self, text: str) -> tuple[str, str] | None:
+        decoded = parse_measurement_line(text)
+        family = label_family_key(decoded.label)
+        if not family:
+            return None
+        return family, decoded.prefix or ""
+
+    @staticmethod
+    def _panel_repeat_penalty(
+        text: str,
+        *,
+        seen_lines: frozenset[str],
+        seen_family_prefixes: frozenset[tuple[str, str]],
+    ) -> float:
+        if not text:
+            return 0.0
+        penalty = 0.0
+        if text in seen_lines:
+            penalty -= 0.25
+        decoded = parse_measurement_line(text)
+        family = label_family_key(decoded.label)
+        if family and (family, decoded.prefix or "") in seen_family_prefixes:
+            penalty -= 0.12
+        return penalty
 
     @staticmethod
     def _as_candidate(line: LinePrediction) -> LineOcrCandidate:

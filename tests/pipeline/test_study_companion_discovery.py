@@ -103,3 +103,30 @@ def test_pipeline_prefers_study_companion_measurements_before_pixel_ocr(tmp_path
     assert result.ai_result.raw["study_companion_used"] is True
     assert result.ai_result.boxes == []
     assert ocr_engine.calls == 0
+
+
+def test_to_ai_result_skips_roi_overlays_for_non_pixel_line_predictions() -> None:
+    pipeline = EchoOcrPipeline()
+
+    result = pipeline._to_ai_result(
+        [],
+        raw_line_predictions=[
+            {
+                "frame_index": 0,
+                "order": 0,
+                "text": "PV Vmax 0.87 m/s",
+                "confidence": 0.99,
+                "uncertain": False,
+                "line_bbox": None,
+                "roi_bbox": [0, 0, 0, 0],
+                "ocr_engine": "study-companion",
+                "parser_source": "study_companion_sr",
+                "source_kind": "study_companion_sr",
+                "source_path": "report.dcm",
+                "source_modality": "SR",
+            },
+        ],
+    )
+
+    assert result.boxes == []
+    assert result.raw["exact_lines"] == ["PV Vmax 0.87 m/s"]

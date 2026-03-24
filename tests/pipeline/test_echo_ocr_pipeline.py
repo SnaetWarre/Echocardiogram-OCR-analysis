@@ -16,6 +16,7 @@ from app.pipeline.echo_ocr_pipeline import (
     EchoOcrPipeline,
     RegexMeasurementParser,
     RoiDetection,
+    RoutedOcrEngine,
     TopLeftBlueGrayBoxDetector,
     preprocess_roi,
 )
@@ -310,6 +311,32 @@ def test_ai_result_uses_exact_line_sources_and_raw_line_predictions() -> None:
     assert result.raw["target_line_height_px"] == 20.0
 
 
+def test_to_ai_result_skips_zero_sized_pixel_ocr_roi_boxes() -> None:
+    pipeline = EchoOcrPipeline()
+
+    result = pipeline._to_ai_result(
+        [],
+        raw_line_predictions=[
+            {
+                "frame_index": 0,
+                "order": 0,
+                "text": "HR",
+                "confidence": 0.93,
+                "uncertain": False,
+                "line_bbox": [0, 0, 10, 2],
+                "roi_bbox": [0, 0, 0, 0],
+                "ocr_engine": "fake-ocr",
+                "parser_source": "primary",
+                "source_kind": "pixel_ocr",
+                "source_path": "example.dcm",
+                "source_modality": "US",
+            },
+        ],
+    )
+
+    assert result.boxes == []
+
+
 def test_ai_result_keeps_raw_ocr_lines_without_measurement_records() -> None:
     pipeline = EchoOcrPipeline()
 
@@ -422,3 +449,134 @@ def test_panel_validator_results_are_reattached_to_exact_lines() -> None:
     assert refined[0].unit == "m/s"
     assert refined[0].source is not None
     assert "|parser=panel_validator:" in refined[0].source
+
+
+class _PrimaryEmptyScoutThenLineOcr:
+    def __init__(self) -> None:
+        self.calls = 0
+        self.name = "primary-scout"
+
+    def extract(self, image: np.ndarray) -> OcrResult:
+        self.calls += 1
+        if self.calls == 1:
+            return OcrResult(text="", confidence=0.05, tokens=[], engine_name=self.name)
+        h, w = int(image.shape[0]), int(image.shape[1])
+        return OcrResult(
+            text="PV Vmax 0.96 m/s",
+            confidence=0.95,
+            tokens=[
+                OcrToken(
+                    text="PV Vmax 0.96 m/s",
+                    confidence=0.95,
+                    bbox=(0.0, 0.0, float(w), float(h)),
+                )
+            ],
+            engine_name=self.name,
+        )
+
+
+class _FallbackScoutTokens:
+    def __init__(self) -> None:
+        self.extract_calls = 0
+        self.name = "fallback-scout"
+
+    def extract(self, image: np.ndarray) -> OcrResult:
+        self.extract_calls += 1
+        h, w = int(image.shape[0]), int(image.shape[1])
+        return OcrResult(
+            text="PV",
+            confidence=0.55,
+            tokens=[OcrToken(text="PV", confidence=0.55, bbox=(0.0, 0.0, float(w), float(min(14, h))))],
+            engine_name=self.name,
+        )
+
+
+class _PrimaryAlwaysStrong:
+    def __init__(self) -> None:
+        self.calls = 0
+        self.name = "primary-strong"
+
+    def extract(self, image: np.ndarray) -> OcrResult:
+        self.calls += 1
+        h, w = int(image.shape[0]), int(image.shape[1])
+        return OcrResult(
+            text="PV Vmax 0.96 m/s",
+            confidence=0.96,
+            tokens=[
+                OcrToken(
+                    text="PV Vmax 0.96 m/s",
+                    confidence=0.96,
+                    bbox=(0.0, 0.0, float(w), float(h)),
+                )
+            ],
+            engine_name=self.name,
+        )
+
+
+class _FallbackUnused:
+    def __init__(self) -> None:
+        self.extract_calls = 0
+        self.name = "fallback-unused"
+
+    def extract(self, image: np.ndarray) -> OcrResult:
+        self.extract_calls += 1
+        return OcrResult(text="never", confidence=0.99, tokens=[], engine_name=self.name)
+
+
+def test_scout_fallback_runs_when_primary_scout_has_no_tokens() -> None:
+    primary = _PrimaryEmptyScoutThenLineOcr()
+    fallback = _FallbackScoutTokens()
+    pipeline = EchoOcrPipeline(
+        ocr_engine=RoutedOcrEngine(primary=primary, fallback=fallback),
+        parser=RegexMeasurementParser(),
+        config=PipelineConfig(),
+    )
+    pipeline._ensure_components()
+
+    frame = np.zeros((120, 200, 3), dtype=np.uint8)
+    frame[:, :, 0] = 200
+    frame[:, :, 1] = 200
+    frame[:, :, 2] = 200
+    frame[5:29, 0:64, 0] = 0x1A
+    frame[5:29, 0:64, 1] = 0x21
+    frame[5:29, 0:64, 2] = 0x29
+
+    ocr, panel, measurements, bbox = pipeline._extract_measurements_for_frame(
+        frame,
+        RoiDetection(present=True, bbox=(0, 0, 64, 24), confidence=1.0),
+    )
+
+    assert fallback.extract_calls >= 1
+    assert primary.calls >= 2
+    assert ocr is not None
+    assert measurements
+    assert bbox is not None
+
+
+def test_scout_fallback_skipped_when_primary_scout_has_tokens() -> None:
+    primary = _PrimaryAlwaysStrong()
+    fallback = _FallbackUnused()
+    pipeline = EchoOcrPipeline(
+        ocr_engine=RoutedOcrEngine(primary=primary, fallback=fallback),
+        parser=RegexMeasurementParser(),
+        config=PipelineConfig(),
+    )
+    pipeline._ensure_components()
+
+    frame = np.zeros((120, 200, 3), dtype=np.uint8)
+    frame[:, :, 0] = 200
+    frame[:, :, 1] = 200
+    frame[:, :, 2] = 200
+    frame[5:29, 0:64, 0] = 0x1A
+    frame[5:29, 0:64, 1] = 0x21
+    frame[5:29, 0:64, 2] = 0x29
+
+    ocr, panel, measurements, bbox = pipeline._extract_measurements_for_frame(
+        frame,
+        RoiDetection(present=True, bbox=(0, 0, 64, 24), confidence=1.0),
+    )
+
+    assert fallback.extract_calls == 0
+    assert primary.calls >= 1
+    assert ocr is not None
+    assert measurements
