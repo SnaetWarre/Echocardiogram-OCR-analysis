@@ -31,6 +31,21 @@ def test_validation_dialog_prefills_full_measurement_text() -> None:
     assert dialog._rows[0]._editor.toPlainText() == "TR Vmax 1.9 m/s"
 
 
+def test_validation_dialog_prefers_raw_exact_lines_for_review_rows() -> None:
+    _ = _get_app()
+    result = AiResult(
+        model_name="demo",
+        created_at=datetime.now(),
+        measurements=[],
+        raw={
+            "exact_lines": ["R-R", "HR"],
+        },
+    )
+    dialog = ValidationDialog(Path("/tmp/example.dcm"), result)
+
+    assert [row._editor.toPlainText() for row in dialog._rows] == ["R-R", "HR"]
+
+
 def test_validation_dialog_false_positive_submission_emits_skip_flag() -> None:
     _ = _get_app()
     result = AiResult(

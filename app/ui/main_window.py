@@ -27,7 +27,14 @@ from app.ui.dialogs.validation_dialog import ValidationDialog
 from app.ui.state import ViewerState
 from app.ui.theme import apply_theme
 from app.ui.widgets.image_viewer import ImageViewer
-from app.ui.workers import AiRunWorker, BatchTestWorker, DicomLoadWorker, PrefetchTask, ValidationPrefetchWorker
+from app.ui.workers import (
+    AiRunWorker,
+    BatchTestWorker,
+    DicomLoadWorker,
+    PrefetchTask,
+    ValidationBatchPrefetchWorker,
+    ValidationPrefetchWorker,
+)
 from app.utils.cache import LruFrameCache
 
 
@@ -88,9 +95,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self._batch_worker: BatchTestWorker | None = None
         self._prefetch_validation_thread: QtCore.QThread | None = None
         self._prefetch_validation_worker: ValidationPrefetchWorker | None = None
+        self._validation_batch_prefetch_thread: QtCore.QThread | None = None
+        self._validation_batch_prefetch_worker: ValidationBatchPrefetchWorker | None = None
         self._prefetched_validation_items: dict[Path, tuple[DicomSeries, PipelineResult]] = {}
         self._prefetch_validation_active_path: Path | None = None
         self._validation_prefetch_limit = 1
+        self._validation_batch_prefetch_errors: list[str] = []
         self._selected_ocr_engines: tuple[str, ...] = (DEFAULT_GUI_OCR_ENGINE,)
         self._validation_manager_selection: tuple[str, ...] = ()
         self._ocr_engine_button: QtWidgets.QToolButton | None = None
@@ -263,6 +273,15 @@ class MainWindow(QtWidgets.QMainWindow):
             act_run_validation.triggered.connect(self._run_validation)
             toolbar.addAction(act_run_validation)
             self.addAction(act_run_validation)
+            act_run_validation_batch = QtGui.QAction(
+                self._icon("ai_run"),
+                "OCR Validation Batch",
+                self,
+            )
+            act_run_validation_batch.setShortcut(QtGui.QKeySequence("Shift+V"))
+            act_run_validation_batch.triggered.connect(self._run_validation_batch_prefetch)
+            toolbar.addAction(act_run_validation_batch)
+            self.addAction(act_run_validation_batch)
             act_run_export = QtGui.QAction(self._icon("ai_run"), "OCR Batch Export", self)
             act_run_export.triggered.connect(self._run_ocr_batch_export)
             toolbar.addAction(act_run_export)
@@ -798,6 +817,12 @@ class MainWindow(QtWidgets.QMainWindow):
         )
 
     def _run_validation(self) -> None:
+        self._start_validation_review_queue(mode="review")
+
+    def _run_validation_batch_prefetch(self) -> None:
+        self._start_validation_review_queue(mode="review-batch")
+
+    def _start_validation_review_queue(self, *, mode: str) -> None:
         if not self._state.ai_enabled:
             QtWidgets.QMessageBox.information(
                 self, "AI Disabled", "Enable AI mode to run OCR validation."
@@ -812,6 +837,9 @@ class MainWindow(QtWidgets.QMainWindow):
         if self._ai_thread and self._ai_thread.isRunning():
             self.statusBar().showMessage("AI is already running.", 2000)
             return
+        if self._validation_queue_active:
+            self.statusBar().showMessage("Finish the active validation queue first.", 2500)
+            return
         if self._validation_waiting_review:
             self.statusBar().showMessage("Finish the current validation dialog first.", 2000)
             return
@@ -821,6 +849,37 @@ class MainWindow(QtWidgets.QMainWindow):
             self.statusBar().showMessage("No DICOM files found for validation queue.", 3000)
             return
 
+        selected_output = self._select_validation_output_path()
+        if selected_output is None:
+            return
+
+        self._validation_writer = ValidationLabelWriter(output_path=selected_output)
+        self._state.reset_validation_session()
+        self._validation_queue = queue
+        self._validation_queue_active = True
+        self._validation_queue_mode = mode
+        self._pending_validation_path = None
+        self._validation_waiting_review = False
+        self._validation_batch_prefetch_errors = []
+        self._clear_prefetched_validation()
+        self._update_ocr_engine_selector_enabled()
+
+        if mode == "review-batch":
+            self.statusBar().showMessage(
+                f"Batch validation started with {len(self._validation_queue)} files. "
+                f"Preprocessing before review. Saving to: {selected_output.name}",
+                4000,
+            )
+            self._start_validation_batch_prefetch()
+            return
+
+        self.statusBar().showMessage(
+            f"Validation queue started with {len(self._validation_queue)} files. Saving to: {selected_output.name}",
+            4000,
+        )
+        self._advance_validation_queue()
+
+    def _select_validation_output_path(self) -> Path | None:
         default_labels = Path.cwd() / "labels" / "exact_lines.json"
         default_path = str(default_labels)
         selected_path, _ = QtWidgets.QFileDialog.getSaveFileName(
@@ -830,25 +889,12 @@ class MainWindow(QtWidgets.QMainWindow):
             "JSON Files (*.json);;All Files (*.*)",
         )
         if not selected_path:
-            return
+            return None
 
         selected_output = Path(selected_path)
         if selected_output.suffix.lower() != ".json":
             selected_output = selected_output.with_suffix(".json")
-
-        self._validation_writer = ValidationLabelWriter(output_path=selected_output)
-        self._state.reset_validation_session()
-        self._validation_queue = queue
-        self._validation_queue_active = True
-        self._validation_queue_mode = "review"
-        self._pending_validation_path = None
-        self._validation_waiting_review = False
-        self.statusBar().showMessage(
-            f"Validation queue started with {len(self._validation_queue)} files. Saving to: {selected_output.name}",
-            4000,
-        )
-        self._update_ocr_engine_selector_enabled()
-        self._advance_validation_queue()
+        return selected_output
 
     def _run_ocr_batch_export(self) -> None:
         if not self._state.ai_enabled:
@@ -912,6 +958,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self._prefetched_validation_items.clear()
         self._prefetch_validation_active_path = None
 
+    def _is_review_validation_mode(self) -> bool:
+        return self._validation_queue_mode in {"review", "review-batch"}
+
+    def _is_batch_prefetch_validation_mode(self) -> bool:
+        return self._validation_queue_mode == "review-batch"
+
     def _start_validation_prefetch(self) -> None:
         if not self._validation_queue_active or self._validation_queue_mode != "review":
             return
@@ -947,6 +999,114 @@ class MainWindow(QtWidgets.QMainWindow):
         self._prefetch_validation_thread.finished.connect(self._on_validation_prefetch_thread_finished)
         self._prefetch_validation_thread.finished.connect(self._prefetch_validation_thread.deleteLater)
         self._prefetch_validation_thread.start()
+
+    def _start_validation_batch_prefetch(self) -> None:
+        if not self._validation_queue_active or not self._is_batch_prefetch_validation_mode():
+            return
+        if self._validation_waiting_review:
+            return
+        if not self._validation_queue:
+            return
+        if (
+            self._validation_batch_prefetch_thread
+            and self._validation_batch_prefetch_thread.isRunning()
+        ):
+            return
+
+        manager = self._ensure_validation_manager()
+        total = len(self._validation_queue)
+        self._state.set_loading(True, f"Preprocessing validation queue (0/{total})...")
+        self._validation_batch_prefetch_thread = QtCore.QThread(self)
+        self._validation_batch_prefetch_worker = ValidationBatchPrefetchWorker(
+            manager,
+            self._validation_queue,
+            not self._state.lazy_decode_enabled,
+        )
+        self._validation_batch_prefetch_worker.moveToThread(self._validation_batch_prefetch_thread)
+        self._validation_batch_prefetch_thread.started.connect(
+            self._validation_batch_prefetch_worker.run
+        )
+        self._validation_batch_prefetch_worker.progress.connect(
+            self._on_validation_batch_prefetch_progress
+        )
+        self._validation_batch_prefetch_worker.finished.connect(
+            self._on_validation_batch_prefetch_finished
+        )
+        self._validation_batch_prefetch_worker.finished.connect(
+            self._validation_batch_prefetch_thread.quit
+        )
+        self._validation_batch_prefetch_worker.finished.connect(
+            self._validation_batch_prefetch_worker.deleteLater
+        )
+        self._validation_batch_prefetch_thread.finished.connect(
+            self._on_validation_batch_prefetch_thread_finished
+        )
+        self._validation_batch_prefetch_thread.finished.connect(
+            self._validation_batch_prefetch_thread.deleteLater
+        )
+        self._validation_batch_prefetch_thread.start()
+
+    @QtCore.Slot(object, int, int, object, object, object)
+    def _on_validation_batch_prefetch_progress(
+        self,
+        path_obj: object,
+        processed: int,
+        total: int,
+        series_obj: object,
+        result_obj: object,
+        error_obj: object,
+    ) -> None:
+        if not isinstance(path_obj, Path):
+            return
+
+        if isinstance(series_obj, DicomSeries) and isinstance(result_obj, PipelineResult):
+            self._prefetched_validation_items[path_obj] = (series_obj, result_obj)
+        else:
+            message = str(error_obj).strip() or "Failed to prepare validation item."
+            detailed = f"{path_obj.name}: {message}"
+            self._validation_batch_prefetch_errors.append(detailed)
+            self._log_event(f"Validation batch prefetch failed: {detailed}")
+
+        self.statusBar().showMessage(
+            f"Preprocessing validation queue... {processed}/{total} ({path_obj.name})"
+        )
+
+    @QtCore.Slot(int, int)
+    def _on_validation_batch_prefetch_finished(
+        self,
+        cached_count: int,
+        error_count: int,
+    ) -> None:
+        self._state.set_loading(False)
+        self._validation_queue = [
+            path for path in self._validation_queue if path in self._prefetched_validation_items
+        ]
+        self._update_ocr_engine_selector_enabled()
+
+        if not self._validation_queue:
+            self._validation_queue_active = False
+            self._validation_queue_mode = "review"
+            self._pending_validation_path = None
+            self._clear_prefetched_validation()
+            message = "Batch validation could not prepare any files for review."
+            if self._validation_batch_prefetch_errors:
+                message += f"\n\nFirst error: {self._validation_batch_prefetch_errors[0]}"
+            self._state.report_error("Validation Prefetch Error", message)
+            return
+
+        summary = (
+            f"Batch validation preprocessing complete. "
+            f"Ready to review {cached_count} files."
+        )
+        if error_count:
+            summary += f" Skipped {error_count} files that failed OCR or loading."
+        self.statusBar().showMessage(summary, 5000)
+        QtCore.QTimer.singleShot(0, self._advance_validation_queue)
+
+    @QtCore.Slot()
+    def _on_validation_batch_prefetch_thread_finished(self) -> None:
+        self._validation_batch_prefetch_worker = None
+        self._validation_batch_prefetch_thread = None
 
     @QtCore.Slot(object, object, object, object)
     def _deliver_validation_prefetch_result(
@@ -992,14 +1152,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self._pending_validation_path = next_path
         remaining = len(self._validation_queue) + 1
         self.statusBar().showMessage(f"Preparing {next_path.name} ({remaining} remaining)...")
-        if (
-            self._validation_queue_mode == "review"
-            and next_path in self._prefetched_validation_items
-        ):
+        if self._is_review_validation_mode() and next_path in self._prefetched_validation_items:
             series, result = self._prefetched_validation_items.pop(next_path)
             self._pending_validation_path = None
             self._state.set_series(series)
             self._state.set_loading(False)
+            self._ai_run_mode = "validation"
             self._on_ai_finished(result)
             return
         if self._state.current_path == next_path:
@@ -1067,6 +1225,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._validation_waiting_review = False
         self._validation_queue = []
         self._clear_prefetched_validation()
+        self._validation_batch_prefetch_errors = []
         self._batch_export_files = 0
         self._batch_export_measurements = 0
         self._update_ocr_engine_selector_enabled()
@@ -1267,7 +1426,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self._active_validation_dialog_submitted = False
         self._active_validation_dialog_path = dicom_path
         self._update_ocr_engine_selector_enabled()
-        QtCore.QTimer.singleShot(0, self._start_validation_prefetch)
+        if self._validation_queue_mode == "review":
+            QtCore.QTimer.singleShot(0, self._start_validation_prefetch)
 
     @QtCore.Slot(int)
     def _on_validation_dialog_closed(self, _result: int) -> None:

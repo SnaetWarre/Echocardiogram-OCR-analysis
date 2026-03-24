@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 
@@ -43,6 +44,42 @@ def test_validation_submit_skips_output_when_false_positive(tmp_path: Path) -> N
     assert not output_path.exists()
     assert window._state.validation_session.total_validated_frames == 1
     assert window._state.validation_session.total_ai_incorrect == 1
+
+
+def test_validation_submit_writes_labels_json(tmp_path: Path) -> None:
+    _ = _get_app()
+    window = MainWindow()
+    output_path = tmp_path / "exact_lines.json"
+    window._validation_writer._output_path = output_path
+    original_information = QtWidgets.QMessageBox.information
+    QtWidgets.QMessageBox.information = lambda *args, **kwargs: 0  # type: ignore[assignment]
+
+    try:
+        window._on_validation_submitted(
+            Path("/tmp/example.dcm"),
+            ["TR Vmax 1.9 m/s", "TR maxPG 14 mmHg"],
+            2,
+            0,
+            False,
+        )
+    finally:
+        QtWidgets.QMessageBox.information = original_information  # type: ignore[assignment]
+
+    payload = json.loads(output_path.read_text(encoding="utf-8"))
+
+    assert payload["files"] == [
+        {
+            "file_name": "example.dcm",
+            "file_path": "/tmp/example.dcm",
+            "split": "validation",
+            "measurements": [
+                {"order": 1, "text": "TR Vmax 1.9 m/s"},
+                {"order": 2, "text": "TR maxPG 14 mmHg"},
+            ],
+        }
+    ]
+    assert window._state.validation_session.total_validated_frames == 1
+    assert window._state.validation_session.total_ai_correct == 2
 
 
 def test_ensure_validation_manager_uses_selected_single_engine(monkeypatch) -> None:

@@ -306,11 +306,11 @@ class ValidationDialog(QtWidgets.QDialog):
         self._list = ValidationListWidget(self)
         self._list.setVerticalScrollMode(QtWidgets.QAbstractItemView.ScrollMode.ScrollPerPixel)
 
-        for measurement in ai_result.measurements:
+        for measurement in self._build_review_rows(ai_result):
             self._append_row(ValidationFeedbackWidget(measurement))
 
         if not self._rows:
-            empty = QtWidgets.QListWidgetItem("No measurements found for this frame.")
+            empty = QtWidgets.QListWidgetItem("No OCR lines found for this frame.")
             empty.setFlags(QtCore.Qt.ItemFlag.NoItemFlags)
             self._list.addItem(empty)
 
@@ -410,6 +410,28 @@ class ValidationDialog(QtWidgets.QDialog):
             if box.label == "measurement_roi":
                 return box
         return ai_result.boxes[0] if ai_result.boxes else None
+
+    @staticmethod
+    def _build_review_rows(ai_result: AiResult) -> list[AiMeasurement]:
+        raw_exact_lines = ai_result.raw.get("exact_lines")
+        if isinstance(raw_exact_lines, list):
+            rows: list[AiMeasurement] = []
+            for index, line in enumerate(raw_exact_lines):
+                text = str(line).strip()
+                if not text:
+                    continue
+                rows.append(
+                    AiMeasurement(
+                        name=text,
+                        value="",
+                        unit=None,
+                        source=f"ocr_line:{text}",
+                        order_hint=index,
+                    )
+                )
+            if rows:
+                return rows
+        return list(ai_result.measurements)
 
     def _build_roi_summary(self) -> QtWidgets.QFrame | None:
         if self._roi_box is None:

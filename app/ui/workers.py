@@ -82,6 +82,44 @@ class ValidationPrefetchWorker(QtCore.QObject):
         self.finished.emit(self._path, series, result, None)
 
 
+class ValidationBatchPrefetchWorker(QtCore.QObject):
+    progress = QtCore.Signal(object, int, int, object, object, object)  # path, processed, total, series, result, error
+    finished = QtCore.Signal(int, int)  # cached_count, error_count
+
+    def __init__(self, manager: PipelineManager, paths: list[Path], load_pixels: bool) -> None:
+        super().__init__()
+        self._manager = manager
+        self._paths = list(paths)
+        self._load_pixels = load_pixels
+
+    @QtCore.Slot()
+    def run(self) -> None:
+        cached_count = 0
+        error_count = 0
+        total = len(self._paths)
+        for processed, path in enumerate(self._paths, start=1):
+            series = None
+            result = None
+            error = None
+            try:
+                series = load_dicom_series(path, load_pixels=self._load_pixels)
+                result = self._manager.run(PipelineRequest(dicom_path=path))
+                if result.status != "ok" or result.ai_result is None:
+                    error = result.error or "Failed to run OCR."
+                    result = None
+            except Exception as exc:
+                error = str(exc)
+
+            if series is not None and result is not None:
+                cached_count += 1
+            else:
+                error_count += 1
+
+            self.progress.emit(path, processed, total, series, result, error)
+
+        self.finished.emit(cached_count, error_count)
+
+
 class ValidationPrefetchTask(QtCore.QRunnable):
     def __init__(self, manager: PipelineManager, path: Path, load_pixels: bool, callback) -> None:
         super().__init__()

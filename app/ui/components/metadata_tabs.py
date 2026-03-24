@@ -102,7 +102,7 @@ class MetadataTabsWidget(QtWidgets.QTabWidget):
         self._cached_roi_preprocessed: np.ndarray | None = None
 
         if getattr(self._state, "ai_enabled", False):
-            self.addTab(self._tab_ai, "AI Results")
+            self.addTab(self._tab_ai, "OCR Results")
             self.addTab(self._tab_roi_preview, "ROI Preview")
 
         self._state.series_loaded.connect(self._update_metadata)
@@ -281,7 +281,7 @@ class MetadataTabsWidget(QtWidgets.QTabWidget):
     def _export_ai_csv(self) -> None:
         result = self._state.last_ai_result
         if not result:
-            QtWidgets.QMessageBox.warning(self, "Export Failed", "No AI results to export.")
+            QtWidgets.QMessageBox.warning(self, "Export Failed", "No OCR results to export.")
             return
 
         dialog = QtWidgets.QFileDialog(self, "Export CSV")
@@ -311,7 +311,7 @@ class MetadataTabsWidget(QtWidgets.QTabWidget):
     def _export_ai_txt(self) -> None:
         result = self._state.last_ai_result
         if not result:
-            QtWidgets.QMessageBox.warning(self, "Export Failed", "No AI results to export.")
+            QtWidgets.QMessageBox.warning(self, "Export Failed", "No OCR results to export.")
             return
 
         dialog = QtWidgets.QFileDialog(self, "Export Report")
