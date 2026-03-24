@@ -242,8 +242,11 @@ class LexiconReranker:
         repairs: list[LineOcrCandidate] = []
 
         repaired_prefix = decoded.prefix
-        if decoded.prefix is None and exemplar_decoded.prefix and self._family_prefers_prefix(family_name):
+        family_prefers_prefix = self._family_prefers_prefix(family_name)
+        if decoded.prefix is None and exemplar_decoded.prefix and family_prefers_prefix:
             repaired_prefix = exemplar_decoded.prefix
+        elif decoded.prefix is not None and not family_prefers_prefix:
+            repaired_prefix = None
 
         preferred_unit = self._preferred_unit_for_family(family_name)
         normalized_unit = normalize_unit(decoded.unit)
@@ -252,7 +255,12 @@ class LexiconReranker:
             repaired_unit = preferred_unit
 
         scaled_value = self._scaled_value_repair(decoded.value, family_name)
-        repaired_value = scaled_value if scaled_value is not None else decoded.value
+        prefixed_value = None if scaled_value is not None else self._leading_digit_value_repair(decoded.value, family_name)
+        repaired_value = (
+            scaled_value
+            if scaled_value is not None
+            else prefixed_value if prefixed_value is not None else decoded.value
+        )
 
         if (
             repaired_prefix != decoded.prefix
@@ -300,6 +308,24 @@ class LexiconReranker:
             if self._value_within_expected_range(scaled_value, stats):
                 return self._format_scaled_value(value, scaled_value)
         return None
+
+    def _leading_digit_value_repair(self, value: str, family_name: str) -> str | None:
+        stats = self.lexicon.label_value_stats.get(family_name)
+        if stats is None:
+            return None
+        normalized = value.strip()
+        if len(normalized) < 2 or not normalized.startswith("1") or normalized.startswith("1."):
+            return None
+        candidate_text = normalized[1:]
+        if not candidate_text or candidate_text.startswith("."):
+            return None
+        try:
+            numeric_value = float(candidate_text)
+        except ValueError:
+            return None
+        if not self._value_within_expected_range(numeric_value, stats):
+            return None
+        return self._format_scaled_value(value, numeric_value)
 
     @staticmethod
     def _value_within_expected_range(value: float, stats: NumericStats) -> bool:

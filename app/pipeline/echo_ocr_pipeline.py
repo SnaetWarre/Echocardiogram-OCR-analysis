@@ -299,18 +299,33 @@ class EchoOcrPipeline(BasePipeline):
         return NoopOcrEngine()
 
     def _load_or_build_lexicon(self) -> LexiconArtifact | None:
-        labels_path = Path("labels/exact_lines.json")
+        labels_candidates = [
+            Path("labels/labels.json"),
+            Path("labels/exact_lines.json"),
+        ]
         lexicon_path = self._lexicon_path
         try:
+            labels_path = next((path for path in labels_candidates if path.exists()), None)
+            if labels_path is None:
+                if lexicon_path.exists():
+                    return LexiconArtifact.load(lexicon_path)
+                return None
+
+            rebuild_required = True
             if lexicon_path.exists():
-                return LexiconArtifact.load(lexicon_path)
-            if labels_path.exists():
-                artifact = build_lexicon_artifact(labels_path)
                 try:
-                    artifact.save(lexicon_path)
-                except Exception:
-                    pass
-                return artifact
+                    rebuild_required = labels_path.stat().st_mtime > lexicon_path.stat().st_mtime
+                except OSError:
+                    rebuild_required = True
+                if not rebuild_required:
+                    return LexiconArtifact.load(lexicon_path)
+
+            artifact = build_lexicon_artifact(labels_path)
+            try:
+                artifact.save(lexicon_path)
+            except Exception:
+                pass
+            return artifact
         except Exception:
             return None
         return None
@@ -323,8 +338,14 @@ class EchoOcrPipeline(BasePipeline):
             output_dir = self._resolve_output_dir(request)
             max_frames = self._resolve_max_frames(request)
             companion_records = self._extract_study_companion_records(series, request.dicom_path)
+            raw_line_predictions: list[dict[str, object]] = []
             records = companion_records or list(
-                self._extract_records(series, request.dicom_path, max_frames=max_frames)
+                self._extract_records(
+                    series,
+                    request.dicom_path,
+                    max_frames=max_frames,
+                    raw_line_predictions=raw_line_predictions,
+                )
             )
             if output_dir is not None and records:
                 SidecarWriter(output_dir=output_dir, write_csv=True, write_jsonl=True).write(
@@ -334,7 +355,7 @@ class EchoOcrPipeline(BasePipeline):
             return PipelineResult(
                 dicom_path=request.dicom_path,
                 status="ok",
-                ai_result=self._to_ai_result(records),
+                ai_result=self._to_ai_result(records, raw_line_predictions=raw_line_predictions),
                 error=None,
             )
         except Exception as exc:
@@ -500,6 +521,7 @@ class EchoOcrPipeline(BasePipeline):
         path: Path,
         *,
         max_frames: int | None = None,
+        raw_line_predictions: list[dict[str, object]] | None = None,
     ) -> Iterable[MeasurementRecord]:
         md = series.metadata
         study_uid = md.study_instance_uid or "unknown-study"
@@ -535,6 +557,24 @@ class EchoOcrPipeline(BasePipeline):
                     "used_detection": bool(bbox is not None),
                 }
             )
+            if bbox is not None and panel.lines and raw_line_predictions is not None:
+                for line in panel.lines:
+                    raw_line_predictions.append(
+                        {
+                            "frame_index": frame_index,
+                            "order": line.order,
+                            "text": line.text,
+                            "confidence": line.confidence,
+                            "uncertain": line.uncertain,
+                            "line_bbox": [bbox[0] + line.bbox[0], bbox[1] + line.bbox[1], line.bbox[2], line.bbox[3]],
+                            "roi_bbox": list(bbox),
+                            "ocr_engine": line.engine_name,
+                            "parser_source": line.source,
+                            "source_kind": "pixel_ocr",
+                            "source_path": str(path),
+                            "source_modality": getattr(md, "modality", None) or "",
+                        }
+                    )
             if ocr is None or bbox is None or not measurements:
                 continue
             line_by_order = {line.order: line for line in panel.lines}
@@ -626,11 +666,19 @@ class EchoOcrPipeline(BasePipeline):
                 parser_source=self._fallback_parser_source(),
             )
         if not measurements:
-            return detection, segmentation, None, panel, [], None
+            if not panel.lines or ocr is None:
+                return detection, segmentation, None, panel, [], None
+            self._maybe_write_segmentation_debug(roi, detection, segmentation, panel)
+            return detection, segmentation, ocr, panel, [], detection.bbox
         self._maybe_write_segmentation_debug(roi, detection, segmentation, panel)
         return detection, segmentation, ocr, panel, measurements, detection.bbox
 
-    def _to_ai_result(self, records: list[MeasurementRecord]) -> AiResult:
+    def _to_ai_result(
+        self,
+        records: list[MeasurementRecord],
+        *,
+        raw_line_predictions: list[dict[str, object]] | None = None,
+    ) -> AiResult:
         seen: dict[tuple[str, str, str], tuple[AiMeasurement, MeasurementRecord]] = {}
         for record in records:
             key = (
@@ -658,8 +706,44 @@ class EchoOcrPipeline(BasePipeline):
                 item[1].roi_bbox[0],
             ),
         )
-        source_kinds = sorted({record.source_kind or "pixel_ocr" for _, record in ordered})
-        parser_sources = sorted({record.parser_source for _, record in ordered if record.parser_source})
+        line_predictions_payload = [
+            entry
+            for entry in (raw_line_predictions or [])
+            if isinstance(entry, dict) and str(entry.get("text", "")).strip()
+        ]
+        if not line_predictions_payload:
+            line_predictions_payload = [
+                {
+                    "frame_index": record.frame_index,
+                    "order": record.text_order,
+                    "text": record.exact_line_text,
+                    "confidence": record.line_confidence,
+                    "uncertain": record.line_uncertain,
+                    "line_bbox": list(record.line_bbox) if record.line_bbox is not None else None,
+                    "roi_bbox": list(record.roi_bbox),
+                    "ocr_engine": record.ocr_engine,
+                    "parser_source": record.parser_source,
+                    "source_kind": record.source_kind,
+                    "source_path": record.source_path,
+                    "source_modality": record.source_modality,
+                }
+                for _, record in ordered
+            ]
+        exact_lines_payload = [str(entry.get("text", "")).strip() for entry in line_predictions_payload]
+        exact_lines_payload = [line for line in exact_lines_payload if line]
+        source_kinds = sorted(
+            {
+                str(entry.get("source_kind", "")).strip() or "pixel_ocr"
+                for entry in line_predictions_payload
+            }
+        ) or sorted({record.source_kind or "pixel_ocr" for _, record in ordered})
+        parser_sources = sorted(
+            {
+                str(entry.get("parser_source", "")).strip()
+                for entry in line_predictions_payload
+                if str(entry.get("parser_source", "")).strip()
+            }
+        ) or sorted({record.parser_source for _, record in ordered if record.parser_source})
         model_suffix = self.ocr_engine.name if source_kinds == ["pixel_ocr"] else "+".join(source_kinds)
         engine_usage: dict[str, int] = {}
         latency_values: list[float] = []
@@ -679,11 +763,34 @@ class EchoOcrPipeline(BasePipeline):
             p95_latency_ms = float(np.percentile(latency_array, 95).item())
         else:
             p95_latency_ms = 0.0
-
-        return AiResult(
-            model_name=f"{self.name}:{model_suffix}",
-            created_at=datetime.now(timezone.utc),
-            boxes=[
+        roi_boxes: list[OverlayBox] = []
+        seen_rois: set[tuple[float, float, float, float]] = set()
+        for entry in line_predictions_payload:
+            roi_bbox = entry.get("roi_bbox")
+            if not isinstance(roi_bbox, list) or len(roi_bbox) != 4:
+                continue
+            try:
+                roi_key = tuple(float(value) for value in roi_bbox)
+            except (TypeError, ValueError):
+                continue
+            if roi_key in seen_rois:
+                continue
+            seen_rois.add(roi_key)
+            confidence_raw = entry.get("confidence")
+            confidence = float(confidence_raw) if isinstance(confidence_raw, (int, float)) else None
+            roi_boxes.append(
+                OverlayBox(
+                    x=roi_key[0],
+                    y=roi_key[1],
+                    width=roi_key[2],
+                    height=roi_key[3],
+                    label="measurement_roi",
+                    confidence=confidence,
+                    color=f"#{MEASUREMENT_BOX_RGB[0]:02X}{MEASUREMENT_BOX_RGB[1]:02X}{MEASUREMENT_BOX_RGB[2]:02X}",
+                )
+            )
+        if not roi_boxes:
+            roi_boxes = [
                 OverlayBox(
                     x=float(r.roi_bbox[0]),
                     y=float(r.roi_bbox[1]),
@@ -695,7 +802,12 @@ class EchoOcrPipeline(BasePipeline):
                 )
                 for _, r in ordered
                 if r.roi_bbox[2] > 0 and r.roi_bbox[3] > 0 and r.source_kind == "pixel_ocr"
-            ],
+            ]
+
+        return AiResult(
+            model_name=f"{self.name}:{model_suffix}",
+            created_at=datetime.now(timezone.utc),
+            boxes=roi_boxes,
             measurements=[m for m, _ in ordered],
             raw={
                 "record_count": len(records),
@@ -704,23 +816,11 @@ class EchoOcrPipeline(BasePipeline):
                 "target_line_height_px": self._target_line_height_px,
                 "source_kinds": source_kinds,
                 "parser_sources": parser_sources,
-                "exact_lines": [record.exact_line_text for _, record in ordered],
-                "line_predictions": [
-                    {
-                        "order": record.text_order,
-                        "text": record.exact_line_text,
-                        "confidence": record.line_confidence,
-                        "uncertain": record.line_uncertain,
-                        "line_bbox": list(record.line_bbox) if record.line_bbox is not None else None,
-                        "ocr_engine": record.ocr_engine,
-                        "parser_source": record.parser_source,
-                        "source_kind": record.source_kind,
-                        "source_path": record.source_path,
-                        "source_modality": record.source_modality,
-                    }
-                    for _, record in ordered
-                ],
-                "uncertain_line_count": sum(1 for _, record in ordered if record.line_uncertain),
+                "exact_lines": exact_lines_payload,
+                "line_predictions": line_predictions_payload,
+                "uncertain_line_count": sum(
+                    1 for entry in line_predictions_payload if bool(entry.get("uncertain"))
+                ),
                 "study_companion_used": any(record.source_kind != "pixel_ocr" for _, record in ordered),
                 "ocr_engine_config": {
                     "requested": self._requested_engine,

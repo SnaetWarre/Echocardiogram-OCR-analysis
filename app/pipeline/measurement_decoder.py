@@ -73,6 +73,7 @@ _VALUE_ONLY_RE = re.compile(
     flags=re.IGNORECASE,
 )
 _LABEL_REPAIRS = (
+    (re.compile(r"\bAVS\b", flags=re.IGNORECASE), "AVA"),
     (re.compile(r"\bL[YV]IDd\b", flags=re.IGNORECASE), "LVIDd"),
     (re.compile(r"\bL[VY](?:I|YI)DS\b", flags=re.IGNORECASE), "LVIDs"),
     (re.compile(r"\bL[YV]P(?:W|VW)d\b", flags=re.IGNORECASE), "LVPWd"),
@@ -86,6 +87,8 @@ _LABEL_REPAIRS = (
     (re.compile(r"\bA[o0]\b", flags=re.IGNORECASE), "Ao"),
     (re.compile(r"\bA20\b", flags=re.IGNORECASE), "A2C"),
     (re.compile(r"\bA40\b", flags=re.IGNORECASE), "A4C"),
+    (re.compile(r"\bLAAS\b", flags=re.IGNORECASE), "LAAs"),
+    (re.compile(r"\bPRand\s+PG\b", flags=re.IGNORECASE), "PRend PG"),
     (re.compile(r"\b1E['’]?\b", flags=re.IGNORECASE), "1 E'"),
     (re.compile(r"\bE['’]?\s*Lat\b", flags=re.IGNORECASE), "E' Lat"),
     (re.compile(r"\bE['’]?\s*Sept\b", flags=re.IGNORECASE), "E' Sept"),
@@ -188,6 +191,14 @@ def _is_filler_suffix(text: str) -> bool:
     return stripped.count("_") >= 2 or stripped.count(".") >= 2 or stripped.count("-") >= 2 or "/" in stripped
 
 
+def _is_embedded_numeric_token(text: str, match: re.Match[str]) -> bool:
+    start = match.start()
+    end = match.end()
+    left_char = text[start - 1] if start > 0 else ""
+    right_char = text[end] if end < len(text) else ""
+    return bool((left_char and left_char.isalpha()) or (right_char and right_char.isalpha()))
+
+
 def label_family_key(label: str | None) -> str:
     return normalize_space(label or "").lower()
 
@@ -280,6 +291,8 @@ def parse_measurement_line(text: str) -> DecodedMeasurementLine:
     value_matches = list(_VALUE_RE.finditer(body))
 
     for match in reversed(value_matches):
+        if _is_embedded_numeric_token(body, match):
+            continue
         candidate_label = normalize_space(body[: match.start()])
         if not candidate_label or not re.search(r"[A-Za-z%]", candidate_label):
             continue

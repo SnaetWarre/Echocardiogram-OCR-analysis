@@ -234,3 +234,69 @@ def test_lexicon_reranker_repairs_decimal_scale_outlier() -> None:
     )
 
     assert ranked[0].candidate.text == "AV VTI 2.8 cm"
+
+
+def test_lexicon_reranker_drops_unexpected_prefix_for_known_family() -> None:
+    reranker = LexiconReranker(
+        LexiconArtifact(
+            artifact_version=1,
+            created_at="now",
+            labels_path="labels/labels.json",
+            dataset_version=1,
+            dataset_task="exact_roi_measurement_transcription",
+            total_files=1,
+            total_lines=1,
+            exact_line_frequencies={"AV Vmean 0.8 m/s": 2},
+            label_frequencies={"av vmean": 2},
+            label_family_lines={"av vmean": ["AV Vmean 0.8 m/s"]},
+            label_unit_frequencies={"av vmean": {"m/s": 2}},
+            label_order_frequencies={"av vmean": {"2": 2}},
+            label_value_stats={"av vmean": NumericStats(count=2, min=0.7, max=0.9, mean=0.8)},
+            token_frequencies={"vmean": 2},
+            unit_frequencies={"m/s": 2},
+            prefix_frequencies={},
+            line_pattern_frequencies={"av vmean <VALUE> <UNIT:m/s>": 2},
+        )
+    )
+
+    ranked = reranker.rank_candidates(
+        [
+            LineOcrCandidate(text="1 AV Vmean 0.8 m/s", confidence=0.95, engine_name="glm", view_name="default", source="primary"),
+        ],
+        line_order=1,
+    )
+
+    assert ranked[0].candidate.text == "AV Vmean 0.8 m/s"
+
+
+def test_lexicon_reranker_repairs_spurious_leading_digit_value() -> None:
+    reranker = LexiconReranker(
+        LexiconArtifact(
+            artifact_version=1,
+            created_at="now",
+            labels_path="labels/labels.json",
+            dataset_version=1,
+            dataset_task="exact_roi_measurement_transcription",
+            total_files=1,
+            total_lines=1,
+            exact_line_frequencies={"1 Ao Diam 2.9 cm": 2},
+            label_frequencies={"ao diam": 2},
+            label_family_lines={"ao diam": ["1 Ao Diam 2.9 cm"]},
+            label_unit_frequencies={"ao diam": {"cm": 2}},
+            label_order_frequencies={"ao diam": {"1": 2}},
+            label_value_stats={"ao diam": NumericStats(count=2, min=2.8, max=3.0, mean=2.9)},
+            token_frequencies={"diam": 2},
+            unit_frequencies={"cm": 2},
+            prefix_frequencies={"1": 2},
+            line_pattern_frequencies={"<PREFIX> ao diam <VALUE> <UNIT:cm>": 2},
+        )
+    )
+
+    ranked = reranker.rank_candidates(
+        [
+            LineOcrCandidate(text="1 Ao Diam 12.9 cm", confidence=0.95, engine_name="glm", view_name="default", source="primary"),
+        ],
+        line_order=0,
+    )
+
+    assert ranked[0].candidate.text == "1 Ao Diam 2.9 cm"

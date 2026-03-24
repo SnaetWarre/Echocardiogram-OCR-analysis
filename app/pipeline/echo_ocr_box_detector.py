@@ -66,8 +66,6 @@ def _select_measurement_component(mask: np.ndarray) -> np.ndarray:
             continue
         if width < 40 or height < 12:
             continue
-        if width < height:
-            continue
 
         score = (
             4.0 * area

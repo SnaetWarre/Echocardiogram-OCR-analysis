@@ -74,6 +74,27 @@ def test_detector_uses_target_color_connected_component_roi() -> None:
     assert 20 <= height <= 24
 
 
+def test_detector_accepts_tall_top_left_measurement_panel() -> None:
+    frame = np.zeros((360, 320, 3), dtype=np.uint8)
+    frame[:, :, :] = 200
+
+    frame[4:296, 0:211, 0] = 0x1A
+    frame[4:296, 0:211, 1] = 0x21
+    frame[4:296, 0:211, 2] = 0x29
+
+    frame[20:285, 14:195, :] = 240
+
+    detection = TopLeftBlueGrayBoxDetector(min_pixels=100).detect(frame)
+
+    assert detection.present is True
+    assert detection.bbox is not None
+    x, y, width, height = detection.bbox
+    assert 0 <= x <= 4
+    assert 4 <= y <= 8
+    assert 205 <= width <= 215
+    assert 285 <= height <= 295
+
+
 def test_parser_extracts_value_and_unit() -> None:
     parser = RegexMeasurementParser()
     items = parser.parse("PV Vmax 0.87 m/s\nPV maxPG 3 mmHg", confidence=0.9)
@@ -287,6 +308,49 @@ def test_ai_result_uses_exact_line_sources_and_raw_line_predictions() -> None:
     assert result.raw["line_predictions"][0]["line_bbox"] == [0, 0, 10, 2]
     assert result.raw["segmentation_mode"] == "fixed_pitch"
     assert result.raw["target_line_height_px"] == 20.0
+
+
+def test_ai_result_keeps_raw_ocr_lines_without_measurement_records() -> None:
+    pipeline = EchoOcrPipeline()
+
+    result = pipeline._to_ai_result(
+        [],
+        raw_line_predictions=[
+            {
+                "frame_index": 0,
+                "order": 0,
+                "text": "R-R",
+                "confidence": 0.91,
+                "uncertain": False,
+                "line_bbox": [0, 0, 10, 2],
+                "roi_bbox": [1, 2, 30, 40],
+                "ocr_engine": "fake-ocr",
+                "parser_source": "primary",
+                "source_kind": "pixel_ocr",
+                "source_path": "example.dcm",
+                "source_modality": "US",
+            },
+            {
+                "frame_index": 0,
+                "order": 1,
+                "text": "HR",
+                "confidence": 0.93,
+                "uncertain": False,
+                "line_bbox": [0, 3, 10, 2],
+                "roi_bbox": [1, 2, 30, 40],
+                "ocr_engine": "fake-ocr",
+                "parser_source": "primary",
+                "source_kind": "pixel_ocr",
+                "source_path": "example.dcm",
+                "source_modality": "US",
+            },
+        ],
+    )
+
+    assert result.measurements == []
+    assert result.raw["exact_lines"] == ["R-R", "HR"]
+    assert result.raw["line_predictions"][1]["text"] == "HR"
+    assert result.boxes[0].label == "measurement_roi"
 
 
 def test_pipeline_respects_fixed_pitch_segmentation_parameters() -> None:

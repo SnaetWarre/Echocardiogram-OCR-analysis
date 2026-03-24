@@ -63,7 +63,29 @@ def test_parse_measurement_line_normalizes_mes_unit_alias() -> None:
     assert decoded.unit == "m/s"
 
 
+def test_parse_measurement_line_keeps_compound_area_unit_intact() -> None:
+    decoded = parse_measurement_line("LAAs A2C 30 cm2")
+
+    assert decoded.label == "LAAs A2C"
+    assert decoded.value == "30"
+    assert decoded.unit == "cm2"
+
+
+def test_parse_measurement_line_keeps_compound_velocity_unit_intact() -> None:
+    decoded = parse_measurement_line("Flow 3.2 m/s2")
+
+    assert decoded.label == "Flow"
+    assert decoded.value == "3.2"
+    assert decoded.unit == "m/s2"
+
+
 def test_canonicalize_exact_line_strips_fillers_and_repairs_prefix_noise() -> None:
     assert canonicalize_exact_line("2 LA Diam 5.5 cm ____") == "2 LA Diam 5.5 cm"
     assert canonicalize_exact_line("ı IVSd /1.1 cm/ . . . . .") == "1 IVSd 1.1 cm"
     assert canonicalize_exact_line("LVPVVd 1.1 cm") == "LVPWd 1.1 cm"
+
+
+def test_canonicalize_exact_line_repairs_eval_label_near_misses() -> None:
+    assert canonicalize_exact_line("AVS Vmax 2.6 cm2") == "AVA Vmax 2.6 cm2"
+    assert canonicalize_exact_line("PRand PG 4.69 mmHg") == "PRend PG 4.69 mmHg"
+    assert canonicalize_exact_line("LAAS A4C 24.5 cm2") == "LAAs A4C 24.5 cm2"
