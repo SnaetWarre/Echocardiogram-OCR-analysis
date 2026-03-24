@@ -18,6 +18,19 @@ class OverlayStyle:
     font: QtGui.QFont = field(default_factory=lambda: QtGui.QFont("Segoe UI", 9))
 
 
+class _CrispOverlayRectItem(QtWidgets.QGraphicsRectItem):
+    def paint(
+        self,
+        painter: QtGui.QPainter,
+        option: QtWidgets.QStyleOptionGraphicsItem,
+        widget: QtWidgets.QWidget | None = None,
+    ) -> None:
+        painter.save()
+        painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing, False)
+        super().paint(painter, option, widget)
+        painter.restore()
+
+
 class ImageViewer(QtWidgets.QGraphicsView):
     """
     Advanced image viewer with:
@@ -214,9 +227,13 @@ class ImageViewer(QtWidgets.QGraphicsView):
         self._update_hover_hud()
 
     def _add_box(self, box: OverlayBox) -> None:
-        rect_item = QtWidgets.QGraphicsRectItem(box.x, box.y, box.width, box.height)
+        pen_width = max(1, int(self._overlay_style.line_width))
+        rect = self._aligned_overlay_rect(box, pen_width=pen_width)
+        rect_item = _CrispOverlayRectItem(rect)
         pen = QtGui.QPen(QtGui.QColor(box.color))
-        pen.setWidth(self._overlay_style.line_width)
+        pen.setWidth(pen_width)
+        pen.setCosmetic(True)
+        pen.setJoinStyle(QtCore.Qt.PenJoinStyle.MiterJoin)
         rect_item.setPen(pen)
         rect_item.setZValue(5)
         self._scene.addItem(rect_item)
@@ -231,10 +248,10 @@ class ImageViewer(QtWidgets.QGraphicsView):
             text_item.setFont(self._overlay_style.font)
             text_item.setZValue(6)
             label_height = text_item.boundingRect().height()
-            if box.height < label_height + 6:
-                text_item.setPos(box.x + box.width + 3, box.y)
+            if rect.height() < label_height + 6:
+                text_item.setPos(rect.right() + 4.0, rect.top())
             else:
-                text_item.setPos(box.x + 2, box.y + 1)
+                text_item.setPos(rect.left() + 2.0, rect.top() + 1.0)
             bg = QtWidgets.QGraphicsRectItem(text_item.boundingRect())
             bg.setBrush(QtGui.QBrush(self._overlay_style.text_bg))
             bg.setPen(QtGui.QPen(QtCore.Qt.PenStyle.NoPen))
@@ -243,6 +260,19 @@ class ImageViewer(QtWidgets.QGraphicsView):
             self._scene.addItem(bg)
             self._scene.addItem(text_item)
             self._overlay_items.extend([bg, text_item])
+
+    @staticmethod
+    def _aligned_overlay_rect(box: OverlayBox, *, pen_width: int) -> QtCore.QRectF:
+        offset = 0.5 if pen_width % 2 == 1 else 0.0
+        shrink = 1.0 if pen_width % 2 == 1 else 0.0
+        width = max(1.0, float(box.width) - shrink)
+        height = max(1.0, float(box.height) - shrink)
+        return QtCore.QRectF(
+            float(box.x) + offset,
+            float(box.y) + offset,
+            width,
+            height,
+        )
 
     def _clear_overlays(self) -> None:
         for item in self._overlay_items:
