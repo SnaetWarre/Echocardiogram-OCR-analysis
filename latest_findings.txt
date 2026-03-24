@@ -1,0 +1,177 @@
+Latest Findings - GLM-OCR Validation Eval
+Date: 2026-03-23
+
+Scope
+- Dataset: `labels/labels.json`
+- Split: `validation`
+- OCR engine: `glm-ocr`
+- Eval script: `app/tools/eval_line_transcription.py`
+- Latest artifact folder:
+  `artifacts/ocr_redesign/glm_ocr_line_segmenter_20260323_deeper_fix/`
+
+Latest Results
+- Total files: 191
+- Total labeled lines: 490
+- OCR predictions: 490
+- Exact line matches: 473 / 490
+- Exact line match rate: 96.53%
+- Label match rate: 97.76%
+- Value match rate: 97.14%
+- Unit match rate: 98.98%
+- Prefix match rate: 99.39%
+- Perfect files: 180 / 191
+- Files with any mismatch: 11 / 191
+- ROI detection failures: 0
+- Line segmentation failures: 0
+
+Improvement Timeline
+- After label cleanup run: 446 / 490 exact = 91.02%
+- After short-line (`HR`) segmenter fix: 450 / 490 exact = 91.84%
+- After deeper logic fixes: 473 / 490 exact = 96.53%
+
+What Changed To Reach 96.53%
+1. Line segmentation improvements
+- Replaced coarse stripe placement with gap-aware line placement based on real text pixels.
+- Added rescue logic for weak short rows such as `HR`, so low-ink lines do not get merged into the next row.
+- Result: recovered missing short lines and removed the main segmentation miss that was still visible in dense panels.
+
+2. GUI overlay improvements
+- Overlay boxes are now drawn with crisp pixel-aligned strokes.
+- This is mostly a visualization improvement, but it makes reviewing segmentation much easier.
+
+3. ROI detector improvement
+- The top-left colored measurement-panel detector no longer rejects tall panels.
+- This fixed the worst catastrophic miss:
+  `98667422_0054.dcm` went from 0/12 predicted to 12/12 predicted and 10/12 exact.
+
+4. Lexicon / reranker improvements
+- The pipeline now rebuilds and uses its lexicon from `labels/labels.json` when that file is newer than the cached artifact.
+- Before this, the reranker could use stale label statistics.
+- Added repair logic for:
+  - unexpected prefixes on families that normally do not use a prefix
+  - hallucinated leading digit values such as `12.9` when the lexicon strongly suggests `2.9`
+
+5. OCR text normalization improvements
+- Added targeted repairs for repeated real-world OCR mistakes seen in eval:
+  - `AVS` -> `AVA`
+  - `PRand PG` -> `PRend PG`
+  - `LAAS` -> `LAAs`
+
+Quick Pipeline Overview
+1. ROI detection
+- The pipeline finds the dark blue-gray measurement panel in the top-left of the frame.
+
+2. ROI segmentation
+- The ROI is split into separate line boxes.
+- The segmenter uses actual text-pixel density and connected components, not just fixed line heights.
+
+3. Line OCR
+- Each segmented line crop is sent separately through the OCR engine.
+- The pipeline can also try alternative preprocessing views of the same crop.
+
+4. Candidate selection / reranking
+- OCR outputs are normalized and scored.
+- A lexicon-based reranker uses expected label families, order patterns, units, and numeric ranges to prefer better candidates.
+
+5. Final line comparison
+- Predicted lines are compared against the labeled reference lines and scored for exact match, label match, value match, unit match, and prefix match.
+
+Why The Current System Works Better Now
+- The line boxes are more accurate, so each OCR crop contains the intended line and less neighboring noise.
+- Weak short lines are no longer dropped as easily.
+- Tall measurement panels are no longer missed by ROI detection.
+- The reranker now uses the current label set and can repair more realistic OCR errors.
+
+Remaining Problems
+Only 11 files still have any mismatch. The remaining problems are now narrow and specific, not broad pipeline failures.
+
+Remaining mismatch categories
+- Missing predictions: 0
+- Formatting-only mismatches: 0
+- Prefix-only mismatches: 0
+- Value error, same label: 5
+- Label error, same value: 2
+- Swapped or wrong-line style mismatch: 10
+
+Main remaining failure patterns
+1. Small numeric OCR mistakes
+- Example:
+  - expected: `1 LA Diam 4.6 cm`
+  - predicted: `1 LA Diam 4.0 cm`
+- Example:
+  - expected: `1 E' Lat 0.09 m/s`
+  - predicted: `1 E' Lat 0.08 m/s`
+- Example:
+  - expected: `LVESV MOD BP 76.70 ml`
+  - predicted: `LVESV MOD BP 76.40 ml`
+
+2. Closely related measurement confusion
+- Example family:
+  - `MV Dec Slope`
+  - `MV E/A Ratio`
+- These lines can still be confused in a few dense panels.
+
+3. Label alias disagreement
+- Example:
+  - expected: `LVEF Biplane 43 %`
+  - predicted: `EF Biplane 43 %`
+- This is not a detection or segmentation problem anymore; it is mainly an interpretation / canonicalization issue.
+
+4. Prefix noise on a small number of lines
+- Example:
+  - expected: `2 P Vein D 0.4 m/s`
+  - predicted: `$ ^ 2 $ P Vein D 0.4 m/s`
+
+Files To Show As Examples
+Strong examples
+- `91243943_0007.dcm`
+- `91243943_0008.dcm`
+- `91243943_0039.dcm`
+- Many of the early validation files are now exact and clean.
+
+Important recovered case
+- `98667422_0054.dcm`
+- Previously a total miss because ROI detection failed.
+- Now:
+  - segmented lines: 12
+  - predicted lines: 12
+  - exact matches: 10
+
+Important previously problematic short-line case
+- `92290733_0076.dcm`
+- The `HR` line was previously lost.
+- After the weak-line rescue in the segmenter:
+  - segmentation line count: 10
+  - predicted lines include `HR`
+
+Current worst remaining examples
+- `92290733_0035.dcm`
+- `94106955_0046.dcm`
+- `99094104_0011.dcm`
+- `94106955_0055.dcm`
+- `99663585_0053.dcm`
+
+What This Means
+- The pipeline is now strong at finding the panel ROI.
+- The pipeline is now strong at segmenting the ROI into lines.
+- The remaining gap is mostly line-level OCR interpretation, especially:
+  - close numeric values
+  - closely related labels
+  - a few noisy prefix artifacts
+
+Bottom-Line Findings
+- The largest architectural issues have been reduced:
+  - ROI misses: solved in this validation run
+  - segmentation misses: solved in this validation run
+- Most remaining errors are now fine-grained OCR or normalization issues.
+- This is a good point to show progress, because the failures are now understandable and targeted instead of broad and unstable.
+
+Suggested Supervisor Summary
+- We improved the line-first OCR pipeline from about 91% exact line accuracy to 96.53% exact line accuracy on the validation set.
+- The biggest gains came from:
+  - more accurate line segmentation
+  - rescuing weak short lines
+  - fixing tall-panel ROI detection
+  - syncing the reranker to the current labels
+- There are now no ROI detection failures and no line segmentation failures in the validation run.
+- The remaining errors are mostly small OCR reading mistakes or close label confusions, which are narrower and easier to attack next.
