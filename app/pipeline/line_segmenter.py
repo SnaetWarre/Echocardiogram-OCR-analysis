@@ -3,7 +3,7 @@ from __future__ import annotations
 import importlib
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Sequence, cast
+from typing import Any, Callable, Sequence, cast
 
 import numpy as np
 
@@ -179,19 +179,36 @@ class LineSegmenter:
             return []
 
         content_height = int(content.shape[0])
-        content_width = int(content.shape[1])
         estimated_line_count = self._estimate_line_count(content_height)
         if estimated_line_count <= 0:
             return []
 
+        mask = self._text_mask(content)
+        row_density = mask.mean(axis=1).astype(np.float32) if mask.size else np.zeros(content_height, dtype=np.float32)
+        runs = self._projection_runs_from_mask(mask, row_density=row_density)
+
+        if runs:
+            lines = self._build_lines_from_runs(
+                mask,
+                runs,
+                header_trim_px=header_trim_px,
+                metadata_factory=lambda order, _run, line_count: {
+                    "source": "fixed_pitch",
+                    "target_line_height_px": self.target_line_height_px,
+                    "estimated_line_count": estimated_line_count,
+                    "stripe_index": order,
+                    "placement": "gap_midpoint",
+                    "line_count": line_count,
+                },
+            )
+            if lines:
+                return lines
+
+        content_width = int(content.shape[1])
         stripe_edges = self._stripe_edges(content_height, estimated_line_count)
         lines: list[SegmentedLine] = []
-        mask = self._text_mask(content)
-
         if self.snap_to_valleys:
-            row_density = mask.mean(axis=1).astype(np.float32) if mask.size else np.zeros(content_height, dtype=np.float32)
             stripe_edges = self._snap_edges_to_valleys(stripe_edges, row_density)
-
         for order, (start, end) in enumerate(zip(stripe_edges[:-1], stripe_edges[1:], strict=False)):
             if end <= start:
                 continue
@@ -484,43 +501,21 @@ class LineSegmenter:
             return []
 
         mask = self._text_mask(content)
-        row_density = mask.mean(axis=1) if mask.size else np.zeros(content.shape[0], dtype=np.float32)
-        width = max(1, int(content.shape[1]))
-        density_peak = float(row_density.max()) if row_density.size else 0.0
-        row_threshold = max(
-            self.projection_threshold_ratio,
-            min(0.18, density_peak * 0.35),
-            1.0 / width,
-        )
-        active = row_density >= row_threshold
-        active = self._fill_short_row_gaps(active)
-        runs = self._merge_runs(self._contiguous_runs(active))
+        row_density = mask.mean(axis=1).astype(np.float32) if mask.size else np.zeros(content.shape[0], dtype=np.float32)
+        runs = self._projection_runs_from_mask(mask, row_density=row_density)
         if not runs:
             return []
 
-        lines: list[SegmentedLine] = []
-        for start, end in runs:
-            if end - start + 1 < self.min_line_height_px:
-                continue
-            band = mask[start : end + 1, :]
-            _ys, xs = np.where(band)
-            if xs.size == 0:
-                x1, x2 = 0, int(content.shape[1])
-            else:
-                x1 = max(0, int(xs.min()) - self.line_padding_px - self.extra_left_pad_px)
-                x2 = min(int(content.shape[1]), int(xs.max()) + self.line_padding_px + 1)
-            y1 = max(0, start - self.line_padding_px)
-            y2 = min(int(content.shape[0]), end + self.line_padding_px + 1)
-            lines.append(
-                SegmentedLine(
-                    order=len(lines),
-                    bbox=(x1, y1 + header_trim_px, max(1, x2 - x1), max(1, y2 - y1)),
-                    component_boxes=((x1, y1 + header_trim_px, max(1, x2 - x1), max(1, y2 - y1)),),
-                    metadata={"source": "projection"},
-                )
-            )
-
-        return lines
+        return self._build_lines_from_runs(
+            mask,
+            runs,
+            header_trim_px=header_trim_px,
+            metadata_factory=lambda _order, _run, line_count: {
+                "source": "projection",
+                "placement": "gap_midpoint",
+                "line_count": line_count,
+            },
+        )
 
     def _refine_segmented_lines(self, gray: np.ndarray, lines: list[SegmentedLine]) -> list[SegmentedLine]:
         if not lines:
@@ -602,40 +597,30 @@ class LineSegmenter:
         if len(runs) > max_split_count:
             return [line]
 
-        boundaries: list[tuple[int, int]] = []
-        for index, (start, end) in enumerate(runs):
-            prev_end = runs[index - 1][1] if index > 0 else None
-            next_start = runs[index + 1][0] if index + 1 < len(runs) else None
-            top_pad = 0
-            if prev_end is None:
-                top_pad = min(self.line_padding_px, start)
-            else:
-                gap = max(0, start - prev_end - 1)
-                top_pad = min(self.line_padding_px, gap // 2)
-            bottom_pad = 0
-            if next_start is None:
-                bottom_pad = min(self.line_padding_px, max(0, crop.shape[0] - end - 1))
-            else:
-                gap = max(0, next_start - end - 1)
-                bottom_pad = min(self.line_padding_px, gap // 2)
-            band_top = max(0, start - top_pad)
-            band_bottom = min(int(crop.shape[0]), end + bottom_pad + 1)
-            boundaries.append((band_top, band_bottom))
+        boundaries = self._line_boundaries_from_runs(runs, content_height=int(crop.shape[0]))
+        local_components = self._extract_component_boxes(mask)
 
         split_lines: list[SegmentedLine] = []
         for split_index, ((start, end), (band_top, band_bottom)) in enumerate(zip(runs, boundaries, strict=False)):
-            band = mask[band_top:band_bottom, :]
-            _ys, xs = np.where(band)
-            if xs.size == 0:
-                split_x1 = x1
-                split_x2 = x2
-            else:
-                split_x1 = max(0, x1 + int(xs.min()) - self.line_padding_px - self.extra_left_pad_px)
-                split_x2 = min(int(gray.shape[1]), x1 + int(xs.max()) + self.line_padding_px + 1)
             split_y1 = max(0, y1 + band_top)
             split_y2 = min(int(gray.shape[0]), y1 + band_bottom)
+            local_component_boxes = self._component_boxes_for_vertical_span(local_components, start, end + 1)
+            component_boxes = tuple(
+                (cx + x1, cy + y1, cw, ch) for cx, cy, cw, ch in local_component_boxes
+            )
+            split_x1, split_x2 = self._x_bounds_for_span(
+                mask,
+                span_top=band_top,
+                span_bottom=band_bottom,
+                content_width=int(gray.shape[1]),
+                base_x=x1,
+                fallback_x1=x1,
+                fallback_x2=x2,
+                component_boxes=component_boxes,
+            )
             split_bbox = (split_x1, split_y1, max(1, split_x2 - split_x1), max(1, split_y2 - split_y1))
-            component_boxes = self._component_boxes_for_split(line.component_boxes, split_bbox)
+            if not component_boxes:
+                component_boxes = self._component_boxes_for_split(line.component_boxes, split_bbox)
             split_lines.append(
                 SegmentedLine(
                     order=line.order,
@@ -654,6 +639,113 @@ class LineSegmenter:
 
         return split_lines or [line]
 
+    def _projection_runs_from_mask(
+        self,
+        mask: np.ndarray,
+        *,
+        row_density: np.ndarray | None = None,
+    ) -> list[tuple[int, int]]:
+        if mask.size == 0:
+            return []
+        height, width = mask.shape[:2]
+        if height <= 0 or width <= 0:
+            return []
+        density = (
+            row_density.astype(np.float32, copy=False)
+            if row_density is not None
+            else mask.mean(axis=1).astype(np.float32)
+        )
+        density_peak = float(density.max()) if density.size else 0.0
+        row_threshold = max(
+            self.projection_threshold_ratio,
+            min(0.18, density_peak * 0.35),
+            1.0 / max(1, width),
+        )
+        active = density >= row_threshold
+        active = self._fill_short_row_gaps(active)
+        runs = [
+            (start, end)
+            for start, end in self._merge_runs(self._contiguous_runs(active))
+            if end - start + 1 >= self.min_line_height_px
+        ]
+        components = self._extract_component_boxes(mask)
+        return self._augment_runs_with_orphan_components(
+            runs,
+            component_boxes=components,
+            content_width=width,
+        )
+
+    def _build_lines_from_runs(
+        self,
+        mask: np.ndarray,
+        runs: list[tuple[int, int]],
+        *,
+        header_trim_px: int,
+        metadata_factory: Callable[[int, tuple[int, int], int], dict[str, Any]],
+    ) -> list[SegmentedLine]:
+        if mask.size == 0 or not runs:
+            return []
+
+        content_height = int(mask.shape[0])
+        content_width = int(mask.shape[1])
+        boundaries = self._line_boundaries_from_runs(runs, content_height=content_height)
+        components = self._extract_component_boxes(mask)
+        lines: list[SegmentedLine] = []
+        for order, ((start, end), (band_top, band_bottom)) in enumerate(zip(runs, boundaries, strict=False)):
+            component_boxes = self._component_boxes_for_vertical_span(components, start, end + 1)
+            x1, x2 = self._x_bounds_for_span(
+                mask,
+                span_top=band_top,
+                span_bottom=band_bottom,
+                content_width=content_width,
+                base_x=0,
+                fallback_x1=0,
+                fallback_x2=content_width,
+                component_boxes=component_boxes,
+            )
+            y1 = max(0, band_top)
+            y2 = min(content_height, band_bottom)
+            bbox = (x1, y1 + header_trim_px, max(1, x2 - x1), max(1, y2 - y1))
+            lines.append(
+                SegmentedLine(
+                    order=order,
+                    bbox=bbox,
+                    component_boxes=tuple(
+                        (cx, cy + header_trim_px, cw, ch) for cx, cy, cw, ch in component_boxes
+                    ) or (bbox,),
+                    metadata=metadata_factory(order, (start, end), len(runs)),
+                )
+            )
+        return lines
+
+    @staticmethod
+    def _line_boundaries_from_runs(
+        runs: list[tuple[int, int]],
+        *,
+        content_height: int,
+    ) -> list[tuple[int, int]]:
+        if not runs:
+            return []
+
+        boundaries: list[tuple[int, int]] = []
+        for index, (start, end) in enumerate(runs):
+            if index == 0:
+                band_top = 0
+            else:
+                prev_end = runs[index - 1][1]
+                band_top = int(np.floor((prev_end + start + 1) / 2.0))
+
+            if index == len(runs) - 1:
+                band_bottom = content_height
+            else:
+                next_start = runs[index + 1][0]
+                band_bottom = int(np.ceil((end + next_start + 1) / 2.0))
+
+            if band_bottom <= band_top:
+                band_bottom = min(content_height, band_top + 1)
+            boundaries.append((band_top, band_bottom))
+        return boundaries
+
     @staticmethod
     def _component_boxes_for_split(
         component_boxes: tuple[tuple[int, int, int, int], ...],
@@ -671,6 +763,147 @@ class LineSegmenter:
             if max(split_top, box[1]) < min(split_bottom, box[1] + box[3])
         )
         return selected
+
+    def _extract_component_boxes(self, mask: np.ndarray) -> list[tuple[int, int, int, int]]:
+        if mask.size == 0:
+            return []
+
+        try:
+            cv2: Any = importlib.import_module("cv2")
+            mask_u8 = mask.astype(np.uint8, copy=False)
+            component_count, _labels, stats, _centroids = cv2.connectedComponentsWithStats(
+                mask_u8,
+                connectivity=8,
+            )
+            boxes: list[tuple[int, int, int, int]] = []
+            for index in range(1, int(component_count)):
+                x = int(stats[index, cv2.CC_STAT_LEFT])
+                y = int(stats[index, cv2.CC_STAT_TOP])
+                w = int(stats[index, cv2.CC_STAT_WIDTH])
+                h = int(stats[index, cv2.CC_STAT_HEIGHT])
+                area = int(stats[index, cv2.CC_STAT_AREA])
+                if w <= 0 or h <= 0 or area <= 0:
+                    continue
+                boxes.append((x, y, w, h))
+            return boxes
+        except ImportError:
+            return []
+
+    def _augment_runs_with_orphan_components(
+        self,
+        runs: list[tuple[int, int]],
+        *,
+        component_boxes: Sequence[tuple[int, int, int, int]],
+        content_width: int,
+    ) -> list[tuple[int, int]]:
+        if not component_boxes:
+            return runs
+
+        orphan_components = [
+            box
+            for box in component_boxes
+            if not any(max(box[1], start) <= min(box[1] + box[3] - 1, end) for start, end in runs)
+        ]
+        if not orphan_components:
+            return runs
+
+        rescued_runs: list[tuple[int, int]] = []
+        for group in self._group_component_rows(orphan_components):
+            min_y = min(box[1] for box in group)
+            max_y = max(box[1] + box[3] - 1 for box in group)
+            min_x = min(box[0] for box in group)
+            max_x = max(box[0] + box[2] for box in group)
+            total_area = sum(box[2] * box[3] for box in group)
+            run_height = max_y - min_y + 1
+            run_width = max_x - min_x
+            if run_height < self.min_line_height_px:
+                continue
+            if len(group) < 2 and total_area < max(16, self.min_line_height_px * 6):
+                continue
+            if run_width < max(8, min(18, content_width // 20)):
+                continue
+            rescued_runs.append((min_y, max_y))
+
+        if not rescued_runs:
+            return runs
+
+        combined = sorted([*runs, *rescued_runs], key=lambda item: (item[0], item[1]))
+        coalesced: list[tuple[int, int]] = []
+        for start, end in combined:
+            if not coalesced or start > coalesced[-1][1]:
+                coalesced.append((start, end))
+                continue
+            prev_start, prev_end = coalesced[-1]
+            coalesced[-1] = (prev_start, max(prev_end, end))
+        return coalesced
+
+    def _group_component_rows(
+        self,
+        component_boxes: Sequence[tuple[int, int, int, int]],
+    ) -> list[list[tuple[int, int, int, int]]]:
+        if not component_boxes:
+            return []
+
+        rows: list[list[tuple[int, int, int, int]]] = []
+        for box in sorted(component_boxes, key=lambda item: (item[1], item[0])):
+            box_top = box[1]
+            box_bottom = box[1] + box[3] - 1
+            attached = False
+            for row in rows:
+                row_top = min(item[1] for item in row)
+                row_bottom = max(item[1] + item[3] - 1 for item in row)
+                gap = max(0, max(box_top - row_bottom - 1, row_top - box_bottom - 1))
+                if gap <= self.merge_gap_px:
+                    row.append(box)
+                    attached = True
+                    break
+            if not attached:
+                rows.append([box])
+        return rows
+
+    @staticmethod
+    def _component_boxes_for_vertical_span(
+        component_boxes: Sequence[tuple[int, int, int, int]],
+        span_top: int,
+        span_bottom: int,
+    ) -> list[tuple[int, int, int, int]]:
+        if span_bottom <= span_top:
+            return []
+        return [
+            box
+            for box in component_boxes
+            if max(span_top, box[1]) < min(span_bottom, box[1] + box[3])
+        ]
+
+    def _x_bounds_for_span(
+        self,
+        mask: np.ndarray,
+        *,
+        span_top: int,
+        span_bottom: int,
+        content_width: int,
+        base_x: int,
+        fallback_x1: int,
+        fallback_x2: int,
+        component_boxes: Sequence[tuple[int, int, int, int]],
+    ) -> tuple[int, int]:
+        if component_boxes:
+            x1 = min(box[0] for box in component_boxes)
+            x2 = max(box[0] + box[2] for box in component_boxes)
+            return (
+                max(0, x1 - self.line_padding_px - self.extra_left_pad_px),
+                min(content_width, x2 + self.line_padding_px),
+            )
+
+        band = mask[span_top:span_bottom, :]
+        _ys, xs = np.where(band)
+        if xs.size == 0:
+            return fallback_x1, fallback_x2
+
+        return (
+            max(0, base_x + int(xs.min()) - self.line_padding_px - self.extra_left_pad_px),
+            min(content_width, base_x + int(xs.max()) + self.line_padding_px + 1),
+        )
 
     def _text_mask(self, image: np.ndarray) -> np.ndarray:
         gray = _to_gray(image)

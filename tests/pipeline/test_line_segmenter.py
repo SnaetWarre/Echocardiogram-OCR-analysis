@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import importlib.util
+
 import numpy as np
 
 from app.pipeline.line_segmenter import LineSegmenter
@@ -99,7 +101,7 @@ def test_line_segmenter_normalizes_xyxy_token_boxes_for_dense_panel_rows() -> No
     assert [line.metadata.get("token_count") for line in result.lines] == [2, 2, 2]
 
 
-def test_line_segmenter_fixed_pitch_uses_twenty_pixel_stripes() -> None:
+def test_line_segmenter_fixed_pitch_uses_gap_midpoints_for_boundaries() -> None:
     roi = np.zeros((64, 120, 3), dtype=np.uint8)
     roi[:, :, :] = (0x1A, 0x21, 0x29)
     roi[24:28, 10:100, :] = 255
@@ -111,9 +113,11 @@ def test_line_segmenter_fixed_pitch_uses_twenty_pixel_stripes() -> None:
     result = segmenter.segment(roi)
 
     assert len(result.lines) == 2
-    assert result.lines[0].bbox[3] == 20
-    assert result.lines[1].bbox[3] == 20
+    assert result.lines[0].bbox[1] == 24
+    assert result.lines[0].bbox[1] + result.lines[0].bbox[3] == result.lines[1].bbox[1]
+    assert result.lines[1].bbox[1] == 38
     assert result.lines[0].metadata.get("estimated_line_count") == 2
+    assert all(line.metadata.get("placement") == "gap_midpoint" for line in result.lines)
 
 
 def test_line_segmenter_extra_left_pad_expands_crop_left() -> None:
@@ -132,8 +136,7 @@ def test_line_segmenter_extra_left_pad_expands_crop_left() -> None:
     assert r_loose.lines[0].bbox[0] < r_tight.lines[0].bbox[0]
 
 
-def test_line_segmenter_fixed_pitch_snap_to_valleys() -> None:
-    """With snap_to_valleys=True, stripes adjust to density valleys."""
+def test_line_segmenter_fixed_pitch_gap_boundaries_keep_text_covered() -> None:
     roi = np.zeros((64, 120, 3), dtype=np.uint8)
     roi[:, :, :] = (0x1A, 0x21, 0x29)
     roi[24:28, 10:100, :] = 255
@@ -149,3 +152,48 @@ def test_line_segmenter_fixed_pitch_snap_to_valleys() -> None:
     b1 = result.lines[1].bbox
     assert b0[1] <= 24 and b0[1] + b0[3] >= 28
     assert b1[1] <= 44 and b1[1] + b1[3] >= 48
+
+
+def test_line_segmenter_tracks_component_boxes_per_line_when_cv2_is_available() -> None:
+    if importlib.util.find_spec("cv2") is None:
+        return
+
+    roi = np.zeros((64, 120, 3), dtype=np.uint8)
+    roi[:, :, :] = (0x1A, 0x21, 0x29)
+    roi[24:28, 10:32, :] = 255
+    roi[24:28, 60:92, :] = 255
+    roi[44:48, 12:34, :] = 255
+    roi[44:48, 64:96, :] = 255
+
+    segmenter = LineSegmenter(target_line_height_px=20.0, line_padding_px=1)
+    segmenter.detect_header_trim = lambda _roi: 24  # type: ignore[method-assign]
+
+    result = segmenter.segment(roi)
+
+    assert len(result.lines) == 2
+    assert len(result.lines[0].component_boxes) == 2
+    assert len(result.lines[1].component_boxes) == 2
+    assert result.lines[0].bbox[0] == 11
+    assert result.lines[0].bbox[0] + result.lines[0].bbox[2] == 95
+
+
+def test_line_segmenter_rescues_weak_short_line_between_stronger_rows() -> None:
+    if importlib.util.find_spec("cv2") is None:
+        return
+
+    roi = np.zeros((56, 100, 3), dtype=np.uint8)
+    roi[:, :, :] = (0x1A, 0x21, 0x29)
+    roi[6:10, 10:34, :] = 255
+    roi[6:10, 62:88, :] = 255
+    roi[20:24, 22:29, :] = 255
+    roi[20:24, 34:41, :] = 255
+    roi[34:38, 8:42, :] = 255
+    roi[34:38, 54:94, :] = 255
+
+    segmenter = LineSegmenter(target_line_height_px=18.0, merge_gap_px=2, min_line_height_px=3)
+    segmenter.detect_header_trim = lambda _roi: 0  # type: ignore[method-assign]
+
+    result = segmenter.segment(roi)
+
+    assert len(result.lines) == 3
+    assert any(16 <= line.bbox[1] <= 18 for line in result.lines)
