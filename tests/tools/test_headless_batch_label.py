@@ -159,3 +159,25 @@ def test_resume_filters_unrelated_checkpoint_items(tmp_path: Path, monkeypatch) 
     assert len(fake.calls) == 1
     payload = (tmp_path / "results.json").read_text(encoding="utf-8")
     assert "outside.dcm" not in payload
+
+
+def test_preflight_writes_report_and_exits(tmp_path: Path, monkeypatch) -> None:
+    (tmp_path / "one.dcm").write_bytes(b"x")
+    monkeypatch.setattr(
+        headless_batch_label,
+        "run_preflight",
+        lambda engine, fallback_engine: {
+            "checked_at": "2026-01-01T00:00:00+00:00",
+            "engine": engine,
+            "fallback_engine": fallback_engine,
+            "checks": [{"name": "glm_ocr_worker", "status": "ok", "error": "", "elapsed_s": 0.1}],
+            "ok": True,
+        },
+    )
+
+    exit_code = headless_batch_label.run_batch(_args(tmp_path, preflight=True, output_format="json"))
+
+    assert exit_code == 0
+    report = (tmp_path / "results.json").read_text(encoding="utf-8")
+    assert '"checks"' in report
+    assert '"ok": true' in report
