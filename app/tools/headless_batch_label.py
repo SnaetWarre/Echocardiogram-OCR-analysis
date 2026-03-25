@@ -456,17 +456,28 @@ def run_batch(args: argparse.Namespace) -> int:
         print("No matching files found.")
         return 1
 
+    discovered_keys = {_canonical_path(path) for path in discovered}
     items: list[dict[str, Any]] = []
     processed_keys: set[str] = set()
 
     if args.resume:
         checkpoint_items, checkpoint_processed = _load_checkpoint(output_paths.checkpoint_path)
-        items.extend(checkpoint_items)
-        processed_keys |= checkpoint_processed
+        scoped_checkpoint_items = [
+            item
+            for item in checkpoint_items
+            if str(item.get("dicom_path", "")).strip() in discovered_keys
+        ]
+        items.extend(scoped_checkpoint_items)
+        processed_keys |= {key for key in checkpoint_processed if key in discovered_keys}
         json_items, json_processed = _try_resume_from_json(output_paths.json_path)
         if json_items and len(json_items) > len(items):
-            items = json_items
-            processed_keys = json_processed
+            scoped_json_items = [
+                item
+                for item in json_items
+                if str(item.get("dicom_path", "")).strip() in discovered_keys
+            ]
+            items = scoped_json_items
+            processed_keys = {key for key in json_processed if key in discovered_keys}
 
     pending = [path for path in discovered if _canonical_path(path) not in processed_keys]
     total = len(discovered)

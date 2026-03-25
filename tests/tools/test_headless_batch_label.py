@@ -133,3 +133,29 @@ def test_resume_skips_processed_files(tmp_path: Path, monkeypatch) -> None:
     assert exit_code == 0
     assert len(fake.calls) == 1
     assert Path(fake.calls[0]).name == "two.dcm"
+
+
+def test_resume_filters_unrelated_checkpoint_items(tmp_path: Path, monkeypatch) -> None:
+    (tmp_path / "one.dcm").write_bytes(b"x")
+    unrelated = tmp_path.parent / f"{tmp_path.name}_outside.dcm"
+    unrelated.write_bytes(b"x")
+
+    checkpoint = tmp_path / "resume.checkpoint.json"
+    checkpoint.write_text(
+        '{"version":1,"items":[{"dicom_path":"'
+        + str(unrelated.resolve())
+        + '","status":"ok","measurements":[],"metadata":{},"error":null}]}',
+        encoding="utf-8",
+    )
+
+    fake = _FakePipeline()
+    monkeypatch.setattr(headless_batch_label, "_build_pipeline", lambda _args: fake)
+
+    exit_code = headless_batch_label.run_batch(
+        _args(tmp_path, output_format="json", resume=True, checkpoint_path=checkpoint)
+    )
+
+    assert exit_code == 0
+    assert len(fake.calls) == 1
+    payload = (tmp_path / "results.json").read_text(encoding="utf-8")
+    assert "outside.dcm" not in payload
