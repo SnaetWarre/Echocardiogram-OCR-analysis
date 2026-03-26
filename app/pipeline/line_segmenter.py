@@ -10,7 +10,10 @@ import numpy as np
 from app.pipeline.ocr_engines import OcrToken
 
 
-DEFAULT_HEADER_TRIM_PX = 14
+DEFAULT_HEADER_TRIM_PX = 12
+# Upper bound on header trim so the first measurement line keeps its ascenders;
+# detection can otherwise jump to ~45% of ROI height or the second text run (often ~24px).
+DEFAULT_MAX_HEADER_TRIM_PX = 18
 
 
 def _empty_metadata() -> dict[str, Any]:
@@ -62,6 +65,7 @@ class LineSegmenter:
         segmentation_mode: str = "fixed_pitch",
         target_line_height_px: float = 20.0,
         default_header_trim_px: int = DEFAULT_HEADER_TRIM_PX,
+        max_header_trim_px: int | None = DEFAULT_MAX_HEADER_TRIM_PX,
         projection_threshold_ratio: float = 0.012,
         min_line_height_px: int = 4,
         line_padding_px: int = 2,
@@ -74,6 +78,9 @@ class LineSegmenter:
         self.segmentation_mode = str(segmentation_mode).strip().lower() or "fixed_pitch"
         self.target_line_height_px = max(1.0, float(target_line_height_px))
         self.default_header_trim_px = max(0, int(default_header_trim_px))
+        self.max_header_trim_px = (
+            None if max_header_trim_px is None else max(0, int(max_header_trim_px))
+        )
         self.projection_threshold_ratio = max(0.001, float(projection_threshold_ratio))
         self.min_line_height_px = max(1, int(min_line_height_px))
         self.line_padding_px = max(0, int(line_padding_px))
@@ -324,6 +331,8 @@ class LineSegmenter:
             return min(self.default_header_trim_px, max(0, int(gray.shape[0]) - 1))
 
         max_header_start = max(0, int(gray.shape[0] * self.max_header_fraction))
+        if self.max_header_trim_px is not None:
+            max_header_start = min(max_header_start, self.max_header_trim_px)
         first_start, first_end = runs[0]
 
         if len(runs) >= 2 and first_start <= self.default_header_trim_px:

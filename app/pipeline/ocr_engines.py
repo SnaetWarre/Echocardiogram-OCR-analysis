@@ -16,6 +16,47 @@ import cv2
 import numpy as np
 
 
+def _candidate_mamba_conda_executables() -> list[Path]:
+    """Resolve mamba/conda/micromamba when missing from PATH (common with GUI-spawned Jupyter)."""
+    seen: set[str] = set()
+    ordered: list[Path] = []
+
+    def add(path: Path) -> None:
+        try:
+            resolved = path.resolve()
+        except OSError:
+            resolved = path
+        key = str(resolved)
+        if key in seen:
+            return
+        if resolved.is_file() and os.access(resolved, os.X_OK):
+            seen.add(key)
+            ordered.append(resolved)
+
+    conda_exe = os.environ.get("CONDA_EXE", "").strip()
+    if conda_exe:
+        add(Path(conda_exe))
+
+    home = Path.home()
+    # Prefer mamba/micromamba before conda where both exist.
+    for rel in (
+        "miniforge3/bin/mamba",
+        "mambaforge/bin/mamba",
+        "micromamba/bin/micromamba",
+        "miniforge3/bin/conda",
+        "mambaforge/bin/conda",
+        "miniconda3/bin/mamba",
+        "miniconda3/bin/conda",
+        "anaconda3/bin/conda",
+        "/opt/conda/bin/mamba",
+        "/opt/conda/bin/conda",
+    ):
+        candidate = Path(rel) if rel.startswith("/") else home / rel
+        add(candidate)
+
+    return ordered
+
+
 def _resolve_surya_worker_cmd(worker_script: Path) -> list[str]:
     """
     Build the command to run the Surya worker, auto-detecting the environment runner.
@@ -41,8 +82,24 @@ def _resolve_surya_worker_cmd(worker_script: Path) -> list[str]:
         if runner:
             return [runner, "run", "-n", env_name, "python", str(worker_script)]
 
+    for exe in _candidate_mamba_conda_executables():
+        return [str(exe), "run", "-n", env_name, "python", str(worker_script)]
+
     # Fallback: run with current Python (surya must be installed in this env)
     return [sys.executable, str(worker_script)]
+
+
+def _glm_ocr_require_transformers_in_current_interpreter() -> None:
+    try:
+        import transformers  # noqa: F401
+    except ImportError as exc:
+        env_name = os.getenv("GLM_OCR_ENV", "glm_ocr").strip()
+        raise UnavailableOcrEngineError(
+            "GLM-OCR worker is configured to use the current Python, but 'transformers' is not "
+            "installed here. Either install the deps from envs/glm_ocr.yml into this env, or "
+            "unset GLM_OCR_RUNNER so the app can use mamba/conda (on PATH or under ~/miniforge3, "
+            f"~/mambaforge, etc.) and run the worker in `mamba run -n {env_name}`."
+        ) from exc
 
 
 def _resolve_glm_ocr_worker_cmd(worker_script: Path) -> list[str]:
@@ -53,6 +110,7 @@ def _resolve_glm_ocr_worker_cmd(worker_script: Path) -> list[str]:
     runner_override = os.getenv("GLM_OCR_RUNNER", "").strip().lower()
 
     if runner_override == "python":
+        _glm_ocr_require_transformers_in_current_interpreter()
         return [sys.executable, str(worker_script)]
 
     if runner_override in ("mamba", "conda", "micromamba"):
@@ -68,6 +126,10 @@ def _resolve_glm_ocr_worker_cmd(worker_script: Path) -> list[str]:
         if runner:
             return [runner, "run", "-n", env_name, "python", str(worker_script)]
 
+    for exe in _candidate_mamba_conda_executables():
+        return [str(exe), "run", "-n", env_name, "python", str(worker_script)]
+
+    _glm_ocr_require_transformers_in_current_interpreter()
     return [sys.executable, str(worker_script)]
 
 

@@ -73,6 +73,7 @@ mamba env update -f envs/paddleocr_eval.yml --prune
   mamba run -n glm_ocr pip install torchvision==0.20.1
   ```
   Or refresh from the spec (now includes `torchvision`): `mamba env update -f envs/glm_ocr.yml --prune`
+- **GLM-OCR `No module named 'transformers'` / “use the current Python”**: refresh the env: `mamba env update -f envs/glm_ocr.yml --prune`. The app looks for **mamba/conda on `PATH`**, then common installs (**`$CONDA_EXE`**, `~/miniforge3/bin`, `~/mambaforge/bin`, `/opt/conda/bin`, …) so GUI-spawned Jupyter still finds the runner. If everything fails, it falls back to the **notebook kernel** — install the `glm_ocr` pip stack there or set `GLM_OCR_RUNNER=python` only after doing so.
 - `easyocr_eval` and `paddleocr_eval` pin `numpy<2` to avoid OpenCV wheel ABI mismatches
 - Keep heavyweight OCR dependencies isolated when they conflict with UI/runtime packages
 - Record all benchmark and evaluation runs in `artifacts/ocr_redesign/run_log.jsonl`

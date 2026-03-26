@@ -9,6 +9,8 @@ dependencies:
   - pydicom
   - pillow
   - matplotlib
+  - ipykernel
+  - tesseract
   - pytest
   - requests
   - pip:

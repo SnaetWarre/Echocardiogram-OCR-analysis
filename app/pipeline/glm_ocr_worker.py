@@ -7,28 +7,46 @@ import traceback
 import contextlib
 import tempfile
 import uuid
+from pathlib import Path
 from PIL import Image
 
 os.environ.setdefault("TQDM_DISABLE", "1")
 os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
+
+DEFAULT_GLM_OCR_MODEL_ID = "zai-org/GLM-OCR"
+
+
+def _resolve_glm_ocr_model_path() -> str:
+    explicit = os.environ.get("GLM_OCR_MODEL", "").strip()
+    if explicit:
+        return explicit
+
+    cache_root = Path.home() / ".cache" / "huggingface" / "hub" / "models--zai-org--GLM-OCR" / "snapshots"
+    if cache_root.is_dir():
+        snapshots = [path for path in cache_root.iterdir() if path.is_dir()]
+        if snapshots:
+            snapshots.sort(key=lambda path: path.stat().st_mtime, reverse=True)
+            return str(snapshots[0])
+
+    return DEFAULT_GLM_OCR_MODEL_ID
+
 
 def load_glm_ocr_model():
     """Load the GLM-OCR model and processor."""
     try:
         from transformers import AutoProcessor, AutoModelForImageTextToText
 
-        # Hub id or local directory (snapshots use cache after first download).
-        _model = os.environ.get("GLM_OCR_MODEL", "").strip()
-        MODEL_PATH = _model if _model else "zai-org/GLM-OCR"
+        # Prefer a cached local snapshot when available so the worker can run fully offline.
+        model_path = _resolve_glm_ocr_model_path()
         
         with (
             open(os.devnull, "w", encoding="utf-8") as devnull,
             contextlib.redirect_stdout(devnull),
             contextlib.redirect_stderr(devnull),
         ):
-            processor = AutoProcessor.from_pretrained(MODEL_PATH)
+            processor = AutoProcessor.from_pretrained(model_path)
             model = AutoModelForImageTextToText.from_pretrained(
-                pretrained_model_name_or_path=MODEL_PATH,
+                pretrained_model_name_or_path=model_path,
                 torch_dtype="auto",
                 device_map="auto",
                 trust_remote_code=True
