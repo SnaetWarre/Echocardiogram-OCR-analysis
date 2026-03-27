@@ -206,14 +206,16 @@ def score_predictions(
             score = 0
             if line_match:
                 score += 100
-            if prefix_match:
+            # Only score component matches when the expected side actually contains that component.
+            # This avoids rewarding unrelated predictions just because both sides have missing fields.
+            if expected.prefix is not None and prefix_match:
                 score += 8
-            if label_match:
-                score += 4
-            if value_match:
-                score += 2
-            if unit_match:
-                score += 1
+            if expected.label is not None and label_match:
+                score += 16
+            if expected.value is not None and value_match:
+                score += 12
+            if expected.unit is not None and unit_match:
+                score += 6
 
             candidate = MatchResult(
                 expected_text=expected.line,
@@ -242,7 +244,16 @@ def score_predictions(
             if full_match:
                 break
 
-        if best_result is not None and best_idx is not None:
+        plausible_match = (
+            best_result is not None
+            and (
+                best_result.line_match
+                or best_result.label_match
+                or (best_result.value_match and expected.value is not None)
+            )
+        )
+
+        if best_result is not None and best_idx is not None and plausible_match:
             used_preds.add(best_idx)
             results.append(best_result)
         else:

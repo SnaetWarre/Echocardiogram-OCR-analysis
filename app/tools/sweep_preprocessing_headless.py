@@ -393,6 +393,7 @@ def _result_to_item(path: Path, result: Any, config: SweepConfig) -> dict[str, A
             "dicom_path": _canonical_path(path),
             "status": "error",
             "measurements": [],
+            "line_predictions": [],
             "metadata": {"config_name": config.name},
             "error": str(getattr(result, "error", "unknown error")),
         }
@@ -408,10 +409,26 @@ def _result_to_item(path: Path, result: Any, config: SweepConfig) -> dict[str, A
         }
         for measurement in ai_result.measurements
     ]
+    line_predictions = []
+    for entry in raw.get("line_predictions", []) if isinstance(raw.get("line_predictions", []), list) else []:
+        if not isinstance(entry, dict):
+            continue
+        text = str(entry.get("text") or "").strip()
+        if not text:
+            continue
+        line_predictions.append(
+            {
+                "order": entry.get("order"),
+                "text": text,
+                "confidence": entry.get("confidence"),
+                "parser_source": entry.get("parser_source"),
+            }
+        )
     return {
         "dicom_path": _canonical_path(path),
         "status": "ok",
         "measurements": measurements,
+        "line_predictions": line_predictions,
         "metadata": {
             "config_name": config.name,
             "model_name": ai_result.model_name,
@@ -501,6 +518,7 @@ def _result_error_item(path: Path, config: SweepConfig, error_type: str, message
         "dicom_path": _canonical_path(path),
         "status": "error",
         "measurements": [],
+        "line_predictions": [],
         "metadata": {"config_name": config.name},
         "error": {"type": error_type, "message": message},
     }
@@ -567,6 +585,24 @@ def _score_labeled_subset(
         item = item_by_path.get(key)
         predicted_measurements = item.get("measurements", []) if isinstance(item, dict) else []
         predictions: list[dict[str, str | None]] = []
+        seen_prediction_keys: set[tuple[str, str, str]] = set()
+
+        def _append_prediction(name: str | None, value: str | None, unit: str | None) -> None:
+            prediction = {
+                "name": name,
+                "value": value,
+                "unit": unit,
+            }
+            dedupe_key = (
+                str(prediction["name"] or "").strip().lower(),
+                str(prediction["value"] or "").strip().lower(),
+                str(prediction["unit"] or "").strip().lower(),
+            )
+            if dedupe_key in seen_prediction_keys:
+                return
+            seen_prediction_keys.add(dedupe_key)
+            predictions.append(prediction)
+
         for measurement in predicted_measurements if isinstance(predicted_measurements, list) else []:
             if not isinstance(measurement, dict):
                 continue
@@ -577,13 +613,20 @@ def _score_labeled_subset(
                 text = str(raw).strip()
                 return text or None
 
-            predictions.append(
-                {
-                    "name": _clean_value("name"),
-                    "value": _clean_value("value"),
-                    "unit": _clean_value("unit"),
-                }
+            _append_prediction(
+                _clean_value("name"),
+                _clean_value("value"),
+                _clean_value("unit"),
             )
+
+        raw_lines = item.get("line_predictions", []) if isinstance(item, dict) else []
+        for line in raw_lines if isinstance(raw_lines, list) else []:
+            if not isinstance(line, dict):
+                continue
+            line_text = str(line.get("text") or "").strip()
+            if not line_text:
+                continue
+            _append_prediction(line_text, None, None)
 
         if predictions:
             files_with_predictions += 1
