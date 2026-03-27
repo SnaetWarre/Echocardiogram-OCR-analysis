@@ -745,11 +745,11 @@
         },
         {
           "order": 2,
-          "text": "MV DecT 287 m/s"
+          "text": "MV DecT 287 ms"
         },
         {
           "order": 3,
-          "text": "MV Dec Slope 3 m/s 2"
+          "text": "MV Dec Slope 3 m/s2"
         },
         {
           "order": 4,
@@ -2144,7 +2144,7 @@
         },
         {
           "order": 3,
-          "text": "LVESV MOD BP 76.70 ml"
+          "text": "LVESV MOD BP 76.40 ml"
         },
         {
           "order": 4,

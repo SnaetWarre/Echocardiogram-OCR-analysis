@@ -22,6 +22,37 @@ def _to_gray(image: np.ndarray) -> np.ndarray:
     raise ValueError(f"Unsupported frame shape: {image.shape}")
 
 
+def preprocess_gray_x3_lanczos(roi: np.ndarray) -> np.ndarray:
+    """Grayscale and upscale with ×3 Lanczos only (no unsharp mask, no binarization).
+
+    Matches the ``gray_x3_lanczos`` line-OCR config from the broad preprocessing sweep
+    (GLM-OCR on labeled validation; see ``artifacts/ocr_redesign/preprocess_sweep_glm_broad``).
+    """
+    gray = _to_gray(roi)
+    if gray.size == 0:
+        return gray
+    try:
+        cv2: Any = importlib.import_module("cv2")
+    except ImportError:
+        scale = max(1, min(DEFAULT_SCALE_FACTOR, 6))
+        if scale <= 1:
+            return gray
+        return np.repeat(np.repeat(gray, scale, axis=0), scale, axis=1)
+
+    scale = max(1, min(DEFAULT_SCALE_FACTOR, 6))
+    if scale <= 1:
+        return gray
+    interpolation_map = {
+        "linear": cv2.INTER_LINEAR,
+        "cubic": cv2.INTER_CUBIC,
+        "lanczos": cv2.INTER_LANCZOS4,
+    }
+    inter_flag = interpolation_map.get(str(DEFAULT_SCALE_ALGO).lower(), cv2.INTER_LANCZOS4)
+    height = int(gray.shape[0] * scale)
+    width = int(gray.shape[1] * scale)
+    return cv2.resize(gray, (width, height), interpolation=inter_flag)
+
+
 def preprocess_roi(
     roi: np.ndarray,
     scale_factor: int | None = DEFAULT_SCALE_FACTOR,
