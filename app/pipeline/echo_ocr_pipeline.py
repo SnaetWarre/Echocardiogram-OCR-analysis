@@ -42,7 +42,7 @@ from app.repo_paths import DEFAULT_OCR_REDESIGN_LEXICON_PATH
 DEFAULT_OCR_ENGINE = "glm-ocr"
 DEFAULT_FALLBACK_OCR_ENGINE = "surya"
 DEFAULT_PARSER_MODE = "off"
-DEFAULT_SEGMENTATION_MODE = "fixed_pitch"
+DEFAULT_SEGMENTATION_MODE = "row_projection"
 DEFAULT_TARGET_LINE_HEIGHT_PX = 20.0
 DEFAULT_SEGMENTATION_EXTRA_LEFT_PAD_PX = 16
 
@@ -121,6 +121,8 @@ class EchoOcrPipeline(BasePipeline):
         self._scale_algo = str(parameters.get("scale_algo", DEFAULT_SCALE_ALGO)).strip().lower()
         self._contrast_mode = str(parameters.get("contrast_mode", DEFAULT_CONTRAST_MODE)).strip().lower()
         self._segmentation_mode = str(parameters.get("segmentation_mode", DEFAULT_SEGMENTATION_MODE)).strip().lower()
+        if self._segmentation_mode == "fixed_pitch":
+            self._segmentation_mode = "row_projection"
         self._target_line_height_px = self._read_float_parameter(
             parameters,
             "target_line_height_px",

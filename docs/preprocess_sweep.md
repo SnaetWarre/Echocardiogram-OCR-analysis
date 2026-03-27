@@ -44,6 +44,46 @@ mamba run -n DL python -m app.tools.sweep_preprocessing_headless \
   --output-dir artifacts/ocr_redesign/preprocess_sweep_tesseract_broad
 ```
 
+## Validation workflow (labels → failures → sweep)
+
+1. Label measurements in the GUI; ground truth lives in `labels/labels.json` (train/validation splits).
+2. Run a sweep; each config writes `label_scores.json` with per-line match detail; `summary.csv` ranks configs by exact/value match rate on the labeled subset.
+3. For mismatches, use `python -m app.tools.export_validation_failures path/to/label_scores.json` for `validation_exact_failures.csv`, or `notebooks/validation_failure_walkthrough.ipynb` for visual replay.
+4. Iterate: try `--config-set order_matrix` or `--config-set manifest` with `--engine glm-ocr` (or `tesseract`, etc.) to compare preprocessing and engines on the same DICOMs.
+
+## Parameterized order matrix
+
+Builds configs from flags (Cartesian product with pruning: no binarization uses only `scale_then_threshold`; Otsu at scale 1 is omitted unless `--matrix-include-bin-1x`).
+
+```bash
+mamba run -n DL python -m app.tools.sweep_preprocessing_headless \
+  /path/to/dicom_root \
+  --recursive \
+  --engine glm-ocr \
+  --config-set order_matrix \
+  --matrix-scales 1,2,3 \
+  --matrix-bin none,otsu \
+  --matrix-order scale_then_threshold,threshold_then_scale \
+  --matrix-recipe plain,unsharp \
+  --matrix-input gray,bgr \
+  --output-dir artifacts/ocr_redesign/order_matrix_glm
+```
+
+Relevant flags: `--matrix-scale-algo`, `--matrix-binary-scale-algo` (default `nearest` for upscaling **after** Otsu), `--matrix-multiview`, `--matrix-no-morph-close`, `--only-configs`, `--exclude-configs`.
+
+## JSON manifest configs
+
+Use `--config-set manifest --config-manifest path.json` where the file is a JSON array of objects: `name`, `description`, optional `multiview_mode` (`none` or `pipeline`), and `default_view` (fields of `PreprocessSpec`: `input_mode`, `scale_factor`, `scale_algo`, `threshold_mode`, `preprocess_order`, `binary_scale_algo`, etc.).
+
+## Faster runs on failing DICOMs only
+
+- `--restrict-from-label-scores path/to/label_scores.json` — keep only paths in the given split (`--split`) that have at least one `full_match: false` line.
+- `--restrict-dicom-paths-file paths.txt` — one absolute or resolvable DICOM path per line (`#` comments allowed). If both restrict flags are set, the intersection is used.
+
+## Summary baseline column
+
+`summary.csv` includes `delta_exact_vs_baseline`. Use `--baseline-config my_cfg_name` to compare against a named row; if omitted, the tool falls back to `default_multiview` when that config appears in the same run.
+
 ## Notes
 
 - The default sweep engine is `tesseract` to isolate preprocessing effects with a fast, stable OCR backend.
@@ -52,3 +92,4 @@ mamba run -n DL python -m app.tools.sweep_preprocessing_headless \
 - For long GLM runs, use `--resume-configs --skip-existing --checkpoint-interval 10 --progress-interval 10`.
 - To rerun only one problematic config, use `--only-configs otsu_close_x3_lanczos_no_unsharp`.
 - `--per-file-timeout-s 180` marks a stuck DICOM as an error, checkpoints progress, rebuilds the worker, and continues.
+- `PreprocessSpec` supports `input_mode` `gray` (default) vs `bgr` (color line crop until threshold), `preprocess_order` `scale_then_threshold` vs `threshold_then_scale`, and `binary_scale_algo` for the second upsample after binarization.

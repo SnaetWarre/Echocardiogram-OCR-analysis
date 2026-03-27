@@ -26,7 +26,7 @@ def test_line_segmenter_detects_header_trim_and_line_boxes() -> None:
     assert len(result.lines) == 2
     assert result.lines[0].bbox[1] >= result.header_trim_px
     assert result.lines[1].bbox[1] > result.lines[0].bbox[1]
-    assert all(line.metadata.get("source") == "fixed_pitch" for line in result.lines)
+    assert all(line.metadata.get("source") == "projection" for line in result.lines)
 
 
 def test_line_segmenter_recovers_full_content_when_no_text_is_visible() -> None:
@@ -101,57 +101,20 @@ def test_line_segmenter_normalizes_xyxy_token_boxes_for_dense_panel_rows() -> No
     assert [line.metadata.get("token_count") for line in result.lines] == [2, 2, 2]
 
 
-def test_line_segmenter_fixed_pitch_uses_gap_midpoints_for_boundaries() -> None:
-    roi = np.zeros((64, 120, 3), dtype=np.uint8)
-    roi[:, :, :] = (0x1A, 0x21, 0x29)
-    roi[24:28, 10:100, :] = 255
-    roi[44:48, 12:102, :] = 255
-
-    segmenter = LineSegmenter(target_line_height_px=20.0)
-    segmenter.detect_header_trim = lambda _roi: 24  # type: ignore[method-assign]
-
-    result = segmenter.segment(roi)
-
-    assert len(result.lines) == 2
-    assert result.lines[0].bbox[1] == 24
-    assert result.lines[0].bbox[1] + result.lines[0].bbox[3] == result.lines[1].bbox[1]
-    assert result.lines[1].bbox[1] == 38
-    assert result.lines[0].metadata.get("estimated_line_count") == 2
-    assert all(line.metadata.get("placement") == "gap_midpoint" for line in result.lines)
-
-
 def test_line_segmenter_extra_left_pad_expands_crop_left() -> None:
     roi = np.zeros((64, 120, 3), dtype=np.uint8)
     roi[:, :, :] = (0x1A, 0x21, 0x29)
     roi[24:28, 10:100, :] = 255
     roi[44:48, 12:102, :] = 255
 
-    tight = LineSegmenter(target_line_height_px=20.0, extra_left_pad_px=0)
+    tight = LineSegmenter(extra_left_pad_px=0)
     tight.detect_header_trim = lambda _roi: 24  # type: ignore[method-assign]
-    loose = LineSegmenter(target_line_height_px=20.0, extra_left_pad_px=16)
+    loose = LineSegmenter(extra_left_pad_px=16)
     loose.detect_header_trim = lambda _roi: 24  # type: ignore[method-assign]
 
     r_tight = tight.segment(roi)
     r_loose = loose.segment(roi)
     assert r_loose.lines[0].bbox[0] < r_tight.lines[0].bbox[0]
-
-
-def test_line_segmenter_fixed_pitch_gap_boundaries_keep_text_covered() -> None:
-    roi = np.zeros((64, 120, 3), dtype=np.uint8)
-    roi[:, :, :] = (0x1A, 0x21, 0x29)
-    roi[24:28, 10:100, :] = 255
-    roi[44:48, 12:102, :] = 255
-
-    segmenter = LineSegmenter(target_line_height_px=20.0, snap_to_valleys=True)
-    segmenter.detect_header_trim = lambda _roi: 24  # type: ignore[method-assign]
-
-    result = segmenter.segment(roi)
-
-    assert len(result.lines) == 2
-    b0 = result.lines[0].bbox
-    b1 = result.lines[1].bbox
-    assert b0[1] <= 24 and b0[1] + b0[3] >= 28
-    assert b1[1] <= 44 and b1[1] + b1[3] >= 48
 
 
 def test_line_segmenter_tracks_component_boxes_per_line_when_cv2_is_available() -> None:
@@ -165,7 +128,7 @@ def test_line_segmenter_tracks_component_boxes_per_line_when_cv2_is_available() 
     roi[44:48, 12:34, :] = 255
     roi[44:48, 64:96, :] = 255
 
-    segmenter = LineSegmenter(target_line_height_px=20.0, line_padding_px=1)
+    segmenter = LineSegmenter(line_padding_px=1)
     segmenter.detect_header_trim = lambda _roi: 24  # type: ignore[method-assign]
 
     result = segmenter.segment(roi)
@@ -190,7 +153,10 @@ def test_line_segmenter_rescues_weak_short_line_between_stronger_rows() -> None:
     roi[34:38, 8:42, :] = 255
     roi[34:38, 54:94, :] = 255
 
-    segmenter = LineSegmenter(target_line_height_px=18.0, merge_gap_px=2, min_line_height_px=3)
+    segmenter = LineSegmenter(
+        merge_gap_px=2,
+        min_line_height_px=3,
+    )
     segmenter.detect_header_trim = lambda _roi: 0  # type: ignore[method-assign]
 
     result = segmenter.segment(roi)

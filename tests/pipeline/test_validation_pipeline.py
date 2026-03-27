@@ -8,7 +8,7 @@ import numpy as np
 from app.models.types import PipelineRequest
 from app.pipeline.echo_ocr_pipeline import DEFAULT_SEGMENTATION_EXTRA_LEFT_PAD_PX, EchoOcrPipeline
 from app.pipeline.ocr_engines import OcrResult
-from app.pipeline.validation_pipeline import (
+from app.runtime.pipeline_presets import (
     build_gui_ocr_comparison_manager,
     build_gui_ocr_manager,
     build_validation_manager,
@@ -61,14 +61,14 @@ def test_build_validation_manager_forces_expected_configuration() -> None:
     assert pipeline.parser.__class__.__name__ == "LocalLlmMeasurementParser"
 
 
-def test_build_gui_ocr_manager_defaults_to_glm_no_parser_fixed_pitch_20px() -> None:
+def test_build_gui_ocr_manager_defaults_to_glm_no_parser_row_projection_20px() -> None:
     manager = build_gui_ocr_manager(glm_ocr_engine=_FakeGlmEngine(), surya_engine=_FakeSuryaEngine())
     pipeline = manager.active()
 
     assert isinstance(pipeline, EchoOcrPipeline)
     assert pipeline.config.parameters["ocr_engine"] == "glm-ocr"
     assert pipeline.config.parameters["parser_mode"] == "off"
-    assert pipeline.config.parameters["segmentation_mode"] == "fixed_pitch"
+    assert pipeline.config.parameters["segmentation_mode"] == "row_projection"
     assert pipeline.config.parameters["target_line_height_px"] == 20.0
     assert pipeline.config.parameters["panel_validation_mode"] == "off"
     assert pipeline.config.parameters["vision_fallback_enabled"] is False
@@ -83,7 +83,7 @@ def test_build_gui_ocr_manager_defaults_to_glm_no_parser_fixed_pitch_20px() -> N
 
 
 def test_build_gui_ocr_comparison_manager_collects_side_by_side_results() -> None:
-    from app.pipeline.validation_pipeline import GuiOcrComparisonPipeline
+    from app.runtime.pipeline_presets import GuiOcrComparisonPipeline
 
     class _StubEchoPipeline(EchoOcrPipeline):
         def __init__(self, engine_name: str) -> None:

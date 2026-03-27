@@ -19,7 +19,8 @@ from app.pipeline.echo_ocr_box_detector import (
     TopLeftBlueGrayBoxDetector,
     _MEASUREMENT_BOX_RGB,
     _MEASUREMENT_BOX_TOLERANCE,
-    _color_distance,
+    _color_match_mask,
+    _color_max_channel_abs_diff,
     _to_gray,
 )
 
@@ -39,7 +40,9 @@ def _parse_args() -> argparse.Namespace:
         "--tolerance",
         type=float,
         default=float(_MEASUREMENT_BOX_TOLERANCE),
-        help=f"RGB distance tolerance around target color {tuple(_MEASUREMENT_BOX_RGB)}",
+        help=(
+            f"Per-channel tolerance (max |channel - target|) for box color {tuple(_MEASUREMENT_BOX_RGB)}"
+        ),
     )
     parser.add_argument(
         "--min-pixels",
@@ -107,8 +110,8 @@ def _compute_debug_masks(
     rgb = _ensure_rgb(search)
     gray = _to_gray(search)
 
-    color_distance = _color_distance(rgb.astype(np.int16), box_color)
-    color_mask = color_distance <= tolerance
+    color_distance = _color_max_channel_abs_diff(rgb, box_color)
+    color_mask = _color_match_mask(rgb, box_color, tolerance)
     refined_mask = np.zeros_like(color_mask, dtype=bool)
 
     try:
@@ -333,7 +336,7 @@ def main() -> int:
     fig.suptitle(
         f"Echo OCR Box Visualization\n"
         f"{args.path.name} | frame={args.frame} | "
-        f"target_rgb={tuple(_MEASUREMENT_BOX_RGB)} | tolerance={args.tolerance} | "
+        f"target_rgb={tuple(_MEASUREMENT_BOX_RGB)} | per_channel_tol={args.tolerance} | "
         f"trim_top={args.trim_top}px",
         fontsize=14,
     )
@@ -362,7 +365,7 @@ def main() -> int:
 
     ax = axes[0, 2]
     im = ax.imshow(debug["color_distance"], cmap="viridis")
-    ax.set_title("Color distance to target")
+    ax.set_title("Max per-channel |pixel − target|")
     ax.axis("off")
     fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
 

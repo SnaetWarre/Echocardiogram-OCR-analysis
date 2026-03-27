@@ -3,9 +3,8 @@
 Usage (from project root):
     mamba run -n DL python -m app.tools.eval_segmentation
 
-Runs each labelled file through the pipeline with both the old (even-split)
-and new (valley-snapped) fixed_pitch segmentation, optionally with smoothing,
-and prints per-file + aggregate accuracy.
+Runs each labelled file through row-projection segmentation with optional ROI
+smoothing on the line crops, and prints per-file + aggregate accuracy.
 """
 
 from __future__ import annotations
@@ -78,10 +77,8 @@ def main() -> None:
 
     engine = build_engine("surya")
     configs: dict[str, dict[str, Any]] = {
-        "baseline": {"snap_to_valleys": False, "smooth": False},
-        "smooth only": {"snap_to_valleys": False, "smooth": True},
-        "valley-snap only": {"snap_to_valleys": True, "smooth": False},
-        "valley-snap + smooth": {"snap_to_valleys": True, "smooth": True},
+        "baseline": {"smooth": False},
+        "smooth only": {"smooth": True},
     }
 
     all_results: dict[str, list[dict[str, Any]]] = {name: [] for name in configs}
@@ -103,9 +100,8 @@ def main() -> None:
 
         for config_name, cfg in configs.items():
             segmenter = LineSegmenter(
-                segmentation_mode="fixed_pitch",
+                segmentation_mode="row_projection",
                 target_line_height_px=20.0,
-                snap_to_valleys=cfg["snap_to_valleys"],
             )
 
             def _preprocess(image: np.ndarray, _smooth: bool = cfg["smooth"]) -> np.ndarray:

@@ -7,11 +7,8 @@ from pathlib import Path
 import pytest
 
 from app.models.types import AiMeasurement
-from app.pipeline.validation_label_writer import (
-    DATASET_TASK,
-    DATASET_VERSION,
-    ValidationLabelWriter,
-)
+from app.validation.datasets import DATASET_TASK, DATASET_VERSION
+from app.validation.label_writer import ValidationLabelWriter
 
 
 # ---------------------------------------------------------------------------

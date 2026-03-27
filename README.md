@@ -22,7 +22,7 @@ This repository contains a PySide6 DICOM viewer, an OCR pipeline for echo measur
 - `app/main.py`: launches the desktop app and startup services.
 - `app/ui/`: windows, dialogs, widgets, Qt state objects, and workers.
 - `app/io/`: DICOM readers, lazy frame loading, metadata extraction, and normalization.
-- `app/pipeline/`: core OCR orchestration, engines, segmentation, transcription, validation helpers, and compatibility wrappers for older import paths.
+- `app/pipeline/`: core OCR orchestration, engines, segmentation, transcription, and validation-adjacent helpers.
 
 ### Domain Packages
 
@@ -42,7 +42,7 @@ This repository contains a PySide6 DICOM viewer, an OCR pipeline for echo measur
 - `app/tools/train_line_recognizer.py`: recognizer training run skeleton.
 - `app/tools/eval_segmentation.py`: segmentation benchmark entrypoint.
 
-The root `tools/` directory is kept only for compatibility wrappers. New tool entrypoints should live under `app/tools/`.
+CLI entrypoints live under `app/tools/`; run them with `python -m app.tools.<module>`.
 
 ## Data And Artifacts
 
@@ -78,6 +78,6 @@ mamba run -n DL python -m app.tools.headless_batch_label /path/to/dicoms --recur
 
 ## Notes
 
-- Some older import paths under `app/pipeline/` and `app/ui/` remain as wrappers so existing tests and scripts keep working while the structure is cleaned up.
+- Prefer `app.runtime.*` and `app.validation.*` for GUI presets and label I/O instead of duplicate re-exports.
 - If you are looking for label schema or evaluation code, start in `app/validation/`, not `app/tools/`.
 - If you are looking for OCR preprocessing, start in `app/ocr/preprocessing.py`.

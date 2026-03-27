@@ -147,7 +147,7 @@ flowchart TD
 | **Crop ROI** | Cuts that rectangle out of the frame. | All following steps use a small image, not the full ultrasound view. |
 | **Scout OCR (primary)** | One OCR pass on the **whole** ROI for rough text + **tokens** (word boxes). | Token positions help place horizontal line cuts. |
 | **Scout fallback** | If primary scout has **no usable token text**, run the **fallback** engine on the same ROI once. | Recovers segmentation hints when the primary chokes on full-panel layout. |
-| **LineSegmenter** | Splits the ROI into horizontal **line bboxes** (fixed pitch, ink projection, token clustering, weak-line rescue). | Wrong cuts → wrong text per crop. |
+| **LineSegmenter** | Splits the ROI into horizontal **line bboxes** (default: row ink projection + gap midpoints; optional token clustering in `adaptive` mode). | Wrong cuts → wrong text per crop. |
 | **LineTranscriber** | Per line crop: preprocess, primary OCR, extra **views** (CLAHE, adaptive threshold), **fallback** OCR if quality is poor, optional **vision LLM**. Picks best candidate per line. | Main place where each measurement line is read clearly. |
 | **LexiconReranker** (optional) | If a lexicon exists: propose **repairs** and **re-score** candidates; can optimize across the **whole panel** so lines do not fight over the same best string. | Nudges “almost right” OCR toward label-like text. |
 | **LineFirstParser** | Parses each **line string** into structured fields (line-first decoder). | Aligns with how measurement lines are written. |

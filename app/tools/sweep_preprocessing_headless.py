@@ -7,7 +7,7 @@ import os
 import signal
 import sys
 import time
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, fields
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
@@ -24,7 +24,12 @@ from app.ocr.preprocessing import _to_gray
 from app.pipeline.ai_pipeline import PipelineConfig
 from app.pipeline.echo_ocr_pipeline import EchoOcrPipeline
 from app.pipeline.ocr_engines import build_engine
-from app.validation.datasets import LabeledFile, parse_labels, parse_requested_splits
+from app.validation.datasets import (
+    LabeledFile,
+    normalize_split_name,
+    parse_labels,
+    parse_requested_splits,
+)
 from app.validation.evaluation import score_predictions
 
 DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "artifacts" / "ocr_redesign" / "preprocess_sweep"
@@ -44,6 +49,9 @@ class PreprocessSpec:
     threshold_mode: str = "none"
     morph_close: bool = False
     smooth: bool = False
+    input_mode: str = "gray"
+    preprocess_order: str = "scale_then_threshold"
+    binary_scale_algo: str = "nearest"
 
 
 @dataclass(frozen=True)
@@ -70,38 +78,70 @@ def _discover_files(root: Path, pattern: str, recursive: bool) -> list[Path]:
     return sorted(files, key=lambda p: _canonical_path(p))
 
 
-def _preprocess_with_spec(image: np.ndarray, spec: PreprocessSpec) -> np.ndarray:
-    gray = _to_gray(image)
-    if gray.size == 0:
-        return gray
+def _interpolation_flag(algo: str) -> int:
+    interpolation_map = {
+        "linear": cv2.INTER_LINEAR,
+        "cubic": cv2.INTER_CUBIC,
+        "lanczos": cv2.INTER_LANCZOS4,
+        "nearest": cv2.INTER_NEAREST,
+    }
+    return interpolation_map.get(str(algo).lower(), cv2.INTER_CUBIC)
 
+
+def _ensure_initial_working(image: np.ndarray, input_mode: str) -> np.ndarray:
+    mode = str(input_mode or "gray").lower()
+    if image.size == 0:
+        return image
+    if mode == "bgr":
+        if image.ndim == 2:
+            return cv2.cvtColor(image.astype(np.uint8, copy=False), cv2.COLOR_GRAY2BGR)
+        if image.ndim == 3 and image.shape[-1] >= 3:
+            return image[..., :3].astype(np.uint8, copy=False)
+        raise ValueError(f"bgr input_mode requires 2d or 3d image, got shape {image.shape}")
+    return _to_gray(image)
+
+
+def _to_gray_plane_if_needed(working: np.ndarray) -> np.ndarray:
+    if working.ndim == 3:
+        return _to_gray(working)
+    return working
+
+
+def _apply_contrast(working: np.ndarray, spec: PreprocessSpec) -> np.ndarray:
+    if spec.contrast_mode == "none":
+        return working
+    base = _to_gray_plane_if_needed(working)
     if spec.contrast_mode == "clahe":
         clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-        working = clahe.apply(gray)
-    elif spec.contrast_mode == "adaptive_threshold":
-        working = cv2.equalizeHist(gray)
-    else:
-        working = gray
+        return clahe.apply(base)
+    if spec.contrast_mode == "adaptive_threshold":
+        return cv2.equalizeHist(base)
+    return base
 
-    if spec.unsharp:
-        gaussian = cv2.GaussianBlur(working, (5, 5), 1.0)
-        working = cv2.addWeighted(working, 1.5, gaussian, -0.5, 0)
 
-    scale = max(1, min(int(spec.scale_factor), 6))
-    if scale > 1:
-        interpolation_map = {
-            "linear": cv2.INTER_LINEAR,
-            "cubic": cv2.INTER_CUBIC,
-            "lanczos": cv2.INTER_LANCZOS4,
-        }
-        inter_flag = interpolation_map.get(str(spec.scale_algo).lower(), cv2.INTER_CUBIC)
-        width = int(working.shape[1] * scale)
-        height = int(working.shape[0] * scale)
-        working = cv2.resize(working, (width, height), interpolation=inter_flag)
+def _apply_unsharp(working: np.ndarray, spec: PreprocessSpec) -> np.ndarray:
+    if not spec.unsharp:
+        return working
+    gaussian = cv2.GaussianBlur(working, (5, 5), 1.0)
+    return cv2.addWeighted(working, 1.5, gaussian, -0.5, 0)
 
+
+def _apply_resize(working: np.ndarray, scale: int, algo: str) -> np.ndarray:
+    if scale <= 1:
+        return working
+    inter_flag = _interpolation_flag(algo)
+    width = int(working.shape[1] * scale)
+    height = int(working.shape[0] * scale)
+    return cv2.resize(working, (width, height), interpolation=inter_flag)
+
+
+def _apply_threshold_morph_smooth(working: np.ndarray, spec: PreprocessSpec) -> np.ndarray:
+    if spec.threshold_mode == "none":
+        return working
+    gray = _to_gray_plane_if_needed(working)
     if spec.threshold_mode == "adaptive":
-        working = cv2.adaptiveThreshold(
-            working,
+        binary = cv2.adaptiveThreshold(
+            gray,
             255,
             cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
             cv2.THRESH_BINARY,
@@ -109,17 +149,50 @@ def _preprocess_with_spec(image: np.ndarray, spec: PreprocessSpec) -> np.ndarray
             2,
         )
     elif spec.threshold_mode == "otsu":
-        _ret, working = cv2.threshold(working, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        _ret, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    else:
+        return working
 
-    if spec.morph_close and spec.threshold_mode != "none":
+    out = binary
+    if spec.morph_close:
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
-        working = cv2.morphologyEx(working, cv2.MORPH_CLOSE, kernel)
+        out = cv2.morphologyEx(out, cv2.MORPH_CLOSE, kernel)
 
-    if spec.smooth and spec.threshold_mode != "none":
-        blurred = cv2.GaussianBlur(working, (3, 3), 0.6)
-        _ret, working = cv2.threshold(blurred, 127, 255, cv2.THRESH_BINARY)
+    if spec.smooth:
+        blurred = cv2.GaussianBlur(out, (3, 3), 0.6)
+        _ret, out = cv2.threshold(blurred, 127, 255, cv2.THRESH_BINARY)
 
-    return working
+    return out
+
+
+def _preprocess_with_spec(image: np.ndarray, spec: PreprocessSpec) -> np.ndarray:
+    working = _ensure_initial_working(image, spec.input_mode)
+    if working.size == 0:
+        return working
+
+    working = _apply_contrast(working, spec)
+    working = _apply_unsharp(working, spec)
+
+    scale = max(1, min(int(spec.scale_factor), 6))
+    order = str(spec.preprocess_order or "scale_then_threshold").lower()
+    if order not in ("scale_then_threshold", "threshold_then_scale"):
+        order = "scale_then_threshold"
+
+    if spec.threshold_mode == "none":
+        return _apply_resize(working, scale, spec.scale_algo)
+
+    if order == "scale_then_threshold":
+        working = _apply_resize(working, scale, spec.scale_algo)
+        return _apply_threshold_morph_smooth(working, spec)
+
+    working = _apply_threshold_morph_smooth(working, spec)
+    return _apply_resize(working, scale, spec.binary_scale_algo)
+
+
+def preprocess_spec_from_dict(data: dict[str, Any]) -> PreprocessSpec:
+    allowed = {f.name for f in fields(PreprocessSpec)}
+    kwargs = {k: v for k, v in data.items() if k in allowed}
+    return PreprocessSpec(**kwargs)
 
 
 def _pipeline_alt_views(default_spec: PreprocessSpec) -> dict[str, Callable[[np.ndarray], np.ndarray]]:
@@ -131,6 +204,9 @@ def _pipeline_alt_views(default_spec: PreprocessSpec) -> dict[str, Callable[[np.
         threshold_mode="adaptive",
         morph_close=True,
         smooth=False,
+        input_mode=default_spec.input_mode,
+        preprocess_order=default_spec.preprocess_order,
+        binary_scale_algo=default_spec.binary_scale_algo,
     )
     clahe = PreprocessSpec(
         contrast_mode="clahe",
@@ -140,6 +216,9 @@ def _pipeline_alt_views(default_spec: PreprocessSpec) -> dict[str, Callable[[np.
         threshold_mode="otsu",
         morph_close=True,
         smooth=False,
+        input_mode=default_spec.input_mode,
+        preprocess_order=default_spec.preprocess_order,
+        binary_scale_algo=default_spec.binary_scale_algo,
     )
     return {
         "high_contrast": lambda image, _spec=high_contrast: _preprocess_with_spec(image, _spec),
@@ -344,6 +423,201 @@ def _broad_configs() -> list[SweepConfig]:
             ),
         ),
     ]
+
+
+def _parse_csv_ints(text: str) -> list[int]:
+    return [int(item.strip()) for item in text.split(",") if item.strip()]
+
+
+def _parse_csv_lower(text: str) -> list[str]:
+    return [item.strip().lower() for item in text.split(",") if item.strip()]
+
+
+def _normalize_preprocess_order_token(token: str) -> str | None:
+    t = token.strip().lower().replace("-", "_")
+    aliases_st = {"scale_then_threshold", "scale_first", "st", "sf"}
+    aliases_ts = {"threshold_then_scale", "bin_first", "threshold_first", "ts", "bf"}
+    if t in aliases_st:
+        return "scale_then_threshold"
+    if t in aliases_ts:
+        return "threshold_then_scale"
+    return None
+
+
+def _build_order_matrix_configs(args: Any) -> list[SweepConfig]:
+    scales = _parse_csv_ints(args.matrix_scales)
+    bins = _parse_csv_lower(args.matrix_bin)
+    order_tokens = [x.strip() for x in str(args.matrix_order).split(",") if x.strip()]
+    recipes = _parse_csv_lower(args.matrix_recipe)
+    inmodes = _parse_csv_lower(args.matrix_input)
+    scale_algo = str(args.matrix_scale_algo or "lanczos").strip() or "lanczos"
+    binary_scale_algo = str(args.matrix_binary_scale_algo or "nearest").strip() or "nearest"
+    multiview = str(getattr(args, "matrix_multiview", "none") or "none")
+    if multiview not in ("none", "pipeline"):
+        multiview = "none"
+
+    order_choices: list[str] = []
+    for tok in order_tokens:
+        norm = _normalize_preprocess_order_token(tok)
+        if norm and norm not in order_choices:
+            order_choices.append(norm)
+    if not order_choices:
+        order_choices = ["scale_then_threshold", "threshold_then_scale"]
+
+    configs: list[SweepConfig] = []
+    for im in inmodes:
+        if im not in ("gray", "bgr"):
+            continue
+        for recipe in recipes:
+            if recipe in ("plain", "pln", "p"):
+                unsharp = False
+            elif recipe in ("unsharp", "ush", "u"):
+                unsharp = True
+            else:
+                continue
+            for scale in scales:
+                if scale < 1 or scale > 6:
+                    continue
+                for bin_mode in bins:
+                    if bin_mode in ("none", "off", "nbin", "no"):
+                        threshold_mode = "none"
+                    elif bin_mode in ("otsu", "bin"):
+                        threshold_mode = "otsu"
+                    else:
+                        continue
+
+                    morph_close = bool(
+                        threshold_mode == "otsu"
+                        and not getattr(args, "matrix_no_morph_close", False)
+                    )
+
+                    if threshold_mode == "otsu" and int(scale) == 1 and not getattr(
+                        args, "matrix_include_bin_1x", False
+                    ):
+                        continue
+
+                    if threshold_mode == "none":
+                        order_iter = ["scale_then_threshold"]
+                    else:
+                        order_iter = list(order_choices)
+
+                    for ordv in order_iter:
+                        im_short = "bgr" if im == "bgr" else "gray"
+                        rec_short = "ush" if unsharp else "pln"
+                        bin_short = "nbin" if threshold_mode == "none" else "otsu"
+                        ord_short = "st" if ordv == "scale_then_threshold" else "ts"
+                        mc_short = ""
+                        if threshold_mode != "none":
+                            mc_short = "_nm" if not morph_close else "_mc"
+                        name = f"om_{im_short}_{rec_short}_s{scale}_{bin_short}_{ord_short}{mc_short}"
+                        desc = (
+                            f"order_matrix: input={im_short}, "
+                            f"recipe={'unsharp' if unsharp else 'plain'}, "
+                            f"scale={scale}x {scale_algo}, bin={bin_short}, order={ordv}, "
+                            f"morph_close={morph_close}"
+                        )
+                        spec = PreprocessSpec(
+                            contrast_mode="none",
+                            scale_factor=int(scale),
+                            scale_algo=scale_algo,
+                            unsharp=unsharp,
+                            threshold_mode=threshold_mode,
+                            morph_close=morph_close,
+                            smooth=False,
+                            input_mode=im,
+                            preprocess_order=ordv,
+                            binary_scale_algo=binary_scale_algo,
+                        )
+                        configs.append(
+                            SweepConfig(
+                                name=name,
+                                description=desc,
+                                default_view=spec,
+                                multiview_mode=multiview,
+                            )
+                        )
+    return configs
+
+
+def _load_manifest_configs(path: Path) -> list[SweepConfig]:
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    if isinstance(raw, dict) and "configs" in raw:
+        raw = raw["configs"]
+    if not isinstance(raw, list):
+        raise ValueError(f"Manifest {path} must be a JSON array (or an object with a 'configs' array).")
+    out: list[SweepConfig] = []
+    for idx, obj in enumerate(raw):
+        if not isinstance(obj, dict):
+            raise ValueError(f"Manifest entry {idx} must be a JSON object.")
+        name = str(obj.get("name") or f"manifest_{idx}").strip() or f"manifest_{idx}"
+        desc = str(obj.get("description") or "")
+        mv = str(obj.get("multiview_mode") or "none").strip()
+        if mv not in ("none", "pipeline"):
+            mv = "none"
+        dv = obj.get("default_view")
+        if not isinstance(dv, dict):
+            dv = {}
+        out.append(
+            SweepConfig(
+                name=name,
+                description=desc,
+                default_view=preprocess_spec_from_dict(dv),
+                multiview_mode=mv,
+            )
+        )
+    return out
+
+
+def _restrict_discovered_paths(
+    discovered: list[Path],
+    *,
+    label_scores_path: Path | None,
+    paths_file: Path | None,
+    split_filter: set[str],
+) -> list[Path]:
+    restricts: list[set[str]] = []
+    if paths_file is not None:
+        p = paths_file.expanduser().resolve()
+        if p.is_file():
+            keys: set[str] = set()
+            for line in p.read_text(encoding="utf-8").splitlines():
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                keys.add(_canonical_path(Path(line)))
+            restricts.append(keys)
+    if label_scores_path is not None:
+        p = label_scores_path.expanduser().resolve()
+        if p.is_file():
+            data = json.loads(p.read_text(encoding="utf-8"))
+            keys = set()
+            details = data.get("file_details", [])
+            if not isinstance(details, list):
+                details = []
+            for fd in details:
+                if not isinstance(fd, dict):
+                    continue
+                split_name = normalize_split_name(str(fd.get("split") or ""))
+                if split_filter and split_name not in split_filter:
+                    continue
+                matches = fd.get("matches") or []
+                if not isinstance(matches, list):
+                    matches = []
+                has_failure = any(
+                    not bool(m.get("full_match", True)) for m in matches if isinstance(m, dict)
+                )
+                if not has_failure:
+                    continue
+                fp = str(fd.get("file_path") or "").strip()
+                if fp:
+                    keys.add(_canonical_path(Path(fp)))
+            restricts.append(keys)
+
+    if not restricts:
+        return discovered
+    allow = set.intersection(*restricts) if len(restricts) > 1 else restricts[0]
+    out = [path for path in discovered if _canonical_path(path) in allow]
+    return sorted(out, key=lambda p: _canonical_path(p))
 
 
 def _select_configs(config_set: str) -> list[SweepConfig]:
@@ -731,9 +1005,83 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--config-set",
-        choices=("smoke", "broad"),
+        choices=("smoke", "broad", "order_matrix", "manifest"),
         default="broad",
-        help="Predefined preprocessing sweep set.",
+        help="Predefined sweep set, Cartesian order_matrix, or JSON manifest.",
+    )
+    parser.add_argument(
+        "--config-manifest",
+        type=Path,
+        default=None,
+        help="JSON file (array of {name, description, multiview_mode, default_view}) for config-set manifest.",
+    )
+    parser.add_argument(
+        "--matrix-scales",
+        default="1,2,3",
+        help="Comma-separated scale factors for order_matrix (each 1–6).",
+    )
+    parser.add_argument(
+        "--matrix-bin",
+        default="none,otsu",
+        help="Comma-separated bin modes for order_matrix: none, otsu.",
+    )
+    parser.add_argument(
+        "--matrix-order",
+        default="scale_then_threshold,threshold_then_scale",
+        help="Comma-separated order tokens (st, ts, or full names) when bin is on.",
+    )
+    parser.add_argument(
+        "--matrix-recipe",
+        default="plain,unsharp",
+        help="Comma-separated recipes for order_matrix: plain | unsharp.",
+    )
+    parser.add_argument(
+        "--matrix-input",
+        default="gray",
+        help="Comma-separated input modes for order_matrix: gray | bgr.",
+    )
+    parser.add_argument(
+        "--matrix-scale-algo",
+        default="lanczos",
+        help="Interpolation for continuous upscale in order_matrix.",
+    )
+    parser.add_argument(
+        "--matrix-binary-scale-algo",
+        default="nearest",
+        help="Interpolation when upscaling after binarize (threshold_then_scale).",
+    )
+    parser.add_argument(
+        "--matrix-multiview",
+        choices=("none", "pipeline"),
+        default="none",
+        help="Multiview retries for order_matrix configs.",
+    )
+    parser.add_argument(
+        "--matrix-no-morph-close",
+        action="store_true",
+        help="For order_matrix Otsu rows, disable morphological close.",
+    )
+    parser.add_argument(
+        "--matrix-include-bin-1x",
+        action="store_true",
+        help="Include Otsu rows at scale 1 in order_matrix.",
+    )
+    parser.add_argument(
+        "--restrict-from-label-scores",
+        type=Path,
+        default=None,
+        help="Limit DICOMs to paths with a label line mismatch (split must match --split).",
+    )
+    parser.add_argument(
+        "--restrict-dicom-paths-file",
+        type=Path,
+        default=None,
+        help="One DICOM path per line (# comments ok); intersects with label-scores filter if both set.",
+    )
+    parser.add_argument(
+        "--baseline-config",
+        default="",
+        help="Summary delta vs this config name; if empty, uses default_multiview when present.",
     )
     parser.add_argument(
         "--output-dir",
@@ -795,7 +1143,20 @@ def main() -> int:
         print(f"Input path not found: {input_path}")
         return 2
 
+    label_splits = parse_requested_splits(args.split)
     discovered = _discover_files(input_path, args.pattern, args.recursive)
+    before_restrict = len(discovered)
+    discovered = _restrict_discovered_paths(
+        discovered,
+        label_scores_path=args.restrict_from_label_scores,
+        paths_file=args.restrict_dicom_paths_file,
+        split_filter=label_splits,
+    )
+    if (
+        before_restrict > len(discovered)
+        and (args.restrict_from_label_scores or args.restrict_dicom_paths_file)
+    ):
+        print(f"Restrict filter: DICOMs {len(discovered)} (was {before_restrict}).")
     if args.max_files > 0:
         discovered = discovered[: args.max_files]
     if not discovered:
@@ -807,7 +1168,6 @@ def main() -> int:
         print(f"Labels file not found: {labels_path}")
         return 2
 
-    label_splits = parse_requested_splits(args.split)
     labeled_files = parse_labels(labels_path, split_filter=label_splits)
     discovered_keys = {_canonical_path(path) for path in discovered}
     labeled_files = [item for item in labeled_files if _canonical_path(item.path) in discovered_keys]
@@ -815,8 +1175,23 @@ def main() -> int:
     output_dir = args.output_dir.expanduser()
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    if args.config_set == "manifest":
+        manifest_path = args.config_manifest.expanduser() if args.config_manifest else None
+        if manifest_path is None or not manifest_path.is_file():
+            print("config-set manifest requires --config-manifest pointing to a JSON file.")
+            return 2
+        try:
+            configs = _load_manifest_configs(manifest_path)
+        except ValueError as exc:
+            print(exc)
+            return 2
+    elif args.config_set == "order_matrix":
+        configs = _build_order_matrix_configs(args)
+    else:
+        configs = _select_configs(args.config_set)
+
     configs = _filter_configs(
-        _select_configs(args.config_set),
+        configs,
         only_configs=args.only_configs,
         exclude_configs=args.exclude_configs,
     )
@@ -1015,11 +1390,26 @@ def main() -> int:
             }
         )
 
-    baseline_name = "default_multiview"
-    baseline_row = next((row for row in summary_rows if row["config_name"] == baseline_name), None)
+    explicit_baseline = str(args.baseline_config or "").strip()
+    baseline_row = None
+    effective_baseline_name = ""
+    if explicit_baseline:
+        baseline_row = next(
+            (row for row in summary_rows if row["config_name"] == explicit_baseline),
+            None,
+        )
+        if baseline_row is not None:
+            effective_baseline_name = explicit_baseline
+    if baseline_row is None:
+        baseline_row = next(
+            (row for row in summary_rows if row["config_name"] == "default_multiview"),
+            None,
+        )
+        if baseline_row is not None:
+            effective_baseline_name = "default_multiview"
     baseline_exact = float(baseline_row["exact_match_rate"]) if baseline_row is not None else None
     for row in summary_rows:
-        row["delta_exact_vs_default_multiview"] = (
+        row["delta_exact_vs_baseline"] = (
             round(float(row["exact_match_rate"]) - baseline_exact, 6)
             if baseline_exact is not None
             else ""
@@ -1043,6 +1433,7 @@ def main() -> int:
             "engine": args.engine,
             "parser_mode": args.parser_mode,
             "config_set": args.config_set,
+            "baseline_config": effective_baseline_name,
             "config_count": len(configs),
             "file_count": len(discovered),
             "labeled_file_count": len(labeled_files),
@@ -1063,7 +1454,7 @@ def main() -> int:
             "label_match_rate",
             "prefix_match_rate",
             "detection_rate",
-            "delta_exact_vs_default_multiview",
+            "delta_exact_vs_baseline",
             "elapsed_s",
             "processed_files",
             "ok_files",

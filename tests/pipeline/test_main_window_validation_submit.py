@@ -11,7 +11,7 @@ from PySide6 import QtWidgets
 
 from app.models.types import AiMeasurement, AiResult, OverlayBox
 from app.pipeline.ai_pipeline import PipelineManager
-from app.pipeline.validation_pipeline import GuiOcrComparisonPipeline
+from app.runtime.pipeline_presets import GuiOcrComparisonPipeline
 from app.ui.main_window import MainWindow
 
 

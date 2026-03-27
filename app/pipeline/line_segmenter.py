@@ -51,18 +51,24 @@ class SegmentationResult:
 class LineSegmenter:
     """Split a measurement-panel ROI into horizontal text lines.
 
-    *Vertical* placement: optional header trim (`detect_header_trim`), then fixed-pitch
-    stripes (~`target_line_height_px`, often 20px) or projection/token clustering.
+    *Default (`row_projection`)*: B&W text mask, horizontal ink projection, gap rows, line
+    bands split at **gap midpoints** (``_segment_from_projection``), then optional local
+    refinement for merged tall crops.
 
-    *Horizontal* extent per line: tight bbox from `_text_mask` ink columns in that stripe
-    (``xs.min`` … ``xs.max``) plus `line_padding_px` (default 2). Faint leftmost glyphs can
-    fall outside the mask and be cropped; use `extra_left_pad_px` to widen leftward.
+    *Adaptive* (any other mode, e.g. ``adaptive``): OCR token row clustering first, then
+    projection if needed, then refinement.
+
+    *Horizontal* extent per line: tight bbox from mask / components plus `line_padding_px`
+    (default 2). Use `extra_left_pad_px` to widen leftward for faint leading glyphs.
+
+    `target_line_height_px` is kept for pipeline / UI config compatibility (hint in ``debug``);
+    row geometry is driven by the projection, not by a fixed stripe height.
     """
 
     def __init__(
         self,
         *,
-        segmentation_mode: str = "fixed_pitch",
+        segmentation_mode: str = "row_projection",
         target_line_height_px: float = 20.0,
         default_header_trim_px: int = DEFAULT_HEADER_TRIM_PX,
         max_header_trim_px: int | None = DEFAULT_MAX_HEADER_TRIM_PX,
@@ -72,10 +78,12 @@ class LineSegmenter:
         merge_gap_px: int = 3,
         max_header_fraction: float = 0.45,
         refine_split_min_height_px: int = 10,
-        snap_to_valleys: bool = False,
         extra_left_pad_px: int = 0,
     ) -> None:
-        self.segmentation_mode = str(segmentation_mode).strip().lower() or "fixed_pitch"
+        mode = str(segmentation_mode).strip().lower() or "row_projection"
+        if mode == "fixed_pitch":
+            mode = "row_projection"
+        self.segmentation_mode = mode
         self.target_line_height_px = max(1.0, float(target_line_height_px))
         self.default_header_trim_px = max(0, int(default_header_trim_px))
         self.max_header_trim_px = (
@@ -89,7 +97,6 @@ class LineSegmenter:
         self.merge_gap_px = max(0, int(merge_gap_px))
         self.max_header_fraction = min(max(float(max_header_fraction), 0.0), 1.0)
         self.refine_split_min_height_px = max(self.min_line_height_px * 2, int(refine_split_min_height_px))
-        self.snap_to_valleys = bool(snap_to_valleys)
 
     def segment(
         self,
@@ -107,8 +114,8 @@ class LineSegmenter:
         if content.size > 0:
             content_bbox = (0, header_trim_px, int(content.shape[1]), int(content.shape[0]))
 
-        if self.segmentation_mode == "fixed_pitch":
-            lines = self._segment_fixed_pitch(content, header_trim_px=header_trim_px)
+        if self.segmentation_mode == "row_projection":
+            lines = self._segment_from_projection(content, header_trim_px=header_trim_px)
             if not lines and content.size > 0:
                 lines = [
                     SegmentedLine(
@@ -116,13 +123,14 @@ class LineSegmenter:
                         bbox=(0, header_trim_px, int(content.shape[1]), int(content.shape[0])),
                         component_boxes=((0, header_trim_px, int(content.shape[1]), int(content.shape[0])),),
                         metadata={
-                            "source": "fixed_pitch",
                             "recovered": True,
-                            "reason": "empty_fixed_pitch_segmentation",
-                            "target_line_height_px": self.target_line_height_px,
+                            "reason": "empty_row_projection",
+                            "source": "row_projection",
                         },
                     )
                 ]
+            initial_line_count = len(lines)
+            lines = self._refine_segmented_lines(gray, lines)
             return SegmentationResult(
                 header_trim_px=header_trim_px,
                 content_bbox=content_bbox,
@@ -132,10 +140,9 @@ class LineSegmenter:
                 debug={
                     "line_count": len(lines),
                     "header_trim_px": header_trim_px,
-                    "refined_line_splits": 0,
+                    "refined_line_splits": max(0, len(lines) - initial_line_count),
                     "segmentation_mode": self.segmentation_mode,
                     "target_line_height_px": self.target_line_height_px,
-                    "estimated_line_count": len(lines),
                 },
             )
 
@@ -178,144 +185,9 @@ class LineSegmenter:
                 "header_trim_px": header_trim_px,
                 "refined_line_splits": max(0, len(lines) - initial_line_count),
                 "segmentation_mode": self.segmentation_mode,
+                "target_line_height_px": self.target_line_height_px,
             },
         )
-
-    def _segment_fixed_pitch(self, content: np.ndarray, *, header_trim_px: int) -> list[SegmentedLine]:
-        if content.size == 0:
-            return []
-
-        content_height = int(content.shape[0])
-        estimated_line_count = self._estimate_line_count(content_height)
-        if estimated_line_count <= 0:
-            return []
-
-        mask = self._text_mask(content)
-        row_density = mask.mean(axis=1).astype(np.float32) if mask.size else np.zeros(content_height, dtype=np.float32)
-        runs = self._projection_runs_from_mask(mask, row_density=row_density)
-
-        if runs:
-            lines = self._build_lines_from_runs(
-                mask,
-                runs,
-                header_trim_px=header_trim_px,
-                metadata_factory=lambda order, _run, line_count: {
-                    "source": "fixed_pitch",
-                    "target_line_height_px": self.target_line_height_px,
-                    "estimated_line_count": estimated_line_count,
-                    "stripe_index": order,
-                    "placement": "gap_midpoint",
-                    "line_count": line_count,
-                },
-            )
-            if lines:
-                return lines
-
-        content_width = int(content.shape[1])
-        stripe_edges = self._stripe_edges(content_height, estimated_line_count)
-        lines: list[SegmentedLine] = []
-        if self.snap_to_valleys:
-            stripe_edges = self._snap_edges_to_valleys(stripe_edges, row_density)
-        for order, (start, end) in enumerate(zip(stripe_edges[:-1], stripe_edges[1:], strict=False)):
-            if end <= start:
-                continue
-            band = mask[start:end, :]
-            _ys, xs = np.where(band)
-            band_has_text = bool(xs.size)
-            if xs.size == 0:
-                x1 = 0
-                x2 = content_width
-            else:
-                x1 = max(0, int(xs.min()) - self.line_padding_px - self.extra_left_pad_px)
-                x2 = min(content_width, int(xs.max()) + self.line_padding_px + 1)
-            y1 = start + header_trim_px
-            y2 = end + header_trim_px
-            line_bbox = (x1, y1, max(1, x2 - x1), max(1, y2 - y1))
-            lines.append(
-                SegmentedLine(
-                    order=order,
-                    bbox=line_bbox,
-                    component_boxes=(line_bbox,),
-                    metadata={
-                        "source": "fixed_pitch",
-                        "target_line_height_px": self.target_line_height_px,
-                        "estimated_line_count": estimated_line_count,
-                        "stripe_index": order,
-                        "recovered": not band_has_text,
-                        "reason": "empty_fixed_pitch_band" if not band_has_text else "",
-                    },
-                )
-            )
-        return lines
-
-    def _estimate_line_count(self, content_height: int) -> int:
-        if content_height <= 0:
-            return 0
-        estimated = int(np.floor((float(content_height) / self.target_line_height_px) + 0.5))
-        return max(1, min(content_height, estimated))
-
-    @staticmethod
-    def _stripe_edges(content_height: int, line_count: int) -> list[int]:
-        if content_height <= 0:
-            return [0]
-        if line_count <= 1:
-            return [0, content_height]
-        edges = np.rint(np.linspace(0.0, float(content_height), line_count + 1)).astype(int).tolist()
-        edges[0] = 0
-        edges[-1] = content_height
-        for index in range(1, len(edges) - 1):
-            edges[index] = max(edges[index], edges[index - 1] + 1)
-        for index in range(len(edges) - 2, 0, -1):
-            edges[index] = min(edges[index], edges[index + 1] - 1)
-        return edges
-
-    def _snap_edges_to_valleys(
-        self,
-        edges: list[int],
-        row_density: np.ndarray,
-    ) -> list[int]:
-        """Refine internal stripe edges by snapping them to the centre of
-        the nearest low-density valley — but ONLY when the current edge
-        sits inside or adjacent to a text row.  Edges already in a gap
-        are left untouched so the OCR engine keeps its natural padding."""
-        if len(edges) <= 2 or row_density.size == 0:
-            return edges
-
-        content_height = int(row_density.size)
-        search_radius = max(3, int(self.target_line_height_px * 0.35))
-        gap_threshold = 0.02
-
-        refined: list[int] = [edges[0]]
-        for edge in edges[1:-1]:
-            check_lo = max(0, edge - 1)
-            check_hi = min(content_height, edge + 2)
-            neighbourhood_max = float(np.max(row_density[check_lo:check_hi]))
-            if neighbourhood_max <= gap_threshold:
-                refined.append(edge)
-                continue
-
-            lo = max(1, edge - search_radius)
-            hi = min(content_height, edge + search_radius + 1)
-            if hi <= lo:
-                refined.append(edge)
-                continue
-            window = row_density[lo:hi]
-            min_val = float(np.min(window))
-            max_val = float(np.max(window))
-            threshold = min_val + (max_val - min_val) * 0.10
-            valley_indices = np.where(window <= threshold)[0]
-            if valley_indices.size > 0:
-                center = int(round(float(np.mean(valley_indices))))
-                refined.append(lo + center)
-            else:
-                refined.append(edge)
-        refined.append(edges[-1])
-
-        for i in range(1, len(refined)):
-            if refined[i] <= refined[i - 1]:
-                refined[i] = refined[i - 1] + 1
-
-        return refined
 
     def detect_header_trim(self, roi: np.ndarray) -> int:
         gray = _to_gray(roi)
@@ -389,6 +261,54 @@ class LineSegmenter:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         cv2.imwrite(str(output_path), canvas)
         return output_path
+
+    def debug_row_projection_scan(
+        self,
+        roi: np.ndarray,
+        *,
+        header_trim_px: int,
+    ) -> dict[str, Any]:
+        """Diagnostics aligned with `row_projection` / `_projection_runs_from_mask` (for notebooks)."""
+        if roi.size == 0:
+            return {
+                "mask_u8": np.zeros((0, 0), dtype=np.uint8),
+                "row_ink": np.zeros((0,), dtype=np.float32),
+                "tau": 0.0,
+                "gap_mid_y_content": [],
+                "content_shape": (0, 0),
+            }
+        content = roi[header_trim_px:]
+        mask = self._text_mask(content)
+        if mask.size == 0:
+            return {
+                "mask_u8": np.zeros((0, 0), dtype=np.uint8),
+                "row_ink": np.zeros((0,), dtype=np.float32),
+                "tau": 0.0,
+                "gap_mid_y_content": [],
+                "content_shape": (0, 0),
+            }
+        h, w = int(mask.shape[0]), int(mask.shape[1])
+        row_ink = mask.mean(axis=1).astype(np.float32)
+        peak = float(row_ink.max()) if h else 0.0
+        tau = max(
+            float(self.projection_threshold_ratio),
+            min(0.18, peak * 0.35),
+            1.0 / max(1, w),
+        )
+        runs = self._projection_runs_from_mask(mask, row_density=row_ink)
+        gap_mid_y: list[int] = []
+        for i in range(len(runs) - 1):
+            g0 = runs[i][1] + 1
+            g1 = runs[i + 1][0] - 1
+            if g1 >= g0:
+                gap_mid_y.append((g0 + g1) // 2)
+        return {
+            "mask_u8": (mask.astype(np.uint8) * 255),
+            "row_ink": row_ink,
+            "tau": float(tau),
+            "gap_mid_y_content": gap_mid_y,
+            "content_shape": (h, w),
+        }
 
     def _segment_from_tokens(
         self,
