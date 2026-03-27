@@ -34,9 +34,9 @@ def main() -> None:
     detector = TopLeftBlueGrayBoxDetector()
 
     print(
-        "TopLeftBlueGrayBoxDetector expects each R/G/B channel within 5 levels of #1A2129 "
-        "(per channel, not summed distance), enough area (>=240 px), top-left region "
-        "(left<=220, top<=120), width>=40, height>=12. Grayscale / wrong overlay color / "
+        "TopLeftBlueGrayBoxDetector expects RGB pixels within ~18 units (Euclidean) of "
+        "#1A2129, enough area (>=240 px), top-left region (left<=220, top<=120), "
+        "and width>=height, width>=40, height>=12. Grayscale / wrong overlay color / "
         "box elsewhere fails.\n"
     )
 

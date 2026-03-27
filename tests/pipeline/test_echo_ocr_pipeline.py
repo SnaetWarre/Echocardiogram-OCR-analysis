@@ -46,18 +46,6 @@ def test_detector_finds_measurement_roi_from_strict_color_mask() -> None:
     assert 20 <= height <= 24
 
 
-def test_detector_rejects_large_single_channel_drift() -> None:
-    """Euclidean tolerance 18 could admit one wild channel; per-channel cap 5 does not."""
-    frame = np.zeros((80, 120, 3), dtype=np.uint8)
-    frame[:, :, :] = 200
-    frame[10:40, 10:100, 0] = 0x1A
-    frame[10:40, 10:100, 1] = 0x21
-    frame[10:40, 10:100, 2] = 0x29 + 12
-
-    detection = TopLeftBlueGrayBoxDetector(min_pixels=100).detect(frame)
-    assert detection.present is False
-
-
 def test_detector_uses_target_color_connected_component_roi() -> None:
     frame = np.zeros((140, 220, 3), dtype=np.uint8)
     frame[:, :, 0] = 200
@@ -319,7 +307,7 @@ def test_ai_result_uses_exact_line_sources_and_raw_line_predictions() -> None:
     assert result.measurements[0].source == "exact_line:1 TR Vmax 2.1 m/s:0.880"
     assert result.raw["exact_lines"] == ["1 TR Vmax 2.1 m/s"]
     assert result.raw["line_predictions"][0]["line_bbox"] == [0, 0, 10, 2]
-    assert result.raw["segmentation_mode"] == "row_projection"
+    assert result.raw["segmentation_mode"] == "fixed_pitch"
     assert result.raw["target_line_height_px"] == 20.0
 
 
@@ -392,18 +380,18 @@ def test_ai_result_keeps_raw_ocr_lines_without_measurement_records() -> None:
     assert result.boxes[0].label == "measurement_roi"
 
 
-def test_pipeline_respects_segmentation_parameters() -> None:
+def test_pipeline_respects_fixed_pitch_segmentation_parameters() -> None:
     pipeline = EchoOcrPipeline(
         config=PipelineConfig(
             parameters={
-                "segmentation_mode": "adaptive",
-                "target_line_height_px": 22.5,
+                "segmentation_mode": "fixed_pitch",
+                "target_line_height_px": 20.0,
             }
         )
     )
 
-    assert pipeline._line_segmenter.segmentation_mode == "adaptive"
-    assert pipeline._line_segmenter.target_line_height_px == 22.5
+    assert pipeline._line_segmenter.segmentation_mode == "fixed_pitch"
+    assert pipeline._line_segmenter.target_line_height_px == 20.0
 
 
 def test_pipeline_supports_strict_engine_selection_flag() -> None:

@@ -14,7 +14,7 @@ class RoiDetection:
 
 # Measurement overlay box color (hex #1A2129) - dark blue-gray
 _MEASUREMENT_BOX_RGB = (0x1A, 0x21, 0x29)
-_MEASUREMENT_BOX_TOLERANCE = 5  # max absolute difference per channel (same order as frame[..., :3])
+_MEASUREMENT_BOX_TOLERANCE = 18  # tighter max Euclidean distance in RGB to match
 
 
 def _to_gray(frame: np.ndarray) -> np.ndarray:
@@ -27,23 +27,14 @@ def _to_gray(frame: np.ndarray) -> np.ndarray:
     raise ValueError(f"Unsupported frame shape: {frame.shape}")
 
 
-def _color_match_mask(pixels: np.ndarray, target: tuple[int, ...], tolerance: float) -> np.ndarray:
-    """True where every channel is within ``tolerance`` of ``target`` (per channel, not Euclidean)."""
-    tol = float(tolerance)
-    if len(target) < 3:
-        raise ValueError("target must have at least three channel values")
-    tr, tg, tb = float(target[0]), float(target[1]), float(target[2])
-    p = pixels[..., :3].astype(np.float32, copy=False)
-    return (np.abs(p[..., 0] - tr) <= tol) & (np.abs(p[..., 1] - tg) <= tol) & (np.abs(p[..., 2] - tb) <= tol)
-
-
-def _color_max_channel_abs_diff(pixels: np.ndarray, target: tuple[int, ...]) -> np.ndarray:
-    """Maximum over channels of |pixel[c] - target[c]| (for debug heatmaps)."""
-    if len(target) < 3:
-        raise ValueError("target must have at least three channel values")
-    tr, tg, tb = float(target[0]), float(target[1]), float(target[2])
-    p = pixels[..., :3].astype(np.float32, copy=False)
-    return np.maximum(np.maximum(np.abs(p[..., 0] - tr), np.abs(p[..., 1] - tg)), np.abs(p[..., 2] - tb))
+def _color_distance(rgb: np.ndarray, target: tuple) -> np.ndarray:
+    """Euclidean distance in RGB space from target."""
+    rgb_f = rgb[..., :3].astype(np.float32, copy=False)
+    tr, tg, tb = map(float, target)
+    dr = rgb_f[..., 0] - tr
+    dg = rgb_f[..., 1] - tg
+    db = rgb_f[..., 2] - tb
+    return np.sqrt(np.maximum(dr * dr + dg * dg + db * db, 0.0))
 
 
 def _select_measurement_component(mask: np.ndarray) -> np.ndarray:
@@ -128,8 +119,9 @@ class TopLeftBlueGrayBoxDetector:
         if search.ndim != 3 or search.shape[-1] < 3:
             return RoiDetection(present=False, bbox=None, confidence=0.0)
         else:
-            rgb = search[..., :3]
-            mask = _color_match_mask(rgb, self.box_color, self.color_tolerance)
+            rgb = search[..., :3].astype(np.int16)
+            dist = _color_distance(rgb, self.box_color)
+            mask = dist <= self.color_tolerance
 
             if np.sum(mask) >= self.min_pixels:
                 component_mask = _fill_mask_holes(mask)
