@@ -390,6 +390,54 @@ class LineSegmenter:
         cv2.imwrite(str(output_path), canvas)
         return output_path
 
+    def debug_row_projection_scan(
+        self,
+        roi: np.ndarray,
+        *,
+        header_trim_px: int,
+    ) -> dict[str, Any]:
+        """Diagnostics for notebooks: ink mask + row projection on ROI slice below ``header_trim_px``."""
+        if roi.size == 0:
+            return {
+                "mask_u8": np.zeros((0, 0), dtype=np.uint8),
+                "row_ink": np.zeros((0,), dtype=np.float32),
+                "tau": 0.0,
+                "gap_mid_y_content": [],
+                "content_shape": (0, 0),
+            }
+        content = _to_gray(roi)[header_trim_px:]
+        mask = self._text_mask(content)
+        if mask.size == 0:
+            return {
+                "mask_u8": np.zeros((0, 0), dtype=np.uint8),
+                "row_ink": np.zeros((0,), dtype=np.float32),
+                "tau": 0.0,
+                "gap_mid_y_content": [],
+                "content_shape": (0, 0),
+            }
+        h, w = int(mask.shape[0]), int(mask.shape[1])
+        row_ink = mask.mean(axis=1).astype(np.float32)
+        peak = float(row_ink.max()) if h else 0.0
+        tau = max(
+            float(self.projection_threshold_ratio),
+            min(0.18, peak * 0.35),
+            1.0 / max(1, w),
+        )
+        runs = self._projection_runs_from_mask(mask, row_density=row_ink)
+        gap_mid_y: list[int] = []
+        for i in range(len(runs) - 1):
+            prev_end = runs[i][1]
+            next_start = runs[i + 1][0]
+            if next_start > prev_end:
+                gap_mid_y.append((prev_end + next_start + 1) // 2)
+        return {
+            "mask_u8": (mask.astype(np.uint8) * 255),
+            "row_ink": row_ink,
+            "tau": float(tau),
+            "gap_mid_y_content": gap_mid_y,
+            "content_shape": (h, w),
+        }
+
     def _segment_from_tokens(
         self,
         tokens: Sequence[OcrToken],

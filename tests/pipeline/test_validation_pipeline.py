@@ -61,14 +61,14 @@ def test_build_validation_manager_forces_expected_configuration() -> None:
     assert pipeline.parser.__class__.__name__ == "LocalLlmMeasurementParser"
 
 
-def test_build_gui_ocr_manager_defaults_to_glm_no_parser_row_projection_20px() -> None:
+def test_build_gui_ocr_manager_defaults_to_glm_no_parser_fixed_pitch_20px() -> None:
     manager = build_gui_ocr_manager(glm_ocr_engine=_FakeGlmEngine(), surya_engine=_FakeSuryaEngine())
     pipeline = manager.active()
 
     assert isinstance(pipeline, EchoOcrPipeline)
     assert pipeline.config.parameters["ocr_engine"] == "glm-ocr"
     assert pipeline.config.parameters["parser_mode"] == "off"
-    assert pipeline.config.parameters["segmentation_mode"] == "row_projection"
+    assert pipeline.config.parameters["segmentation_mode"] == "fixed_pitch"
     assert pipeline.config.parameters["target_line_height_px"] == 20.0
     assert pipeline.config.parameters["panel_validation_mode"] == "off"
     assert pipeline.config.parameters["vision_fallback_enabled"] is False

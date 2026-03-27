@@ -11,6 +11,7 @@ import pytest
 from app.tools.sweep_preprocessing_headless import (
     PreprocessSpec,
     _build_order_matrix_configs,
+    _order_matrix_plan_configs,
     _preprocess_with_spec,
     _restrict_discovered_paths,
     preprocess_spec_from_dict,
@@ -115,7 +116,7 @@ def test_order_matrix_only_no_bin() -> None:
     cfgs = _build_order_matrix_configs(args)
     assert len(cfgs) == 2
     names = {c.name for c in cfgs}
-    assert names == {"om_gray_pln_s1_nbin_st", "om_gray_pln_s2_nbin_st"}
+    assert names == {"om_gray_pln_s1_nbin_st_mv0", "om_gray_pln_s2_nbin_st_mv0"}
 
 
 def test_order_matrix_otsu_two_orders() -> None:
@@ -134,8 +135,50 @@ def test_order_matrix_otsu_two_orders() -> None:
     cfgs = _build_order_matrix_configs(args)
     assert len(cfgs) == 2
     names = {c.name for c in cfgs}
-    assert "om_gray_pln_s2_otsu_st_mc" in names
-    assert "om_gray_pln_s2_otsu_ts_mc" in names
+    assert "om_gray_pln_s2_otsu_st_mc_mv0" in names
+    assert "om_gray_pln_s2_otsu_ts_mc_mv0" in names
+
+
+def test_order_matrix_plan_preset_size() -> None:
+    cfgs = _order_matrix_plan_configs()
+    assert len(cfgs) == 8
+    assert [c.name for c in cfgs] == [
+        "plan_no_binarize_1x",
+        "plan_no_binarize_3x_lanczos",
+        "plan_no_binarize_3x_cubic",
+        "plan_scale_then_otsu_1x",
+        "plan_scale_then_otsu_3x_lanczos",
+        "plan_scale_then_otsu_3x_cubic",
+        "plan_otsu_then_scale_3x_lanczos",
+        "plan_otsu_then_scale_3x_cubic",
+    ]
+    assert {c.default_view.input_mode for c in cfgs} == {"gray"}
+    assert {c.default_view.scale_algo for c in cfgs} == {"lanczos", "cubic"}
+    st_s3 = next(c for c in cfgs if c.name == "plan_scale_then_otsu_3x_lanczos")
+    ts_s3 = next(c for c in cfgs if c.name == "plan_otsu_then_scale_3x_lanczos")
+    assert st_s3.default_view.preprocess_order == "scale_then_threshold"
+    assert ts_s3.default_view.preprocess_order == "threshold_then_scale"
+    assert next(c for c in cfgs if c.name == "plan_no_binarize_3x_cubic").default_view.scale_algo == "cubic"
+
+
+def test_order_matrix_multiview_expands_names() -> None:
+    args = SimpleNamespace(
+        matrix_scales="2",
+        matrix_bin="none",
+        matrix_order="st",
+        matrix_recipe="plain",
+        matrix_input="gray",
+        matrix_scale_algo="lanczos",
+        matrix_binary_scale_algo="nearest",
+        matrix_multiview="none,pipeline",
+        matrix_no_morph_close=False,
+        matrix_include_bin_1x=False,
+    )
+    cfgs = _build_order_matrix_configs(args)
+    assert len(cfgs) == 2
+    names = {c.name for c in cfgs}
+    assert names == {"om_gray_pln_s2_nbin_st_mv0", "om_gray_pln_s2_nbin_st_mv1"}
+    assert {c.multiview_mode for c in cfgs} == {"none", "pipeline"}
 
 
 def test_restrict_from_label_scores(tmp_path: Path) -> None:

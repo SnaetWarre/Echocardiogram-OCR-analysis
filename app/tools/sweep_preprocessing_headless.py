@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import fnmatch
 import json
 import os
 import signal
@@ -10,6 +11,7 @@ import time
 from dataclasses import asdict, dataclass, fields
 from datetime import datetime, timezone
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, Callable
 
 import cv2
@@ -70,11 +72,20 @@ def _canonical_path(path: Path) -> str:
     return str(path.expanduser().resolve())
 
 
+def _path_matches_glob(filename: str, pattern: str) -> bool:
+    if fnmatch.fnmatch(filename, pattern):
+        return True
+    return fnmatch.fnmatch(filename.lower(), pattern.lower())
+
+
 def _discover_files(root: Path, pattern: str, recursive: bool) -> list[Path]:
     if root.is_file():
-        return [root] if root.match(pattern) else []
-    iterator = root.rglob(pattern) if recursive else root.glob(pattern)
-    files = [path for path in iterator if path.is_file()]
+        return [root] if _path_matches_glob(root.name, pattern) else []
+    if recursive:
+        candidates = (p for p in root.rglob("*") if p.is_file())
+    else:
+        candidates = (p for p in root.iterdir() if p.is_file())
+    files = [p for p in candidates if _path_matches_glob(p.name, pattern)]
     return sorted(files, key=lambda p: _canonical_path(p))
 
 
@@ -452,9 +463,14 @@ def _build_order_matrix_configs(args: Any) -> list[SweepConfig]:
     inmodes = _parse_csv_lower(args.matrix_input)
     scale_algo = str(args.matrix_scale_algo or "lanczos").strip() or "lanczos"
     binary_scale_algo = str(args.matrix_binary_scale_algo or "nearest").strip() or "nearest"
-    multiview = str(getattr(args, "matrix_multiview", "none") or "none")
-    if multiview not in ("none", "pipeline"):
-        multiview = "none"
+    multiview_raw = str(getattr(args, "matrix_multiview", "none") or "none")
+    multiview_modes: list[str] = []
+    for part in multiview_raw.split(","):
+        mv = part.strip().lower()
+        if mv in ("none", "pipeline") and mv not in multiview_modes:
+            multiview_modes.append(mv)
+    if not multiview_modes:
+        multiview_modes = ["none"]
 
     order_choices: list[str] = []
     for tok in order_tokens:
@@ -465,78 +481,189 @@ def _build_order_matrix_configs(args: Any) -> list[SweepConfig]:
         order_choices = ["scale_then_threshold", "threshold_then_scale"]
 
     configs: list[SweepConfig] = []
-    for im in inmodes:
-        if im not in ("gray", "bgr"):
-            continue
-        for recipe in recipes:
-            if recipe in ("plain", "pln", "p"):
-                unsharp = False
-            elif recipe in ("unsharp", "ush", "u"):
-                unsharp = True
-            else:
+    for multiview in multiview_modes:
+        for im in inmodes:
+            if im not in ("gray", "bgr"):
                 continue
-            for scale in scales:
-                if scale < 1 or scale > 6:
+            for recipe in recipes:
+                if recipe in ("plain", "pln", "p"):
+                    unsharp = False
+                elif recipe in ("unsharp", "ush", "u"):
+                    unsharp = True
+                else:
                     continue
-                for bin_mode in bins:
-                    if bin_mode in ("none", "off", "nbin", "no"):
-                        threshold_mode = "none"
-                    elif bin_mode in ("otsu", "bin"):
-                        threshold_mode = "otsu"
-                    else:
+                for scale in scales:
+                    if scale < 1 or scale > 6:
                         continue
+                    for bin_mode in bins:
+                        if bin_mode in ("none", "off", "nbin", "no"):
+                            threshold_mode = "none"
+                        elif bin_mode in ("otsu", "bin"):
+                            threshold_mode = "otsu"
+                        else:
+                            continue
 
-                    morph_close = bool(
-                        threshold_mode == "otsu"
-                        and not getattr(args, "matrix_no_morph_close", False)
-                    )
-
-                    if threshold_mode == "otsu" and int(scale) == 1 and not getattr(
-                        args, "matrix_include_bin_1x", False
-                    ):
-                        continue
-
-                    if threshold_mode == "none":
-                        order_iter = ["scale_then_threshold"]
-                    else:
-                        order_iter = list(order_choices)
-
-                    for ordv in order_iter:
-                        im_short = "bgr" if im == "bgr" else "gray"
-                        rec_short = "ush" if unsharp else "pln"
-                        bin_short = "nbin" if threshold_mode == "none" else "otsu"
-                        ord_short = "st" if ordv == "scale_then_threshold" else "ts"
-                        mc_short = ""
-                        if threshold_mode != "none":
-                            mc_short = "_nm" if not morph_close else "_mc"
-                        name = f"om_{im_short}_{rec_short}_s{scale}_{bin_short}_{ord_short}{mc_short}"
-                        desc = (
-                            f"order_matrix: input={im_short}, "
-                            f"recipe={'unsharp' if unsharp else 'plain'}, "
-                            f"scale={scale}x {scale_algo}, bin={bin_short}, order={ordv}, "
-                            f"morph_close={morph_close}"
+                        morph_close = bool(
+                            threshold_mode == "otsu"
+                            and not getattr(args, "matrix_no_morph_close", False)
                         )
-                        spec = PreprocessSpec(
-                            contrast_mode="none",
-                            scale_factor=int(scale),
-                            scale_algo=scale_algo,
-                            unsharp=unsharp,
-                            threshold_mode=threshold_mode,
-                            morph_close=morph_close,
-                            smooth=False,
-                            input_mode=im,
-                            preprocess_order=ordv,
-                            binary_scale_algo=binary_scale_algo,
-                        )
-                        configs.append(
-                            SweepConfig(
-                                name=name,
-                                description=desc,
-                                default_view=spec,
-                                multiview_mode=multiview,
+
+                        if threshold_mode == "otsu" and int(scale) == 1 and not getattr(
+                            args, "matrix_include_bin_1x", False
+                        ):
+                            continue
+
+                        if threshold_mode == "none":
+                            order_iter = ["scale_then_threshold"]
+                        else:
+                            order_iter = list(order_choices)
+
+                        for ordv in order_iter:
+                            im_short = "bgr" if im == "bgr" else "gray"
+                            rec_short = "ush" if unsharp else "pln"
+                            bin_short = "nbin" if threshold_mode == "none" else "otsu"
+                            ord_short = "st" if ordv == "scale_then_threshold" else "ts"
+                            mc_short = ""
+                            if threshold_mode != "none":
+                                mc_short = "_nm" if not morph_close else "_mc"
+                            mv_short = "mv0" if multiview == "none" else "mv1"
+                            name = f"om_{im_short}_{rec_short}_s{scale}_{bin_short}_{ord_short}{mc_short}_{mv_short}"
+                            desc = (
+                                f"order_matrix: input={im_short}, "
+                                f"recipe={'unsharp' if unsharp else 'plain'}, "
+                                f"scale={scale}x {scale_algo}, bin={bin_short}, order={ordv}, "
+                                f"morph_close={morph_close}, multiview={multiview}"
                             )
-                        )
+                            spec = PreprocessSpec(
+                                contrast_mode="none",
+                                scale_factor=int(scale),
+                                scale_algo=scale_algo,
+                                unsharp=unsharp,
+                                threshold_mode=threshold_mode,
+                                morph_close=morph_close,
+                                smooth=False,
+                                input_mode=im,
+                                preprocess_order=ordv,
+                                binary_scale_algo=binary_scale_algo,
+                            )
+                            configs.append(
+                                SweepConfig(
+                                    name=name,
+                                    description=desc,
+                                    default_view=spec,
+                                    multiview_mode=multiview,
+                                )
+                            )
     return configs
+
+
+def _order_matrix_plan_configs() -> list[SweepConfig]:
+    """Eight fixed rows: bin/up ablation + Lanczos vs cubic for every 3× path.
+
+    Names read as: ``plan_<pipeline>_<scale>_<interp?>`` — e.g. ``plan_no_binarize_3x_lanczos``,
+    ``plan_scale_then_otsu_3x_cubic`` (upscale *then* Otsu), ``plan_otsu_then_scale_3x_lanczos``
+    (Otsu on 1× crop, then ``nearest`` binary upscale). Baseline rows end in ``_1x``.
+
+    Gray, plain, multiview off. Full factorial: ``order_matrix`` / ``run_full_preprocess_sweep.sh``.
+    """
+    binary_scale_algo = "nearest"
+    rows: list[SweepConfig] = []
+
+    def push(
+        *,
+        name: str,
+        description: str,
+        scale_factor: int,
+        threshold_mode: str,
+        preprocess_order: str,
+        scale_algo: str,
+    ) -> None:
+        morph = threshold_mode == "otsu"
+        rows.append(
+            SweepConfig(
+                name=name,
+                description=description,
+                default_view=PreprocessSpec(
+                    contrast_mode="none",
+                    scale_factor=int(scale_factor),
+                    scale_algo=scale_algo,
+                    unsharp=False,
+                    threshold_mode=threshold_mode,
+                    morph_close=morph,
+                    smooth=False,
+                    input_mode="gray",
+                    preprocess_order=preprocess_order,
+                    binary_scale_algo=binary_scale_algo,
+                ),
+                multiview_mode="none",
+            )
+        )
+
+    push(
+        name="plan_no_binarize_1x",
+        description="no bin, no upscale (1×)",
+        scale_factor=1,
+        threshold_mode="none",
+        preprocess_order="scale_then_threshold",
+        scale_algo="lanczos",
+    )
+    push(
+        name="plan_no_binarize_3x_lanczos",
+        description="no bin, 3× Lanczos",
+        scale_factor=3,
+        threshold_mode="none",
+        preprocess_order="scale_then_threshold",
+        scale_algo="lanczos",
+    )
+    push(
+        name="plan_no_binarize_3x_cubic",
+        description="no bin, 3× cubic",
+        scale_factor=3,
+        threshold_mode="none",
+        preprocess_order="scale_then_threshold",
+        scale_algo="cubic",
+    )
+    push(
+        name="plan_scale_then_otsu_1x",
+        description="Otsu at 1× (no upscale; scale_then_threshold)",
+        scale_factor=1,
+        threshold_mode="otsu",
+        preprocess_order="scale_then_threshold",
+        scale_algo="lanczos",
+    )
+    push(
+        name="plan_scale_then_otsu_3x_lanczos",
+        description="3× Lanczos then Otsu (scale_then_threshold)",
+        scale_factor=3,
+        threshold_mode="otsu",
+        preprocess_order="scale_then_threshold",
+        scale_algo="lanczos",
+    )
+    push(
+        name="plan_scale_then_otsu_3x_cubic",
+        description="3× cubic then Otsu (scale_then_threshold)",
+        scale_factor=3,
+        threshold_mode="otsu",
+        preprocess_order="scale_then_threshold",
+        scale_algo="cubic",
+    )
+    push(
+        name="plan_otsu_then_scale_3x_lanczos",
+        description="Otsu then 3× Lanczos (threshold_then_scale; nearest on binary)",
+        scale_factor=3,
+        threshold_mode="otsu",
+        preprocess_order="threshold_then_scale",
+        scale_algo="lanczos",
+    )
+    push(
+        name="plan_otsu_then_scale_3x_cubic",
+        description="Otsu then 3× cubic (threshold_then_scale; nearest on binary)",
+        scale_factor=3,
+        threshold_mode="otsu",
+        preprocess_order="threshold_then_scale",
+        scale_algo="cubic",
+    )
+    return rows
 
 
 def _load_manifest_configs(path: Path) -> list[SweepConfig]:
@@ -1005,9 +1132,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--config-set",
-        choices=("smoke", "broad", "order_matrix", "manifest"),
+        choices=("smoke", "broad", "order_matrix", "order_matrix_plan", "manifest"),
         default="broad",
-        help="Predefined sweep set, Cartesian order_matrix, or JSON manifest.",
+        help=(
+            "smoke/broad presets; order_matrix = factorial from --matrix-* flags; "
+            "order_matrix_plan = fixed 8-row bin/up/order ablation (3× Lanczos vs cubic where upscale on); manifest = JSON."
+        ),
     )
     parser.add_argument(
         "--config-manifest",
@@ -1052,9 +1182,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--matrix-multiview",
-        choices=("none", "pipeline"),
         default="none",
-        help="Multiview retries for order_matrix configs.",
+        help="Comma-separated multiview modes for order_matrix: none | pipeline (e.g. none,pipeline).",
     )
     parser.add_argument(
         "--matrix-no-morph-close",
@@ -1160,7 +1289,13 @@ def main() -> int:
     if args.max_files > 0:
         discovered = discovered[: args.max_files]
     if not discovered:
-        print("No matching DICOM files found.")
+        print(
+            "No matching DICOM files found. "
+            f"input={_canonical_path(input_path)} pattern={args.pattern!r} "
+            f"recursive={bool(args.recursive)} max_files={args.max_files or 'all'}"
+        )
+        if args.restrict_from_label_scores or args.restrict_dicom_paths_file:
+            print("Restrict filters may have removed every path; check --split and filter files.")
         return 1
 
     labels_path = args.labels.expanduser()
@@ -1187,6 +1322,8 @@ def main() -> int:
             return 2
     elif args.config_set == "order_matrix":
         configs = _build_order_matrix_configs(args)
+    elif args.config_set == "order_matrix_plan":
+        configs = _order_matrix_plan_configs()
     else:
         configs = _select_configs(args.config_set)
 

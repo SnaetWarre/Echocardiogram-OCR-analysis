@@ -100,8 +100,9 @@ def main() -> None:
 
         for config_name, cfg in configs.items():
             segmenter = LineSegmenter(
-                segmentation_mode="row_projection",
+                segmentation_mode="fixed_pitch",
                 target_line_height_px=20.0,
+                snap_to_valleys=False,
             )
 
             def _preprocess(image: np.ndarray, _smooth: bool = cfg["smooth"]) -> np.ndarray:

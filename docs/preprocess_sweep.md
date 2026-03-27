@@ -51,6 +51,23 @@ mamba run -n DL python -m app.tools.sweep_preprocessing_headless \
 3. For mismatches, use `python -m app.tools.export_validation_failures path/to/label_scores.json` for `validation_exact_failures.csv`, or `notebooks/validation_failure_walkthrough.ipynb` for visual replay.
 4. Iterate: try `--config-set order_matrix` or `--config-set manifest` with `--engine glm-ocr` (or `tesseract`, etc.) to compare preprocessing and engines on the same DICOMs.
 
+## Full “everything” sweep (script)
+
+From the repo root, after setting `SWEEP_DICOM_ROOT`:
+
+```bash
+export SWEEP_DICOM_ROOT="/path/to/dicoms"
+export GLM_OCR_RUNNER=mamba GLM_OCR_ENV=glm_ocr
+export SURYA_RUNNER=mamba SURYA_ENV=surya
+bash scripts/run_full_preprocess_sweep.sh
+```
+
+This runs **glm-ocr**, **tesseract**, and **surya** each with **two** runs: Otsu morph close on vs off; `order_matrix` uses scales **1–6**, **gray+bgr**, **plain+unsharp**, **none+otsu**, both preprocess orders, **none+pipeline** multiview, **bin at 1×** included, Lanczos + nearest binary upscale, validation scoring, resume/checkpoint/skip-existing. Outputs land under `artifacts/ocr_redesign/full_order_matrix_<UTC>/`.
+
+That grid is **144 configs per** (engine × morph) because `2×2×2×(6 + 6×2) = 144` (multiview × input × recipe × (no-bin scales + Otsu scales × two orders)). For a **fixed 8-config** ablation (same bin/up/order structure as before, plus **3× Lanczos vs 3× cubic** on every upscaled path), use **`--config-set order_matrix_plan`** or `bash scripts/run_plan_preprocess_sweep.sh`. Config names spell out the recipe: `plan_no_binarize_*`, `plan_scale_then_otsu_*` (grayscale upscale then Otsu), `plan_otsu_then_scale_*` (Otsu at 1× then binary upscale), with `_1x`, `_3x_lanczos`, or `_3x_cubic`.
+
+Config folder names include `mv0` (no multiview) / `mv1` (pipeline multiview). Override engines: `SWEEP_ENGINES="tesseract"` Smoke: `SWEEP_EXTRA="--max-files 1"`.
+
 ## Parameterized order matrix
 
 Builds configs from flags (Cartesian product with pruning: no binarization uses only `scale_then_threshold`; Otsu at scale 1 is omitted unless `--matrix-include-bin-1x`).
