@@ -126,8 +126,9 @@ def normalize_unit(unit: str | None) -> str | None:
     return cleaned
 
 
-def canonicalize_exact_line(text: str) -> str:
-    line = _LATEX_NOISE_RE.sub(r"\1", text or "")
+def _normalize_line_lexical_noise(line: str) -> str:
+    """LaTeX artifact cleanup, punctuation mapping, and value/unit spacing before label repairs."""
+    line = _LATEX_NOISE_RE.sub(r"\1", line)
     line = line.translate(_TEXT_TRANSLATION)
     line = _LATEX_SPACING_RE.sub(" ", line)
     line = line.replace("{", " ").replace("}", " ")
@@ -139,7 +140,11 @@ def canonicalize_exact_line(text: str) -> str:
     line = line.replace("EF(", "EF (")
     line = re.sub(r"^(\d{1,2})(?=[A-Za-z'])", r"\1 ", line)
     line = _COMPACT_VALUE_UNIT_RE.sub(r"\g<value> \g<unit>", line)
-    line = normalize_space(line)
+    return normalize_space(line)
+
+
+def canonicalize_exact_line(text: str) -> str:
+    line = _normalize_line_lexical_noise(text or "")
     for pattern, replacement in _LABEL_REPAIRS:
         line = pattern.sub(replacement, line)
     line = _strip_known_unit_filler(line)

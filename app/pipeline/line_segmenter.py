@@ -108,37 +108,62 @@ class LineSegmenter:
             content_bbox = (0, header_trim_px, int(content.shape[1]), int(content.shape[0]))
 
         if self.segmentation_mode == "fixed_pitch":
-            lines = self._segment_fixed_pitch(content, header_trim_px=header_trim_px)
-            if not lines and content.size > 0:
-                lines = [
-                    SegmentedLine(
-                        order=0,
-                        bbox=(0, header_trim_px, int(content.shape[1]), int(content.shape[0])),
-                        component_boxes=((0, header_trim_px, int(content.shape[1]), int(content.shape[0])),),
-                        metadata={
-                            "source": "fixed_pitch",
-                            "recovered": True,
-                            "reason": "empty_fixed_pitch_segmentation",
-                            "target_line_height_px": self.target_line_height_px,
-                        },
-                    )
-                ]
-            return SegmentationResult(
-                header_trim_px=header_trim_px,
-                content_bbox=content_bbox,
-                lines=tuple(lines),
-                used_token_boxes=False,
-                used_projection_fallback=False,
-                debug={
-                    "line_count": len(lines),
-                    "header_trim_px": header_trim_px,
-                    "refined_line_splits": 0,
-                    "segmentation_mode": self.segmentation_mode,
-                    "target_line_height_px": self.target_line_height_px,
-                    "estimated_line_count": len(lines),
-                },
-            )
+            return self._segment_fixed_pitch_result(content, header_trim_px=header_trim_px, content_bbox=content_bbox)
+        return self._segment_adaptive_result(gray, content, header_trim_px, content_bbox, tokens=tokens)
 
+    def _segment_fixed_pitch_result(
+        self,
+        content: np.ndarray,
+        *,
+        header_trim_px: int,
+        content_bbox: tuple[int, int, int, int] | None,
+    ) -> SegmentationResult:
+        lines = self._segment_fixed_pitch(content, header_trim_px=header_trim_px)
+        if not lines and content.size > 0:
+            full = (
+                0,
+                header_trim_px,
+                int(content.shape[1]),
+                int(content.shape[0]),
+            )
+            lines = [
+                SegmentedLine(
+                    order=0,
+                    bbox=full,
+                    component_boxes=(full,),
+                    metadata={
+                        "source": "fixed_pitch",
+                        "recovered": True,
+                        "reason": "empty_fixed_pitch_segmentation",
+                        "target_line_height_px": self.target_line_height_px,
+                    },
+                )
+            ]
+        return SegmentationResult(
+            header_trim_px=header_trim_px,
+            content_bbox=content_bbox,
+            lines=tuple(lines),
+            used_token_boxes=False,
+            used_projection_fallback=False,
+            debug={
+                "line_count": len(lines),
+                "header_trim_px": header_trim_px,
+                "refined_line_splits": 0,
+                "segmentation_mode": self.segmentation_mode,
+                "target_line_height_px": self.target_line_height_px,
+                "estimated_line_count": len(lines),
+            },
+        )
+
+    def _segment_adaptive_result(
+        self,
+        gray: np.ndarray,
+        content: np.ndarray,
+        header_trim_px: int,
+        content_bbox: tuple[int, int, int, int] | None,
+        *,
+        tokens: Sequence[OcrToken] | None,
+    ) -> SegmentationResult:
         lines: list[SegmentedLine] = []
         used_token_boxes = False
         if tokens:
@@ -155,11 +180,17 @@ class LineSegmenter:
             used_projection_fallback = True
 
         if not lines and content.size > 0:
+            full = (
+                0,
+                header_trim_px,
+                int(content.shape[1]),
+                int(content.shape[0]),
+            )
             lines = [
                 SegmentedLine(
                     order=0,
-                    bbox=(0, header_trim_px, int(content.shape[1]), int(content.shape[0])),
-                    component_boxes=((0, header_trim_px, int(content.shape[1]), int(content.shape[0])),),
+                    bbox=full,
+                    component_boxes=(full,),
                     metadata={"recovered": True, "reason": "empty_segmentation"},
                 )
             ]
@@ -317,6 +348,23 @@ class LineSegmenter:
 
         return refined
 
+    def _header_trim_skip_first_row_if_gap(
+        self,
+        runs: list[tuple[int, int]],
+        *,
+        max_header_start: int,
+    ) -> int | None:
+        """If a wide gap separates the first two ink runs, trim through the start of the second run."""
+        if len(runs) < 2:
+            return None
+        first_start, first_end = runs[0]
+        second_start, _second_end = runs[1]
+        gap = second_start - first_end - 1
+        first_height = first_end - first_start + 1
+        if gap < max(2, min(6, first_height)):
+            return None
+        return min(second_start, max_header_start)
+
     def detect_header_trim(self, roi: np.ndarray) -> int:
         gray = _to_gray(roi)
         if gray.size == 0:
@@ -333,25 +381,14 @@ class LineSegmenter:
         max_header_start = max(0, int(gray.shape[0] * self.max_header_fraction))
         if self.max_header_trim_px is not None:
             max_header_start = min(max_header_start, self.max_header_trim_px)
-        first_start, first_end = runs[0]
-
-        if len(runs) >= 2 and first_start <= self.default_header_trim_px:
-            second_start, _second_end = runs[1]
-            gap = second_start - first_end - 1
-            first_height = first_end - first_start + 1
-            if gap >= max(2, min(6, first_height)):
-                return min(second_start, max_header_start)
-
+        first_start, _first_end = runs[0]
+        gap_trim = self._header_trim_skip_first_row_if_gap(runs, max_header_start=max_header_start)
+        if gap_trim is not None and first_start <= self.default_header_trim_px:
+            return gap_trim
         if first_start > 0:
             return min(first_start, max_header_start)
-
-        if len(runs) >= 2:
-            second_start, _second_end = runs[1]
-            gap = second_start - first_end - 1
-            first_height = first_end - first_start + 1
-            if gap >= max(2, min(6, first_height)):
-                return min(second_start, max_header_start)
-
+        if gap_trim is not None:
+            return gap_trim
         return min(self.default_header_trim_px, max_header_start)
 
     def save_debug_image(self, roi: np.ndarray, result: SegmentationResult, output_path: Path) -> Path:

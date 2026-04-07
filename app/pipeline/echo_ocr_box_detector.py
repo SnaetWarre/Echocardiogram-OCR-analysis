@@ -122,20 +122,20 @@ class TopLeftBlueGrayBoxDetector:
         self.box_color = box_color
         self.color_tolerance = color_tolerance
 
+    def _foreground_mask(self, frame: np.ndarray) -> np.ndarray | None:
+        if frame.ndim != 3 or frame.shape[-1] < 3:
+            return None
+        rgb = frame[..., :3].astype(np.int16)
+        mask = _color_match_mask(rgb, self.box_color, self.color_tolerance)
+        if int(np.sum(mask)) < self.min_pixels:
+            return None
+        filled = _fill_mask_holes(mask)
+        return _select_measurement_component(filled)
+
     def detect(self, frame: np.ndarray) -> RoiDetection:
-        search = frame
-
-        if search.ndim != 3 or search.shape[-1] < 3:
+        mask = self._foreground_mask(frame)
+        if mask is None:
             return RoiDetection(present=False, bbox=None, confidence=0.0)
-        else:
-            rgb = search[..., :3].astype(np.int16)
-            mask = _color_match_mask(rgb, self.box_color, self.color_tolerance)
-
-            if np.sum(mask) >= self.min_pixels:
-                component_mask = _fill_mask_holes(mask)
-                mask = _select_measurement_component(component_mask)
-            else:
-                return RoiDetection(present=False, bbox=None, confidence=0.0)
 
         ys, xs = np.where(mask)
         if xs.size < self.min_pixels:

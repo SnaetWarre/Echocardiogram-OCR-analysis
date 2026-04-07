@@ -967,6 +967,249 @@ def _dispose_pipeline(pipeline: EchoOcrPipeline | None) -> None:
     _dispose_engine(getattr(pipeline, "_fallback_ocr_engine", None))
 
 
+def _run_sweep_file_through_pipeline(
+    path: Path,
+    pipeline: EchoOcrPipeline,
+    *,
+    engine: str,
+    parser_mode: str,
+    config: SweepConfig,
+    max_frames: int,
+    per_file_timeout_s: int,
+) -> tuple[dict[str, Any], EchoOcrPipeline]:
+    """Execute one DICOM through the pipeline; refresh pipeline after failures that dispose workers."""
+    try:
+        result = _run_with_timeout(
+            int(per_file_timeout_s),
+            lambda _path=path, _pl=pipeline: _pl.run(
+                PipelineRequest(
+                    dicom_path=_path,
+                    parameters={"max_frames": max_frames},
+                )
+            ),
+        )
+        return _result_to_item(path, result, config), pipeline
+    except PerFileTimeoutError as exc:
+        item = _result_error_item(path, config, "Timeout", str(exc))
+        _dispose_pipeline(pipeline)
+        return item, _build_pipeline(engine, parser_mode, config)
+    except Exception as exc:
+        item = _result_error_item(path, config, type(exc).__name__, str(exc))
+        _dispose_pipeline(pipeline)
+        return item, _build_pipeline(engine, parser_mode, config)
+
+
+def _write_sweep_checkpoint_if_due(
+    *,
+    checkpoint_path: Path,
+    config: SweepConfig,
+    items: list[dict[str, Any]],
+    engine: str,
+    parser_mode: str,
+    input_path: Path,
+    started_at: str,
+    elapsed_before: float,
+    loop_started: float,
+    ok_files: int,
+    error_files: int,
+    processed_count: int,
+    total_files: int,
+    checkpoint_interval: int,
+) -> None:
+    if processed_count % int(checkpoint_interval) != 0 and processed_count != total_files:
+        return
+    elapsed_partial = elapsed_before + (time.perf_counter() - loop_started)
+    _write_checkpoint(
+        checkpoint_path,
+        config=config,
+        items=items,
+        engine=engine,
+        parser_mode=parser_mode,
+        input_path=input_path,
+        started_at=started_at,
+        elapsed_s=elapsed_partial,
+        ok_files=ok_files,
+        error_files=error_files,
+    )
+
+
+def _print_sweep_file_progress_if_due(
+    processed_count: int,
+    total_files: int,
+    ok_files: int,
+    error_files: int,
+    last_path: Path,
+    progress_interval: int,
+) -> None:
+    if processed_count % int(progress_interval) != 0 and processed_count != total_files:
+        return
+    print(
+        f"  files {processed_count}/{total_files} "
+        f"ok={ok_files} error={error_files} "
+        f"last={last_path.name}"
+    )
+
+
+def _build_headless_run_payload(
+    config: SweepConfig,
+    items: list[dict[str, Any]],
+    *,
+    engine: str,
+    parser_mode: str,
+    input_path: Path,
+    started_at: str,
+    elapsed_s: float,
+    ok_files: int,
+    error_files: int,
+    discovered_count: int,
+) -> dict[str, Any]:
+    return {
+        "manifest": {
+            "run_type": "preprocess_sweep_headless",
+            "config_name": config.name,
+            "config": asdict(config),
+            "engine": engine,
+            "parser_mode": parser_mode,
+            "started_at": started_at,
+            "elapsed_s": round(elapsed_s, 3),
+            "input_path": _canonical_path(input_path),
+            "summary": {
+                "processed_files": discovered_count,
+                "ok_files": ok_files,
+                "error_files": error_files,
+            },
+        },
+        "items": items,
+    }
+
+
+def _build_label_scores_payload(
+    config: SweepConfig,
+    label_scores: dict[str, Any],
+    *,
+    engine: str,
+    labels_path: Path,
+    label_splits: set[str],
+    elapsed_s: float,
+    discovered_count: int,
+    ok_files: int,
+    error_files: int,
+) -> dict[str, Any]:
+    return {
+        "manifest": {
+            "run_type": "preprocess_sweep_label_scores",
+            "config_name": config.name,
+            "config": asdict(config),
+            "engine": engine,
+            "labels_path": _canonical_path(labels_path),
+            "split_filter": sorted(label_splits),
+        },
+        "summary": {
+            **{key: value for key, value in label_scores.items() if key != "file_details"},
+            "elapsed_s": round(elapsed_s, 3),
+            "processed_files": discovered_count,
+            "ok_files": ok_files,
+            "error_files": error_files,
+        },
+        "file_details": label_scores["file_details"],
+    }
+
+
+def _summary_row_from_live_scores(
+    config: SweepConfig,
+    label_scores: dict[str, Any],
+    *,
+    engine: str,
+    elapsed_s: float,
+    discovered_count: int,
+    ok_files: int,
+    error_files: int,
+) -> dict[str, Any]:
+    return {
+        "config_name": config.name,
+        "engine": engine,
+        "description": config.description,
+        "exact_match_rate": label_scores["exact_match_rate"],
+        "line_match_rate": label_scores["line_match_rate"],
+        "value_match_rate": label_scores["value_match_rate"],
+        "label_match_rate": label_scores["label_match_rate"],
+        "prefix_match_rate": label_scores["prefix_match_rate"],
+        "detection_rate": label_scores["detection_rate"],
+        "elapsed_s": round(elapsed_s, 3),
+        "processed_files": discovered_count,
+        "ok_files": ok_files,
+        "error_files": error_files,
+    }
+
+
+def _summary_row_from_skipped_config(
+    config: SweepConfig,
+    score_payload: dict[str, Any],
+    *,
+    engine: str,
+) -> dict[str, Any]:
+    summary = score_payload.get("summary", {})
+    return {
+        "config_name": config.name,
+        "engine": engine,
+        "description": config.description,
+        "exact_match_rate": summary.get("exact_match_rate", 0.0),
+        "line_match_rate": summary.get("line_match_rate", 0.0),
+        "value_match_rate": summary.get("value_match_rate", 0.0),
+        "label_match_rate": summary.get("label_match_rate", 0.0),
+        "prefix_match_rate": summary.get("prefix_match_rate", 0.0),
+        "detection_rate": summary.get("detection_rate", 0.0),
+        "elapsed_s": summary.get("elapsed_s", 0.0),
+        "processed_files": summary.get("processed_files", 0),
+        "ok_files": summary.get("ok_files", 0),
+        "error_files": summary.get("error_files", 0),
+    }
+
+
+def _resolve_baseline_row(
+    summary_rows: list[dict[str, Any]],
+    explicit_baseline: str,
+) -> tuple[dict[str, Any] | None, str]:
+    if explicit_baseline:
+        row = next(
+            (r for r in summary_rows if r["config_name"] == explicit_baseline),
+            None,
+        )
+        if row is not None:
+            return row, explicit_baseline
+    row = next(
+        (r for r in summary_rows if r["config_name"] == "default_multiview"),
+        None,
+    )
+    if row is not None:
+        return row, "default_multiview"
+    return None, ""
+
+
+def _apply_baseline_delta_column(
+    summary_rows: list[dict[str, Any]],
+    baseline_row: dict[str, Any] | None,
+) -> None:
+    baseline_exact = float(baseline_row["exact_match_rate"]) if baseline_row is not None else None
+    for row in summary_rows:
+        row["delta_exact_vs_baseline"] = (
+            round(float(row["exact_match_rate"]) - baseline_exact, 6)
+            if baseline_exact is not None
+            else ""
+        )
+
+
+def _sort_summary_rows_by_match_quality(summary_rows: list[dict[str, Any]]) -> None:
+    summary_rows.sort(
+        key=lambda row: (
+            float(row["exact_match_rate"]),
+            float(row["value_match_rate"]),
+            -float(row["elapsed_s"]),
+        ),
+        reverse=True,
+    )
+
+
 def _score_labeled_subset(
     items: list[dict[str, Any]],
     labeled_files: list[LabeledFile],
@@ -1350,23 +1593,8 @@ def main() -> int:
         if args.skip_existing and headless_path.exists() and score_path.exists():
             print(f"[{index}/{len(configs)}] skip existing: {config.name}")
             score_payload = json.loads(score_path.read_text(encoding="utf-8"))
-            summary = score_payload.get("summary", {})
             summary_rows.append(
-                {
-                    "config_name": config.name,
-                    "engine": args.engine,
-                    "description": config.description,
-                    "exact_match_rate": summary.get("exact_match_rate", 0.0),
-                    "line_match_rate": summary.get("line_match_rate", 0.0),
-                    "value_match_rate": summary.get("value_match_rate", 0.0),
-                    "label_match_rate": summary.get("label_match_rate", 0.0),
-                    "prefix_match_rate": summary.get("prefix_match_rate", 0.0),
-                    "detection_rate": summary.get("detection_rate", 0.0),
-                    "elapsed_s": summary.get("elapsed_s", 0.0),
-                    "processed_files": summary.get("processed_files", 0),
-                    "ok_files": summary.get("ok_files", 0),
-                    "error_files": summary.get("error_files", 0),
-                }
+                _summary_row_from_skipped_config(config, score_payload, engine=args.engine)
             )
             summary_payload.append(score_payload)
             continue
@@ -1396,20 +1624,15 @@ def main() -> int:
         try:
             for path in pending:
                 try:
-                    result = _run_with_timeout(
-                        int(args.per_file_timeout_s),
-                        lambda _path=path, _pipeline=pipeline: _pipeline.run(
-                            PipelineRequest(
-                                dicom_path=_path,
-                                parameters={"max_frames": args.max_frames},
-                            )
-                        ),
+                    item, pipeline = _run_sweep_file_through_pipeline(
+                        path,
+                        pipeline,
+                        engine=args.engine,
+                        parser_mode=args.parser_mode,
+                        config=config,
+                        max_frames=args.max_frames,
+                        per_file_timeout_s=args.per_file_timeout_s,
                     )
-                    item = _result_to_item(path, result, config)
-                except PerFileTimeoutError as exc:
-                    item = _result_error_item(path, config, "Timeout", str(exc))
-                    _dispose_pipeline(pipeline)
-                    pipeline = _build_pipeline(args.engine, args.parser_mode, config)
                 except KeyboardInterrupt:
                     elapsed_partial = elapsed_before + (time.perf_counter() - started)
                     _write_checkpoint(
@@ -1426,10 +1649,6 @@ def main() -> int:
                     )
                     _dispose_pipeline(pipeline)
                     raise
-                except Exception as exc:
-                    item = _result_error_item(path, config, type(exc).__name__, str(exc))
-                    _dispose_pipeline(pipeline)
-                    pipeline = _build_pipeline(args.engine, args.parser_mode, config)
 
                 items.append(item)
                 if item["status"] == "ok":
@@ -1438,129 +1657,82 @@ def main() -> int:
                     error_files += 1
 
                 processed_count = len(items)
-                if (
-                    processed_count % int(args.checkpoint_interval) == 0
-                    or processed_count == len(discovered)
-                ):
-                    elapsed_partial = elapsed_before + (time.perf_counter() - started)
-                    _write_checkpoint(
-                        checkpoint_path,
-                        config=config,
-                        items=items,
-                        engine=args.engine,
-                        parser_mode=args.parser_mode,
-                        input_path=input_path,
-                        started_at=started_at,
-                        elapsed_s=elapsed_partial,
-                        ok_files=ok_files,
-                        error_files=error_files,
-                    )
-
-                if processed_count % int(args.progress_interval) == 0 or processed_count == len(discovered):
-                    print(
-                        f"  files {processed_count}/{len(discovered)} "
-                        f"ok={ok_files} error={error_files} "
-                        f"last={path.name}"
-                    )
+                _write_sweep_checkpoint_if_due(
+                    checkpoint_path=checkpoint_path,
+                    config=config,
+                    items=items,
+                    engine=args.engine,
+                    parser_mode=args.parser_mode,
+                    input_path=input_path,
+                    started_at=started_at,
+                    elapsed_before=elapsed_before,
+                    loop_started=started,
+                    ok_files=ok_files,
+                    error_files=error_files,
+                    processed_count=processed_count,
+                    total_files=len(discovered),
+                    checkpoint_interval=args.checkpoint_interval,
+                )
+                _print_sweep_file_progress_if_due(
+                    processed_count,
+                    len(discovered),
+                    ok_files,
+                    error_files,
+                    path,
+                    args.progress_interval,
+                )
         finally:
             _dispose_pipeline(pipeline)
 
         elapsed = elapsed_before + (time.perf_counter() - started)
-        headless_payload = {
-            "manifest": {
-                "run_type": "preprocess_sweep_headless",
-                "config_name": config.name,
-                "config": asdict(config),
-                "engine": args.engine,
-                "parser_mode": args.parser_mode,
-                "started_at": started_at,
-                "elapsed_s": round(elapsed, 3),
-                "input_path": _canonical_path(input_path),
-                "summary": {
-                    "processed_files": len(discovered),
-                    "ok_files": ok_files,
-                    "error_files": error_files,
-                },
-            },
-            "items": items,
-        }
+        headless_payload = _build_headless_run_payload(
+            config,
+            items,
+            engine=args.engine,
+            parser_mode=args.parser_mode,
+            input_path=input_path,
+            started_at=started_at,
+            elapsed_s=elapsed,
+            ok_files=ok_files,
+            error_files=error_files,
+            discovered_count=len(discovered),
+        )
         _write_json(headless_path, headless_payload)
         _clean_checkpoint(checkpoint_path)
 
         label_scores = _score_labeled_subset(items, labeled_files)
-        score_payload = {
-            "manifest": {
-                "run_type": "preprocess_sweep_label_scores",
-                "config_name": config.name,
-                "config": asdict(config),
-                "engine": args.engine,
-                "labels_path": _canonical_path(labels_path),
-                "split_filter": sorted(label_splits),
-            },
-            "summary": {
-                **{key: value for key, value in label_scores.items() if key != "file_details"},
-                "elapsed_s": round(elapsed, 3),
-                "processed_files": len(discovered),
-                "ok_files": ok_files,
-                "error_files": error_files,
-            },
-            "file_details": label_scores["file_details"],
-        }
+        score_payload = _build_label_scores_payload(
+            config,
+            label_scores,
+            engine=args.engine,
+            labels_path=labels_path,
+            label_splits=label_splits,
+            elapsed_s=elapsed,
+            discovered_count=len(discovered),
+            ok_files=ok_files,
+            error_files=error_files,
+        )
         _write_json(score_path, score_payload)
         summary_payload.append(score_payload)
 
         summary_rows.append(
-            {
-                "config_name": config.name,
-                "engine": args.engine,
-                "description": config.description,
-                "exact_match_rate": label_scores["exact_match_rate"],
-                "line_match_rate": label_scores["line_match_rate"],
-                "value_match_rate": label_scores["value_match_rate"],
-                "label_match_rate": label_scores["label_match_rate"],
-                "prefix_match_rate": label_scores["prefix_match_rate"],
-                "detection_rate": label_scores["detection_rate"],
-                "elapsed_s": round(elapsed, 3),
-                "processed_files": len(discovered),
-                "ok_files": ok_files,
-                "error_files": error_files,
-            }
+            _summary_row_from_live_scores(
+                config,
+                label_scores,
+                engine=args.engine,
+                elapsed_s=elapsed,
+                discovered_count=len(discovered),
+                ok_files=ok_files,
+                error_files=error_files,
+            )
         )
 
-    explicit_baseline = str(args.baseline_config or "").strip()
-    baseline_row = None
-    effective_baseline_name = ""
-    if explicit_baseline:
-        baseline_row = next(
-            (row for row in summary_rows if row["config_name"] == explicit_baseline),
-            None,
-        )
-        if baseline_row is not None:
-            effective_baseline_name = explicit_baseline
-    if baseline_row is None:
-        baseline_row = next(
-            (row for row in summary_rows if row["config_name"] == "default_multiview"),
-            None,
-        )
-        if baseline_row is not None:
-            effective_baseline_name = "default_multiview"
-    baseline_exact = float(baseline_row["exact_match_rate"]) if baseline_row is not None else None
-    for row in summary_rows:
-        row["delta_exact_vs_baseline"] = (
-            round(float(row["exact_match_rate"]) - baseline_exact, 6)
-            if baseline_exact is not None
-            else ""
-        )
-
-    summary_rows = sorted(
-        summary_rows,
-        key=lambda row: (
-            float(row["exact_match_rate"]),
-            float(row["value_match_rate"]),
-            -float(row["elapsed_s"]),
-        ),
-        reverse=True,
+    explicit_baseline_req = str(args.baseline_config or "").strip()
+    baseline_row, effective_baseline_name = _resolve_baseline_row(
+        summary_rows, explicit_baseline_req
     )
+    _apply_baseline_delta_column(summary_rows, baseline_row)
+    _sort_summary_rows_by_match_quality(summary_rows)
 
     summary_json = {
         "manifest": {

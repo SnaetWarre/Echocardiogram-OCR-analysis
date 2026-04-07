@@ -518,6 +518,37 @@ class EchoOcrPipeline(BasePipeline):
             )
         return records
 
+    def _append_frame_processing_benchmark(
+        self,
+        *,
+        frame_index: int,
+        frame_latency_ms: float,
+        ocr: OcrResult | None,
+        panel: PanelTranscription,
+        measurements: list[AiMeasurement],
+        bbox: tuple[int, int, int, int] | None,
+    ) -> None:
+        effective_engine = (
+            str(ocr.engine_name).strip()
+            if ocr is not None and str(ocr.engine_name).strip()
+            else str(self.ocr_engine.name).strip()
+        )
+        self._frame_benchmarks.append(
+            {
+                "frame_index": frame_index,
+                "latency_ms": round(frame_latency_ms, 3),
+                "ocr_engine": effective_engine,
+                "line_count": len(panel.lines),
+                "measurement_count": len(measurements),
+                "ocr_confidence": float(ocr.confidence) if ocr is not None else 0.0,
+                "uncertain_line_count": panel.uncertain_line_count,
+                "fallback_invocations": panel.fallback_invocations,
+                "engine_disagreement_count": panel.engine_disagreement_count,
+                "vision_invocations": panel.vision_invocations,
+                "used_detection": bool(bbox is not None),
+            }
+        )
+
     def _extract_records(
         self,
         series: DicomSeries,
@@ -540,25 +571,13 @@ class EchoOcrPipeline(BasePipeline):
                 frame, self.box_detector.detect(frame)
             )
             frame_latency_ms = (time.perf_counter() - frame_started_at) * 1000.0
-            effective_engine = (
-                str(ocr.engine_name).strip()
-                if ocr is not None and str(ocr.engine_name).strip()
-                else str(self.ocr_engine.name).strip()
-            )
-            self._frame_benchmarks.append(
-                {
-                    "frame_index": frame_index,
-                    "latency_ms": round(frame_latency_ms, 3),
-                    "ocr_engine": effective_engine,
-                    "line_count": len(panel.lines),
-                    "measurement_count": len(measurements),
-                    "ocr_confidence": float(ocr.confidence) if ocr is not None else 0.0,
-                    "uncertain_line_count": panel.uncertain_line_count,
-                    "fallback_invocations": panel.fallback_invocations,
-                    "engine_disagreement_count": panel.engine_disagreement_count,
-                    "vision_invocations": panel.vision_invocations,
-                    "used_detection": bool(bbox is not None),
-                }
+            self._append_frame_processing_benchmark(
+                frame_index=frame_index,
+                frame_latency_ms=frame_latency_ms,
+                ocr=ocr,
+                panel=panel,
+                measurements=measurements,
+                bbox=bbox,
             )
             if bbox is not None and panel.lines and raw_line_predictions is not None:
                 for line in panel.lines:
