@@ -31,7 +31,7 @@ from app.repo_paths import DEFAULT_EXACT_LINES_PATH
 from app.validation.datasets import parse_labels
 from app.validation.evaluation import run_evaluation
 
-HEADER_TRIM_PX = 14
+HEADER_TRIM_PX = 0
 DATASET_TASK = "exact_roi_measurement_transcription"
 _NUM_RE = re.compile(r"[-+]?\d+(?:[.,]\d+)?")
 _LINE_PARSE_RE = re.compile(
@@ -684,7 +684,7 @@ def run_raw_text_eval(labels, engine) -> tuple[RawEvalScores, list[FileDebugReco
             x, y, bw, bh = detection.bbox
             roi = frame[y : y + bh, x : x + bw]
             ocr_bbox = (x, y, bw, bh)
-            if roi.shape[0] > HEADER_TRIM_PX:
+            if HEADER_TRIM_PX > 0 and roi.shape[0] > HEADER_TRIM_PX:
                 roi = roi[HEADER_TRIM_PX:, :]
                 ocr_bbox = (x, y + HEADER_TRIM_PX, bw, bh - HEADER_TRIM_PX)
 
@@ -1035,7 +1035,7 @@ def run_local_vision_llm_eval(
             x, y, bw, bh = detection.bbox
             roi = frame[y : y + bh, x : x + bw]
             ocr_bbox = (x, y, bw, bh)
-            if roi.shape[0] > HEADER_TRIM_PX:
+            if HEADER_TRIM_PX > 0 and roi.shape[0] > HEADER_TRIM_PX:
                 roi = roi[HEADER_TRIM_PX:, :]
                 ocr_bbox = (x, y + HEADER_TRIM_PX, bw, bh - HEADER_TRIM_PX)
 

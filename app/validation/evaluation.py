@@ -13,7 +13,7 @@ from app.pipeline.ocr_engines import OcrEngine
 from app.validation.datasets import LabeledFile, LabeledMeasurement, canonicalize_label_line, normalize_space
 
 
-HEADER_TRIM_PX = 14
+HEADER_TRIM_PX = 0
 _LINE_PARSE_RE = re.compile(
     r"""
     ^
@@ -363,7 +363,7 @@ def run_evaluation(
             x, y, bw, bh = detection.bbox
             roi = frame[y : y + bh, x : x + bw]
             ocr_bbox = (x, y, bw, bh)
-            if roi.shape[0] > HEADER_TRIM_PX:
+            if HEADER_TRIM_PX > 0 and roi.shape[0] > HEADER_TRIM_PX:
                 roi = roi[HEADER_TRIM_PX:, :]
                 ocr_bbox = (x, y + HEADER_TRIM_PX, bw, bh - HEADER_TRIM_PX)
 

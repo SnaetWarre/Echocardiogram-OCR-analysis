@@ -307,7 +307,7 @@ def test_ai_result_uses_exact_line_sources_and_raw_line_predictions() -> None:
     assert result.measurements[0].source == "exact_line:1 TR Vmax 2.1 m/s:0.880"
     assert result.raw["exact_lines"] == ["1 TR Vmax 2.1 m/s"]
     assert result.raw["line_predictions"][0]["line_bbox"] == [0, 0, 10, 2]
-    assert result.raw["segmentation_mode"] == "fixed_pitch"
+    assert result.raw["segmentation_mode"] == "adaptive"
     assert result.raw["target_line_height_px"] == 20.0
 
 

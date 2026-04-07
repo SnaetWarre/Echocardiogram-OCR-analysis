@@ -17,14 +17,13 @@ def _make_roi() -> np.ndarray:
     return roi
 
 
-def test_line_segmenter_detects_header_trim_and_line_boxes() -> None:
-    segmenter = LineSegmenter()
+def test_line_segmenter_fixed_pitch_line_boxes_without_header_trim() -> None:
+    segmenter = LineSegmenter(segmentation_mode="fixed_pitch")
 
     result = segmenter.segment(_make_roi())
 
-    assert result.header_trim_px >= 10
+    assert result.header_trim_px == 0
     assert len(result.lines) == 2
-    assert result.lines[0].bbox[1] >= result.header_trim_px
     assert result.lines[1].bbox[1] > result.lines[0].bbox[1]
     assert all(line.metadata.get("source") == "fixed_pitch" for line in result.lines)
 

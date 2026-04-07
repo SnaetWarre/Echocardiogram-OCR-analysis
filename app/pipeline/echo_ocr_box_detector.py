@@ -12,9 +12,9 @@ class RoiDetection:
     confidence: float
 
 
-# Measurement overlay box color (hex #1A2129) - dark blue-gray
+# Measurement overlay box color (hex #1A2129, rgb 26, 33, 41) 
 _MEASUREMENT_BOX_RGB = (0x1A, 0x21, 0x29)
-_MEASUREMENT_BOX_TOLERANCE = 18  # tighter max Euclidean distance in RGB to match
+_MEASUREMENT_BOX_TOLERANCE = 6
 
 
 def _to_gray(frame: np.ndarray) -> np.ndarray:
@@ -27,14 +27,23 @@ def _to_gray(frame: np.ndarray) -> np.ndarray:
     raise ValueError(f"Unsupported frame shape: {frame.shape}")
 
 
-def _color_distance(rgb: np.ndarray, target: tuple) -> np.ndarray:
-    """Euclidean distance in RGB space from target."""
-    rgb_f = rgb[..., :3].astype(np.float32, copy=False)
-    tr, tg, tb = map(float, target)
-    dr = rgb_f[..., 0] - tr
-    dg = rgb_f[..., 1] - tg
-    db = rgb_f[..., 2] - tb
-    return np.sqrt(np.maximum(dr * dr + dg * dg + db * db, 0.0))
+def _color_match_mask(rgb: np.ndarray, target: tuple[int, int, int], tolerance: float) -> np.ndarray:
+    """Pixels where each RGB channel is within ``tolerance`` of ``target`` (absolute difference)."""
+    # Convert to signed ints so channel subtraction is safe for uint8 inputs.
+    rgb_int = rgb[..., :3].astype(np.int16, copy=False)
+
+    target_r, target_g, target_b = (int(channel) for channel in target)
+    max_channel_delta = float(tolerance)
+
+    red_delta = np.abs(rgb_int[..., 0] - target_r)
+    green_delta = np.abs(rgb_int[..., 1] - target_g)
+    blue_delta = np.abs(rgb_int[..., 2] - target_b)
+
+    red_matches = red_delta <= max_channel_delta
+    green_matches = green_delta <= max_channel_delta
+    blue_matches = blue_delta <= max_channel_delta
+
+    return red_matches & green_matches & blue_matches
 
 
 def _select_measurement_component(mask: np.ndarray) -> np.ndarray:
@@ -120,8 +129,7 @@ class TopLeftBlueGrayBoxDetector:
             return RoiDetection(present=False, bbox=None, confidence=0.0)
         else:
             rgb = search[..., :3].astype(np.int16)
-            dist = _color_distance(rgb, self.box_color)
-            mask = dist <= self.color_tolerance
+            mask = _color_match_mask(rgb, self.box_color, self.color_tolerance)
 
             if np.sum(mask) >= self.min_pixels:
                 component_mask = _fill_mask_holes(mask)

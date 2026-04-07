@@ -100,7 +100,7 @@ def main() -> None:
 
         for config_name, cfg in configs.items():
             segmenter = LineSegmenter(
-                segmentation_mode="fixed_pitch",
+                segmentation_mode="adaptive",
                 target_line_height_px=20.0,
                 snap_to_valleys=False,
             )

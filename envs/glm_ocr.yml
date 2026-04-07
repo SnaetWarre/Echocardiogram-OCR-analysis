@@ -6,10 +6,14 @@ dependencies:
   - pip
   - pillow
   - pip:
+      # Use the official CUDA 12.4 wheel index on Windows so GLM-OCR can use NVIDIA GPUs.
+      - --extra-index-url https://download.pytorch.org/whl/cu124
       # torchvision required: without it, transformers' video_processor auto-mapping
       # leaves extractors=None and AutoProcessor.from_pretrained crashes (GLM-OCR, etc.).
-      - torch==2.5.1
-      - torchvision==0.20.1
+      - torch==2.5.1+cu124; platform_system == "Windows"
+      - torchvision==0.20.1+cu124; platform_system == "Windows"
+      - torch==2.5.1; platform_system != "Windows"
+      - torchvision==0.20.1; platform_system != "Windows"
       - transformers==5.2.0
       - accelerate==1.12.0
       - safetensors==0.7.0

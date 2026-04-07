@@ -10,10 +10,8 @@ import numpy as np
 from app.pipeline.ocr_engines import OcrToken
 
 
-DEFAULT_HEADER_TRIM_PX = 12
-# Upper bound on header trim so the first measurement line keeps its ascenders;
-# detection can otherwise jump to ~45% of ROI height or the second text run (often ~24px).
-DEFAULT_MAX_HEADER_TRIM_PX = 18
+DEFAULT_HEADER_TRIM_PX = 0
+DEFAULT_MAX_HEADER_TRIM_PX = 0
 
 
 def _empty_metadata() -> dict[str, Any]:
@@ -51,8 +49,10 @@ class SegmentationResult:
 class LineSegmenter:
     """Split a measurement-panel ROI into horizontal text lines.
 
-    *Vertical* placement: optional header trim (`detect_header_trim`), then fixed-pitch
-    stripes (~`target_line_height_px`, often 20px) or projection/token clustering.
+    *Vertical* placement: optional header trim (`detect_header_trim`, off by default), then
+    **adaptive** row detection (OCR token boxes when ``tokens`` are passed, else horizontal
+    projection), or **fixed-pitch** stripes (~`target_line_height_px`) when
+    ``segmentation_mode="fixed_pitch"``.
 
     *Horizontal* extent per line: tight bbox from `_text_mask` ink columns in that stripe
     (``xs.min`` … ``xs.max``) plus `line_padding_px` (default 2). Faint leftmost glyphs can
@@ -62,7 +62,7 @@ class LineSegmenter:
     def __init__(
         self,
         *,
-        segmentation_mode: str = "fixed_pitch",
+        segmentation_mode: str = "adaptive",
         target_line_height_px: float = 20.0,
         default_header_trim_px: int = DEFAULT_HEADER_TRIM_PX,
         max_header_trim_px: int | None = DEFAULT_MAX_HEADER_TRIM_PX,
@@ -75,7 +75,7 @@ class LineSegmenter:
         snap_to_valleys: bool = False,
         extra_left_pad_px: int = 0,
     ) -> None:
-        self.segmentation_mode = str(segmentation_mode).strip().lower() or "fixed_pitch"
+        self.segmentation_mode = str(segmentation_mode).strip().lower() or "adaptive"
         self.target_line_height_px = max(1.0, float(target_line_height_px))
         self.default_header_trim_px = max(0, int(default_header_trim_px))
         self.max_header_trim_px = (

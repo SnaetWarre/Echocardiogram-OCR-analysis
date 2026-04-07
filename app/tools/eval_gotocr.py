@@ -180,9 +180,6 @@ def preload_gotocr_batch(labeled_files) -> dict:
                     if detection.present and detection.bbox is not None:
                         x, y, bw, bh = detection.bbox
                         roi = frame[y : y + bh, x : x + bw]
-                        header_trim_px = 14
-                        if roi.shape[0] > header_trim_px:
-                            roi = roi[header_trim_px:, :]
                         img_np = preprocess_roi(roi)
                         if img_np is not None and img_np.size > 0:
                             break

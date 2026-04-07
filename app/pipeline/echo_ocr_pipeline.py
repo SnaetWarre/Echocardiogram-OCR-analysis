@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import time
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Protocol
@@ -24,7 +24,7 @@ from app.pipeline.echo_ocr_box_detector import (
     TopLeftBlueGrayBoxDetector,
 )
 from app.pipeline.line_first_parser import LineFirstParser
-from app.pipeline.line_segmenter import DEFAULT_HEADER_TRIM_PX, LineSegmenter, SegmentationResult
+from app.pipeline.line_segmenter import LineSegmenter, SegmentationResult
 from app.pipeline.line_transcriber import LineTranscriber, PanelTranscription
 from app.pipeline.lexicon_builder import LexiconArtifact, build_lexicon_artifact
 from app.pipeline.lexicon_reranker import LexiconReranker
@@ -42,7 +42,7 @@ from app.repo_paths import DEFAULT_OCR_REDESIGN_LEXICON_PATH
 DEFAULT_OCR_ENGINE = "glm-ocr"
 DEFAULT_FALLBACK_OCR_ENGINE = "surya"
 DEFAULT_PARSER_MODE = "off"
-DEFAULT_SEGMENTATION_MODE = "fixed_pitch"
+DEFAULT_SEGMENTATION_MODE = "adaptive"
 DEFAULT_TARGET_LINE_HEIGHT_PX = 20.0
 DEFAULT_SEGMENTATION_EXTRA_LEFT_PAD_PX = 16
 
@@ -204,7 +204,6 @@ class EchoOcrPipeline(BasePipeline):
         self._line_segmenter = LineSegmenter(
             segmentation_mode=self._segmentation_mode,
             target_line_height_px=self._target_line_height_px,
-            default_header_trim_px=DEFAULT_HEADER_TRIM_PX,
             extra_left_pad_px=self._segmentation_extra_left_pad_px,
         )
         self._line_transcriber = LineTranscriber(
@@ -658,6 +657,7 @@ class EchoOcrPipeline(BasePipeline):
         )
         if self._reranker is not None:
             panel = self._reranker.rerank_panel(panel)
+        panel = self._drop_first_panel_line(panel)
         ocr = OcrResult(
             text=panel.combined_text,
             confidence=self._panel_confidence(panel),
@@ -887,6 +887,25 @@ class EchoOcrPipeline(BasePipeline):
                     tokens.extend(candidate.tokens)
                     break
         return tokens
+
+    @staticmethod
+    def _drop_first_panel_line(panel: PanelTranscription) -> PanelTranscription:
+        if not panel.lines:
+            return panel
+        retained_lines = tuple(
+            replace(line, order=order)
+            for order, line in enumerate(panel.lines[1:])
+        )
+        combined_text = "\n".join(line.text for line in retained_lines if line.text).strip()
+        uncertain_count = sum(1 for line in retained_lines if line.uncertain)
+        return PanelTranscription(
+            lines=retained_lines,
+            combined_text=combined_text,
+            uncertain_line_count=uncertain_count,
+            fallback_invocations=panel.fallback_invocations,
+            engine_disagreement_count=panel.engine_disagreement_count,
+            vision_invocations=panel.vision_invocations,
+        )
 
     def _parse_transcribed_panel(self, panel: PanelTranscription, *, confidence: float) -> list[AiMeasurement]:
         lines = [line.text for line in panel.lines if line.text.strip()]

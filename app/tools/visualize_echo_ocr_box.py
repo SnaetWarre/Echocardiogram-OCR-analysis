@@ -19,7 +19,7 @@ from app.pipeline.echo_ocr_box_detector import (
     TopLeftBlueGrayBoxDetector,
     _MEASUREMENT_BOX_RGB,
     _MEASUREMENT_BOX_TOLERANCE,
-    _color_distance,
+    _color_match_mask,
     _to_gray,
 )
 
@@ -39,7 +39,10 @@ def _parse_args() -> argparse.Namespace:
         "--tolerance",
         type=float,
         default=float(_MEASUREMENT_BOX_TOLERANCE),
-        help=f"RGB distance tolerance around target color {tuple(_MEASUREMENT_BOX_RGB)}",
+        help=(
+            f"Max absolute difference per R, G, B channel around target color "
+            f"{tuple(_MEASUREMENT_BOX_RGB)}"
+        ),
     )
     parser.add_argument(
         "--min-pixels",
@@ -107,8 +110,13 @@ def _compute_debug_masks(
     rgb = _ensure_rgb(search)
     gray = _to_gray(search)
 
-    color_distance = _color_distance(rgb.astype(np.int16), box_color)
-    color_mask = color_distance <= tolerance
+    rgb_i = rgb.astype(np.int16)[..., :3]
+    tr, tg, tb = int(box_color[0]), int(box_color[1]), int(box_color[2])
+    dr = np.abs(rgb_i[..., 0] - tr).astype(np.float32)
+    dg = np.abs(rgb_i[..., 1] - tg).astype(np.float32)
+    db = np.abs(rgb_i[..., 2] - tb).astype(np.float32)
+    max_channel_abs_diff = np.maximum(np.maximum(dr, dg), db)
+    color_mask = _color_match_mask(rgb.astype(np.int16), box_color, tolerance)
     refined_mask = np.zeros_like(color_mask, dtype=bool)
 
     try:
@@ -169,7 +177,7 @@ def _compute_debug_masks(
     return {
         "search": search,
         "gray": gray,
-        "color_distance": color_distance,
+        "max_channel_abs_diff": max_channel_abs_diff,
         "color_mask": color_mask,
         "filled_mask": filled_mask_bool,
         "refined_mask": refined_mask,
@@ -361,8 +369,8 @@ def main() -> int:
     ax.axis("off")
 
     ax = axes[0, 2]
-    im = ax.imshow(debug["color_distance"], cmap="viridis")
-    ax.set_title("Color distance to target")
+    im = ax.imshow(debug["max_channel_abs_diff"], cmap="viridis")
+    ax.set_title("Max |ΔR|, |ΔG|, |ΔB| vs target")
     ax.axis("off")
     fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
 
