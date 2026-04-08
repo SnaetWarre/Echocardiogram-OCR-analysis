@@ -8,7 +8,6 @@ from app.pipeline.echo_ocr_pipeline import (
     DEFAULT_CONTRAST_MODE,
     DEFAULT_FALLBACK_OCR_ENGINE,
     DEFAULT_OCR_ENGINE,
-    DEFAULT_PARSER_MODE,
     DEFAULT_SCALE_ALGO,
     DEFAULT_SCALE_FACTOR,
     DEFAULT_SEGMENTATION_EXTRA_LEFT_PAD_PX,
@@ -16,13 +15,11 @@ from app.pipeline.echo_ocr_pipeline import (
     DEFAULT_TARGET_LINE_HEIGHT_PX,
     EchoOcrPipeline,
 )
-from app.pipeline.measurements.measurement_parsers import LocalLlmMeasurementParser, LocalLlmParserConfig
 from app.pipeline.ocr.ocr_engines import OcrEngine, build_engine
 
 
 GUI_OCR_ENGINE_NAMES = ("glm-ocr", "surya", "paddleocr", "easyocr", "tesseract")
 DEFAULT_GUI_OCR_ENGINE = DEFAULT_OCR_ENGINE
-DEFAULT_GUI_PARSER_MODE = DEFAULT_PARSER_MODE
 DEFAULT_GUI_SEGMENTATION_MODE = DEFAULT_SEGMENTATION_MODE
 DEFAULT_GUI_TARGET_LINE_HEIGHT_PX = DEFAULT_TARGET_LINE_HEIGHT_PX
 DEFAULT_GUI_MAX_FRAMES = 1
@@ -48,20 +45,16 @@ def _normalize_engine_names(engine_names: Sequence[str]) -> tuple[str, ...]:
 def _base_gui_parameters(
     *,
     ocr_engine_name: str,
-    parser_mode: str,
     segmentation_mode: str,
     target_line_height_px: float,
     max_frames: int,
     panel_validation_mode: str = "off",
-    vision_fallback_enabled: bool = False,
     panel_validation_model: str | None = None,
     panel_validation_command: str | None = None,
-    vision_model: str | None = None,
 ) -> dict[str, object]:
     parameters: dict[str, object] = {
         "ocr_engine": ocr_engine_name,
         "fallback_ocr_engine": DEFAULT_FALLBACK_OCR_ENGINE,
-        "parser_mode": parser_mode,
         "scale_factor": DEFAULT_SCALE_FACTOR,
         "scale_algo": DEFAULT_SCALE_ALGO,
         "contrast_mode": DEFAULT_CONTRAST_MODE,
@@ -70,7 +63,6 @@ def _base_gui_parameters(
         "target_line_height_px": target_line_height_px,
         "segmentation_extra_left_pad_px": DEFAULT_SEGMENTATION_EXTRA_LEFT_PAD_PX,
         "panel_validation_mode": panel_validation_mode,
-        "vision_fallback_enabled": vision_fallback_enabled,
         "study_companion_enabled": False,
         "strict_ocr_engine_selection": True,
     }
@@ -78,8 +70,6 @@ def _base_gui_parameters(
         parameters["panel_validation_model"] = panel_validation_model
     if panel_validation_command is not None:
         parameters["panel_validation_command"] = panel_validation_command
-    if vision_model is not None:
-        parameters["vision_model"] = vision_model
     return parameters
 
 
@@ -92,7 +82,6 @@ class GuiOcrComparisonPipeline(BasePipeline):
         engine_names: Sequence[str],
         glm_ocr_engine: OcrEngine | None = None,
         surya_engine: OcrEngine | None = None,
-        parser_mode: str = DEFAULT_GUI_PARSER_MODE,
         segmentation_mode: str = DEFAULT_GUI_SEGMENTATION_MODE,
         target_line_height_px: float = DEFAULT_GUI_TARGET_LINE_HEIGHT_PX,
         max_frames: int = DEFAULT_GUI_MAX_FRAMES,
@@ -103,7 +92,6 @@ class GuiOcrComparisonPipeline(BasePipeline):
             parameters={
                 **_base_gui_parameters(
                     ocr_engine_name=self._engine_names[0],
-                    parser_mode=parser_mode,
                     segmentation_mode=segmentation_mode,
                     target_line_height_px=target_line_height_px,
                     max_frames=max_frames,
@@ -125,7 +113,6 @@ class GuiOcrComparisonPipeline(BasePipeline):
                 config=PipelineConfig(
                     parameters=_base_gui_parameters(
                         ocr_engine_name=engine_name,
-                        parser_mode=parser_mode,
                         segmentation_mode=segmentation_mode,
                         target_line_height_px=target_line_height_px,
                         max_frames=max_frames,
@@ -264,7 +251,6 @@ def build_gui_ocr_manager(
     ocr_engine_name: str = DEFAULT_GUI_OCR_ENGINE,
     glm_ocr_engine: OcrEngine | None = None,
     surya_engine: OcrEngine | None = None,
-    parser_mode: str = DEFAULT_GUI_PARSER_MODE,
     segmentation_mode: str = DEFAULT_GUI_SEGMENTATION_MODE,
     target_line_height_px: float = DEFAULT_GUI_TARGET_LINE_HEIGHT_PX,
     max_frames: int = DEFAULT_GUI_MAX_FRAMES,
@@ -278,7 +264,6 @@ def build_gui_ocr_manager(
 
     parameters = _base_gui_parameters(
         ocr_engine_name=resolved_engine_name,
-        parser_mode=parser_mode,
         segmentation_mode=segmentation_mode,
         target_line_height_px=target_line_height_px,
         max_frames=max_frames,
@@ -306,7 +291,6 @@ def build_gui_ocr_comparison_manager(
     ocr_engine_names: Sequence[str],
     glm_ocr_engine: OcrEngine | None = None,
     surya_engine: OcrEngine | None = None,
-    parser_mode: str = DEFAULT_GUI_PARSER_MODE,
     segmentation_mode: str = DEFAULT_GUI_SEGMENTATION_MODE,
     target_line_height_px: float = DEFAULT_GUI_TARGET_LINE_HEIGHT_PX,
     max_frames: int = DEFAULT_GUI_MAX_FRAMES,
@@ -315,7 +299,6 @@ def build_gui_ocr_comparison_manager(
         engine_names=ocr_engine_names,
         glm_ocr_engine=glm_ocr_engine,
         surya_engine=surya_engine,
-        parser_mode=parser_mode,
         segmentation_mode=segmentation_mode,
         target_line_height_px=target_line_height_px,
         max_frames=max_frames,
@@ -332,40 +315,20 @@ def build_validation_manager(
     surya_engine: OcrEngine | None = None,
     llm_model: str = "qwen2.5:7b-instruct-q4_K_M",
     llm_command: str = "ollama",
-    parser_mode: str = "local_llm",
-    vision_model: str = "qwen2.5vl:3b-q4_K_M",
-    vision_fallback_enabled: bool = True,
 ) -> PipelineManager:
     engine, resolved_engine_name, startup_warning = _resolve_engine_with_guardrails(
         ocr_engine_name=DEFAULT_GUI_OCR_ENGINE,
         glm_ocr_engine=glm_ocr_engine,
         surya_engine=surya_engine,
     )
-    parser = LocalLlmMeasurementParser(
-        config=LocalLlmParserConfig(
-            model=llm_model,
-            command=llm_command,
-            timeout_s=30.0,
-        )
-    )
-    if parser_mode == "regex_then_llm":
-        from app.pipeline.measurements.measurement_parsers import RegexMeasurementParser, RegexThenLlmMeasurementParser
-
-        parser = RegexThenLlmMeasurementParser(
-            regex_parser=RegexMeasurementParser(),
-            llm_parser=parser,
-        )
     parameters = _base_gui_parameters(
         ocr_engine_name=resolved_engine_name,
-        parser_mode=parser_mode,
         segmentation_mode=DEFAULT_GUI_SEGMENTATION_MODE,
         target_line_height_px=DEFAULT_GUI_TARGET_LINE_HEIGHT_PX,
         max_frames=DEFAULT_GUI_MAX_FRAMES,
         panel_validation_mode="selective",
-        vision_fallback_enabled=vision_fallback_enabled,
         panel_validation_model=llm_model,
         panel_validation_command=llm_command,
-        vision_model=vision_model,
     )
     if startup_warning:
         parameters["startup_warning"] = startup_warning
@@ -374,7 +337,6 @@ def build_validation_manager(
 
     pipeline = EchoOcrPipeline(
         ocr_engine=engine,
-        parser=parser,
         config=PipelineConfig(
             parameters=parameters
         ),

@@ -10,17 +10,16 @@ from app.pipeline.ai_pipeline import PipelineConfig
 from app.pipeline.echo_ocr_pipeline import (
     DEFAULT_FALLBACK_OCR_ENGINE,
     DEFAULT_OCR_ENGINE,
-    DEFAULT_PARSER_MODE,
     DEFAULT_SEGMENTATION_EXTRA_LEFT_PAD_PX,
     DEFAULT_SEGMENTATION_MODE,
     DEFAULT_TARGET_LINE_HEIGHT_PX,
     EchoOcrPipeline,
-    RegexMeasurementParser,
     RoiDetection,
     RoutedOcrEngine,
     TopLeftBlueGrayBoxDetector,
     preprocess_roi,
 )
+from app.pipeline.measurements.line_first_parser import LineFirstParser
 from app.pipeline.transcription.line_transcriber import LinePrediction, PanelTranscription
 from app.pipeline.llm.panel_validator import LocalLlmPanelValidator, PanelValidatorConfig
 from app.pipeline.ocr.ocr_engines import OcrResult, OcrToken
@@ -97,9 +96,9 @@ def test_detector_accepts_tall_top_left_measurement_panel() -> None:
     assert 285 <= height <= 295
 
 
-def test_parser_extracts_value_and_unit() -> None:
-    parser = RegexMeasurementParser()
-    items = parser.parse("PV Vmax 0.87 m/s\nPV maxPG 3 mmHg", confidence=0.9)
+def test_line_first_parser_extracts_value_and_unit() -> None:
+    parser = LineFirstParser()
+    items = parser.parse_text("PV Vmax 0.87 m/s\nPV maxPG 3 mmHg", confidence=0.9)
 
     assert len(items) == 2
     assert items[0].name == "PV Vmax"
@@ -107,9 +106,9 @@ def test_parser_extracts_value_and_unit() -> None:
     assert items[0].unit == "m/s"
 
 
-def test_parser_preserves_compound_unit_without_truncation() -> None:
-    parser = RegexMeasurementParser()
-    items = parser.parse("Ao Desc Diam 2.0 cm2", confidence=0.9)
+def test_line_first_parser_preserves_compound_unit_without_truncation() -> None:
+    parser = LineFirstParser()
+    items = parser.parse_text("Ao Desc Diam 2.0 cm2", confidence=0.9)
 
     assert len(items) == 1
     assert items[0].name == "Ao Desc Diam"
@@ -130,11 +129,27 @@ def test_preprocess_roi_respects_upscale_env(monkeypatch) -> None:
     assert processed.shape == (24, 36)
 
 
+class _FixedLineFirstParser:
+    def __init__(self, items: list[AiMeasurement]) -> None:
+        self._items = items
+
+    def parse(self, text: str, *, confidence: float) -> list[AiMeasurement]:
+        return self.parse_lines(text.splitlines(), confidence=confidence)
+
+    def parse_text(self, text: str, *, confidence: float) -> list[AiMeasurement]:
+        return self.parse_lines(text.splitlines(), confidence=confidence)
+
+    def parse_lines(self, lines, *, confidence: float) -> list[AiMeasurement]:
+        return list(self._items)
+
+
 def test_extract_measurements_trims_14px_header_before_ocr() -> None:
     frame = np.zeros((80, 160, 3), dtype=np.uint8)
-    parser = _FixedParser([AiMeasurement(name="PV Vmax", value="0.96", unit="m/s", source="test")])
-    pipeline = EchoOcrPipeline(ocr_engine=_FakeOcrEngine("PV Vmax 0.96 m/s"), parser=parser)
+    pipeline = EchoOcrPipeline(ocr_engine=_FakeOcrEngine("PV Vmax 0.96 m/s"))
     pipeline._ensure_components()
+    pipeline._line_first_parser = _FixedLineFirstParser(
+        [AiMeasurement(name="PV Vmax", value="0.96", unit="m/s", source="test")]
+    )
 
     captured_shapes: list[tuple[int, int, int]] = []
 
@@ -173,19 +188,13 @@ class _FakeOcrEngine:
         )
 
 
-class _FixedParser:
-    def __init__(self, items: list[AiMeasurement]) -> None:
-        self._items = items
-
-    def parse(self, text: str, *, confidence: float) -> list[AiMeasurement]:
-        return list(self._items)
-
-
 def test_extract_measurements_uses_detector_bbox_only() -> None:
     frame = np.zeros((120, 200, 3), dtype=np.uint8)
-    parser = _FixedParser([AiMeasurement(name="TR Vmax", value="2.1", unit="m/s", source="test")])
-    pipeline = EchoOcrPipeline(ocr_engine=_FakeOcrEngine("TR Vmax 2.1 m/s"), parser=parser)
+    pipeline = EchoOcrPipeline(ocr_engine=_FakeOcrEngine("TR Vmax 2.1 m/s"))
     pipeline._ensure_components()
+    pipeline._line_first_parser = _FixedLineFirstParser(
+        [AiMeasurement(name="1 TR Vmax", value="2.1", unit="m/s", source="test")]
+    )
 
     ocr, panel, items, bbox = pipeline._extract_measurements_for_frame(
         frame,
@@ -209,7 +218,6 @@ def test_extract_records_persists_single_engine_metadata() -> None:
     frame[5:29, 0:64, 2] = 0x29
     pipeline = EchoOcrPipeline(
         ocr_engine=_FakeOcrEngine("TR Vmax 2.1 m/s", name="engine-a", confidence=0.9),
-        parser=RegexMeasurementParser(),
         config=PipelineConfig(),
     )
     pipeline._ensure_components()
@@ -243,13 +251,14 @@ def test_extract_records_respects_max_frames_limit() -> None:
     frame[5:29, 0:64, 1] = 0x21
     frame[5:29, 0:64, 2] = 0x29
 
-    parser = _FixedParser([AiMeasurement(name="TR Vmax", value="2.1", unit="m/s", source="test")])
     pipeline = EchoOcrPipeline(
         ocr_engine=_FakeOcrEngine("TR Vmax 2.1 m/s", name="engine-a", confidence=0.9),
-        parser=parser,
         config=PipelineConfig.with_parameters({"max_frames": 1}),
     )
     pipeline._ensure_components()
+    pipeline._line_first_parser = _FixedLineFirstParser(
+        [AiMeasurement(name="TR Vmax", value="2.1", unit="m/s", source="test")]
+    )
 
     class _SeriesMetadata:
         study_instance_uid = "study"
@@ -412,7 +421,6 @@ def test_pipeline_defaults_match_line_first_validation_configuration() -> None:
 
     assert pipeline._default_engine == DEFAULT_OCR_ENGINE
     assert pipeline._fallback_engine_name == DEFAULT_FALLBACK_OCR_ENGINE
-    assert pipeline._parser_mode == DEFAULT_PARSER_MODE
     assert pipeline._segmentation_mode == DEFAULT_SEGMENTATION_MODE
     assert pipeline._target_line_height_px == DEFAULT_TARGET_LINE_HEIGHT_PX
     assert pipeline._segmentation_extra_left_pad_px == DEFAULT_SEGMENTATION_EXTRA_LEFT_PAD_PX
@@ -529,7 +537,6 @@ def test_scout_fallback_runs_when_primary_scout_has_no_tokens() -> None:
     fallback = _FallbackScoutTokens()
     pipeline = EchoOcrPipeline(
         ocr_engine=RoutedOcrEngine(primary=primary, fallback=fallback),
-        parser=RegexMeasurementParser(),
         config=PipelineConfig(),
     )
     pipeline._ensure_components()
@@ -559,7 +566,6 @@ def test_scout_fallback_skipped_when_primary_scout_has_tokens() -> None:
     fallback = _FallbackUnused()
     pipeline = EchoOcrPipeline(
         ocr_engine=RoutedOcrEngine(primary=primary, fallback=fallback),
-        parser=RegexMeasurementParser(),
         config=PipelineConfig(),
     )
     pipeline._ensure_components()

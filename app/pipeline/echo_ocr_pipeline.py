@@ -31,17 +31,14 @@ from app.pipeline.lexicon.lexicon_reranker import LexiconReranker
 from app.pipeline.measurements.measurement_decoder import canonicalize_exact_line
 from app.pipeline.output.echo_ocr_schema import MeasurementRecord
 from app.pipeline.output.echo_sidecar_writer import SidecarWriter
-from app.pipeline.measurements.measurement_parsers import MeasurementParser, RegexMeasurementParser, build_parser
 from app.pipeline.ocr.ocr_engines import OcrEngine, OcrResult, OcrToken, build_engine
 from app.pipeline.llm.panel_validator import LocalLlmPanelValidator, PanelValidatorConfig
 from app.pipeline.measurements.study_companion_discovery import StudyCompanionDiscovery
-from app.pipeline.llm.vision_llm import OllamaVisionLineExpert, VisionLineExpert, VisionLineExpertConfig
 from app.repo_paths import DEFAULT_OCR_REDESIGN_LEXICON_PATH
 
 
 DEFAULT_OCR_ENGINE = "glm-ocr"
 DEFAULT_FALLBACK_OCR_ENGINE = "surya"
-DEFAULT_PARSER_MODE = "off"
 DEFAULT_SEGMENTATION_MODE = "adaptive"
 DEFAULT_TARGET_LINE_HEIGHT_PX = 20.0
 DEFAULT_SEGMENTATION_EXTRA_LEFT_PAD_PX = 16
@@ -93,13 +90,11 @@ class EchoOcrPipeline(BasePipeline):
         *,
         ocr_engine: OcrEngine | None = None,
         box_detector: MeasurementBoxDetector | None = None,
-        parser: MeasurementParser | None = None,
         config: PipelineConfig | None = None,
     ) -> None:
         super().__init__(config=config)
         parameters = dict(self.config.parameters)
         self._provided_ocr_engine = ocr_engine
-        self._provided_parser = parser
         self._default_engine = (
             str(parameters.get("ocr_engine", os.getenv("ECHO_OCR_ENGINE", DEFAULT_OCR_ENGINE)))
             .strip()
@@ -111,12 +106,6 @@ class EchoOcrPipeline(BasePipeline):
             .lower()
         )
         self._startup_warning = str(parameters.get("startup_warning", "")).strip()
-        self._parser_mode = (
-            str(parameters.get("parser_mode", os.getenv("ECHO_PARSER_MODE", DEFAULT_PARSER_MODE)))
-            .strip()
-            .lower()
-        )
-        self._parser_parameters = dict(parameters)
         self._scale_factor = self._read_int_parameter(parameters, "scale_factor", default=DEFAULT_SCALE_FACTOR)
         self._scale_algo = str(parameters.get("scale_algo", DEFAULT_SCALE_ALGO)).strip().lower()
         self._contrast_mode = str(parameters.get("contrast_mode", DEFAULT_CONTRAST_MODE)).strip().lower()
@@ -175,39 +164,18 @@ class EchoOcrPipeline(BasePipeline):
             "panel_validation_timeout_s",
             default=30.0,
         )
-        self._vision_fallback_enabled = self._read_bool_parameter(
-            parameters,
-            "vision_fallback_enabled",
-            default=str(os.getenv("ECHO_VISION_FALLBACK_ENABLED", "0")).strip().lower()
-            in {"1", "true", "yes", "on"},
-        )
-        self._vision_model = str(
-            parameters.get("vision_model", os.getenv("ECHO_VISION_MODEL", "qwen2.5vl:3b-q4_K_M"))
-        ).strip()
-        self._vision_ollama_url = str(
-            parameters.get("vision_ollama_url", os.getenv("ECHO_VISION_OLLAMA_URL", "http://127.0.0.1:11434"))
-        ).strip()
-        self._vision_timeout_s = self._read_float_parameter(parameters, "vision_timeout_s", default=20.0)
-        self._vision_quality_threshold = self._read_float_parameter(
-            parameters,
-            "vision_quality_threshold",
-            default=0.76,
-        )
         self.ocr_engine: OcrEngine = NoopOcrEngine()
-        self.parser: MeasurementParser = RegexMeasurementParser()
         self._components_ready = False
         self.box_detector = box_detector or TopLeftBlueGrayBoxDetector()
         self._fallback_ocr_engine: OcrEngine | None = None
         self._study_companion_discovery: StudyCompanionDiscovery | None = None
         self._panel_validator: LocalLlmPanelValidator | None = None
-        self._vision_expert: VisionLineExpert | None = None
         self._line_segmenter = LineSegmenter(
             segmentation_mode=self._segmentation_mode,
             target_line_height_px=self._target_line_height_px,
             extra_left_pad_px=self._segmentation_extra_left_pad_px,
         )
         self._line_transcriber = LineTranscriber(
-            vision_quality_threshold=self._vision_quality_threshold,
             preprocess_views={
                 "default": lambda image: preprocess_roi(
                     image,
@@ -229,7 +197,7 @@ class EchoOcrPipeline(BasePipeline):
                 ),
             }
         )
-        self._line_first_parser = LineFirstParser(fallback_parser=None)
+        self._line_first_parser = LineFirstParser()
         self._lexicon: LexiconArtifact | None = None
         self._reranker: LexiconReranker | None = None
         self._frame_benchmarks: list[dict[str, object]] = []
@@ -386,13 +354,6 @@ class EchoOcrPipeline(BasePipeline):
         )
         if isinstance(self.ocr_engine, RoutedOcrEngine):
             self._fallback_ocr_engine = self.ocr_engine.fallback
-        if self._provided_parser is not None:
-            self.parser = self._provided_parser
-        else:
-            try:
-                self.parser = build_parser(self._parser_mode, parameters=self._parser_parameters)
-            except Exception:
-                self.parser = RegexMeasurementParser()
         self._lexicon = self._load_or_build_lexicon()
         self._reranker = LexiconReranker(self._lexicon) if self._lexicon is not None else None
         self._study_companion_discovery = (
@@ -411,15 +372,6 @@ class EchoOcrPipeline(BasePipeline):
                     command=self._panel_validation_command,
                     timeout_s=self._panel_validation_timeout_s,
                     mode=self._panel_validation_mode,
-                )
-            )
-        self._vision_expert = None
-        if self._vision_fallback_enabled:
-            self._vision_expert = OllamaVisionLineExpert(
-                config=VisionLineExpertConfig(
-                    model=self._vision_model,
-                    ollama_url=self._vision_ollama_url,
-                    timeout_s=self._vision_timeout_s,
                 )
             )
         self._components_ready = True
@@ -544,7 +496,6 @@ class EchoOcrPipeline(BasePipeline):
                 "uncertain_line_count": panel.uncertain_line_count,
                 "fallback_invocations": panel.fallback_invocations,
                 "engine_disagreement_count": panel.engine_disagreement_count,
-                "vision_invocations": panel.vision_invocations,
                 "used_detection": bool(bbox is not None),
             }
         )
@@ -672,7 +623,6 @@ class EchoOcrPipeline(BasePipeline):
             segmentation,
             primary_engine=primary_engine,
             fallback_engine=self._fallback_ocr_engine,
-            vision_expert=self._vision_expert,
         )
         if self._reranker is not None:
             panel = self._reranker.rerank_panel(panel)
@@ -685,13 +635,6 @@ class EchoOcrPipeline(BasePipeline):
         )
         measurements = self._parse_transcribed_panel(panel, confidence=ocr.confidence)
         measurements = self._maybe_apply_panel_validator(panel, measurements, confidence=ocr.confidence)
-        if not measurements:
-            fallback = self.parser.parse(ocr.text, confidence=ocr.confidence)
-            measurements = self._attach_line_sources(
-                fallback,
-                panel,
-                parser_source=self._fallback_parser_source(),
-            )
         if not measurements:
             if not panel.lines or ocr is None:
                 return detection, segmentation, None, panel, [], None
@@ -923,7 +866,6 @@ class EchoOcrPipeline(BasePipeline):
             uncertain_line_count=uncertain_count,
             fallback_invocations=panel.fallback_invocations,
             engine_disagreement_count=panel.engine_disagreement_count,
-            vision_invocations=panel.vision_invocations,
         )
 
     def _parse_transcribed_panel(self, panel: PanelTranscription, *, confidence: float) -> list[AiMeasurement]:
@@ -965,18 +907,6 @@ class EchoOcrPipeline(BasePipeline):
         if marker in source:
             return source.split(marker, maxsplit=1)[1].split("|", maxsplit=1)[0].strip()
         return ""
-
-    def _fallback_parser_source(self) -> str:
-        class_name = self.parser.__class__.__name__.lower()
-        if "localllm" in class_name:
-            return "fallback_local_llm"
-        if "regexthenllm" in class_name:
-            return "fallback_regex_then_llm"
-        if "hybrid" in class_name:
-            return "fallback_hybrid"
-        if "regex" in class_name:
-            return "fallback_regex"
-        return f"fallback_{class_name}"
 
     def _attach_line_sources(
         self,

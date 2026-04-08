@@ -85,11 +85,6 @@ def build_parser() -> argparse.ArgumentParser:
         help="Fail if selected engine is not available instead of auto-fallback chain.",
     )
     parser.add_argument(
-        "--parser-mode",
-        default="off",
-        help="Parser mode passthrough to EchoOcrPipeline.",
-    )
-    parser.add_argument(
         "--max-frames",
         type=int,
         default=0,
@@ -471,7 +466,6 @@ def _build_pipeline(args: argparse.Namespace) -> EchoOcrPipeline:
         "requested_ocr_engine": args.engine,
         "fallback_ocr_engine": args.fallback_engine,
         "strict_ocr_engine_selection": bool(args.strict_engine_selection),
-        "parser_mode": args.parser_mode,
     }
     if args.max_frames > 0:
         parameters["max_frames"] = int(args.max_frames)
@@ -487,7 +481,6 @@ def _worker_config_from_args(args: argparse.Namespace) -> dict[str, Any]:
         "engine": str(args.engine),
         "fallback_engine": str(args.fallback_engine),
         "strict_engine_selection": bool(args.strict_engine_selection),
-        "parser_mode": str(args.parser_mode),
         "max_frames": int(args.max_frames),
     }
 
@@ -498,7 +491,6 @@ def _build_pipeline_from_worker_config(config: dict[str, Any]) -> EchoOcrPipelin
             engine=str(config.get("engine", "glm-ocr")),
             fallback_engine=str(config.get("fallback_engine", "surya")),
             strict_engine_selection=bool(config.get("strict_engine_selection", False)),
-            parser_mode=str(config.get("parser_mode", "off")),
             max_frames=int(config.get("max_frames", 0)),
         )
     )
@@ -674,7 +666,6 @@ def run_preflight(engine: str, fallback_engine: str) -> dict[str, Any]:
             engine=engine,
             fallback_engine=fallback_engine,
             strict_engine_selection=True,
-            parser_mode="off",
             max_frames=0,
         )))
 

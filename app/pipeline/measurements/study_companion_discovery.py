@@ -7,7 +7,8 @@ from typing import Any, Iterable
 from app.io.dicom_reader import read_dataset
 from app.models.types import AiMeasurement
 from app.pipeline.measurements.measurement_decoder import canonicalize_exact_line
-from app.pipeline.measurements.measurement_parsers import RegexMeasurementParser, postprocess_measurements
+from app.pipeline.measurements.line_first_parser import LineFirstParser
+from app.pipeline.measurements.measurement_parsers import postprocess_measurements
 
 
 _TEXTUAL_MODALITIES = {"DOC", "OT", "PR", "SR"}
@@ -96,7 +97,7 @@ class StudyCompanionDiscovery:
     ) -> None:
         self.recursive = bool(recursive)
         self.max_files = max(1, int(max_files))
-        self._text_parser = RegexMeasurementParser()
+        self._text_parser = LineFirstParser()
 
     def discover(self, dicom_path: Path, *, study_instance_uid: str | None = None) -> StudyCompanionResult:
         try:
@@ -297,7 +298,7 @@ class StudyCompanionDiscovery:
         source_kind: str,
         source_sop_instance_uid: str | None,
     ) -> list[CompanionMeasurement]:
-        parsed = self._text_parser.parse(text, confidence=0.94)
+        parsed = self._text_parser.parse_text(text, confidence=0.94)
         if not parsed:
             return []
         processed = postprocess_measurements(parsed)

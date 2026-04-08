@@ -108,7 +108,6 @@ def test_ensure_validation_manager_uses_selected_single_engine(monkeypatch) -> N
             config=PipelineConfig(
                 parameters={
                     "ocr_engine": ocr_engine_name,
-                    "parser_mode": "off",
                     "target_line_height_px": 20.0,
                 }
             ),
@@ -130,7 +129,6 @@ def test_ensure_validation_manager_uses_selected_single_engine(monkeypatch) -> N
     assert manager is window._state.pipeline_manager
     assert pipeline is not None
     assert getattr(getattr(pipeline, "config", None), "parameters", {}).get("ocr_engine") == "easyocr"
-    assert getattr(getattr(pipeline, "config", None), "parameters", {}).get("parser_mode") == "off"
     assert getattr(getattr(pipeline, "config", None), "parameters", {}).get("target_line_height_px") == 20.0
 
 

@@ -67,7 +67,6 @@ args = Namespace(
     engine="glm-ocr",
     fallback_engine="surya",
     strict_engine_selection=False,
-    parser_mode="off",
     max_frames=0,
     continue_on_error=True,
     resume=True,

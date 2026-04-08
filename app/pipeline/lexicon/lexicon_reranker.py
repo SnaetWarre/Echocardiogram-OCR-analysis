@@ -106,7 +106,6 @@ class LexiconReranker:
             uncertain_line_count=uncertain_count,
             fallback_invocations=panel.fallback_invocations,
             engine_disagreement_count=max(panel.engine_disagreement_count, disagreement_count),
-            vision_invocations=panel.vision_invocations,
         )
 
     def _score_candidate(

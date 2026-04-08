@@ -53,7 +53,6 @@ def _run_pipeline_on_file(
         seg,
         primary_engine=engine,
         fallback_engine=None,
-        vision_expert=None,
     )
     return [line.text for line in panel.lines if line.text.strip()]
 

@@ -234,7 +234,11 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--labels", default=str(DEFAULT_EXACT_LINES_PATH))
     parser.add_argument("--split", default="validation")
-    parser.add_argument("--parser", default="local_llm")
+    parser.add_argument(
+        "--parser",
+        default="",
+        help="Ignored; evaluation uses line-first measurement decoding.",
+    )
     parser.add_argument("--no-normalize", action="store_true", help="Disable GOT-OCR normalizer (for comparison)")
     args = parser.parse_args()
 

@@ -75,8 +75,8 @@ def main() -> None:
     )
     parser.add_argument(
         "--parser",
-        default="regex",
-        help="Measurement parser to use (regex, local_llm, regex_then_llm)",
+        default="",
+        help="Ignored; evaluation uses line-first measurement decoding.",
     )
     parser.add_argument(
         "--json-out",

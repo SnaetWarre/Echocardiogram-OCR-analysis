@@ -8,7 +8,7 @@ from typing import Any
 from app.io.dicom_loader import load_dicom_series
 from app.ocr.preprocessing import preprocess_roi
 from app.pipeline.layout.echo_ocr_box_detector import TopLeftBlueGrayBoxDetector
-from app.pipeline.measurements.measurement_parsers import build_parser
+from app.pipeline.measurements.line_first_parser import LineFirstParser
 from app.pipeline.ocr.ocr_engines import OcrEngine
 from app.validation.datasets import LabeledFile, LabeledMeasurement, canonicalize_label_line, normalize_space
 
@@ -281,8 +281,8 @@ def score_predictions(
     return results
 
 
-def _build_frame_predictions(parser: Any, raw_text: str) -> list[dict[str, str | None]]:
-    measurements = parser.parse(raw_text, confidence=1.0)
+def _build_frame_predictions(raw_text: str) -> list[dict[str, str | None]]:
+    measurements = LineFirstParser().parse(raw_text, confidence=1.0)
     return [{"name": m.name, "value": m.value, "unit": m.unit} for m in measurements]
 
 
@@ -294,8 +294,7 @@ def run_evaluation(
     args: Any = None,
 ) -> dict[str, Any]:
     detector = TopLeftBlueGrayBoxDetector()
-    parser_name = getattr(args, "parser", "regex")
-    parser = build_parser(parser_name)
+    _ = args
 
     total_labels = 0
     total_full_match = 0
@@ -369,7 +368,7 @@ def run_evaluation(
 
             prepared = preprocess_roi(roi)
             ocr_result = engine.extract(prepared)
-            frame_predictions = _build_frame_predictions(parser, ocr_result.text)
+            frame_predictions = _build_frame_predictions(ocr_result.text)
             all_predictions.extend(frame_predictions)
 
             frame_debug.append(

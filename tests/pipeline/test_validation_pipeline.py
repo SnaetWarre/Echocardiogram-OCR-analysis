@@ -7,6 +7,7 @@ import numpy as np
 
 from app.models.types import PipelineRequest
 from app.pipeline.echo_ocr_pipeline import DEFAULT_SEGMENTATION_EXTRA_LEFT_PAD_PX, EchoOcrPipeline
+from app.pipeline.measurements.line_first_parser import LineFirstParser
 from app.pipeline.ocr.ocr_engines import OcrResult
 from app.runtime.pipeline_presets import (
     build_gui_ocr_comparison_manager,
@@ -42,15 +43,12 @@ def test_build_validation_manager_forces_expected_configuration() -> None:
 
     assert isinstance(pipeline, EchoOcrPipeline)
     assert pipeline.config.parameters["ocr_engine"] == "glm-ocr"
-    assert pipeline.config.parameters["parser_mode"] == "local_llm"
     assert pipeline.config.parameters["scale_factor"] == 3
     assert pipeline.config.parameters["scale_algo"] == "lanczos"
     assert pipeline.config.parameters["contrast_mode"] == "none"
     assert pipeline.config.parameters["max_frames"] == 1
     assert pipeline.config.parameters["panel_validation_mode"] == "selective"
     assert pipeline.config.parameters["panel_validation_model"] == "demo-model"
-    assert pipeline.config.parameters["vision_fallback_enabled"] is True
-    assert pipeline.config.parameters["vision_model"] == "qwen2.5vl:3b-q4_K_M"
     assert (
         pipeline.config.parameters["segmentation_extra_left_pad_px"]
         == DEFAULT_SEGMENTATION_EXTRA_LEFT_PAD_PX
@@ -58,7 +56,7 @@ def test_build_validation_manager_forces_expected_configuration() -> None:
 
     pipeline._ensure_components()
     assert pipeline.ocr_engine.name == "glm-ocr"
-    assert pipeline.parser.__class__.__name__ == "LocalLlmMeasurementParser"
+    assert isinstance(pipeline._line_first_parser, LineFirstParser)
 
 
 def test_build_gui_ocr_manager_defaults_to_glm_no_parser_adaptive_20px() -> None:
@@ -67,11 +65,9 @@ def test_build_gui_ocr_manager_defaults_to_glm_no_parser_adaptive_20px() -> None
 
     assert isinstance(pipeline, EchoOcrPipeline)
     assert pipeline.config.parameters["ocr_engine"] == "glm-ocr"
-    assert pipeline.config.parameters["parser_mode"] == "off"
     assert pipeline.config.parameters["segmentation_mode"] == "adaptive"
     assert pipeline.config.parameters["target_line_height_px"] == 20.0
     assert pipeline.config.parameters["panel_validation_mode"] == "off"
-    assert pipeline.config.parameters["vision_fallback_enabled"] is False
     assert (
         pipeline.config.parameters["segmentation_extra_left_pad_px"]
         == DEFAULT_SEGMENTATION_EXTRA_LEFT_PAD_PX
@@ -79,7 +75,7 @@ def test_build_gui_ocr_manager_defaults_to_glm_no_parser_adaptive_20px() -> None
 
     pipeline._ensure_components()
     assert pipeline.ocr_engine.name == "glm-ocr"
-    assert pipeline.parser.__class__.__name__ == "NoopMeasurementParser"
+    assert isinstance(pipeline._line_first_parser, LineFirstParser)
 
 
 def test_build_gui_ocr_comparison_manager_collects_side_by_side_results() -> None:

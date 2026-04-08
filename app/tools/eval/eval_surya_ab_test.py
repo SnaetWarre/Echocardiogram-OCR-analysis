@@ -57,8 +57,8 @@ def main() -> None:
     )
     parser.add_argument(
         "--parser",
-        default="regex",
-        help="Parser mode (regex, local_llm)",
+        default="",
+        help="Ignored; evaluation uses line-first measurement decoding.",
     )
     parser.add_argument(
         "--output",

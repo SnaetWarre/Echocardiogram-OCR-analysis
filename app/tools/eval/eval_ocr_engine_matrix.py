@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import base64
 import csv
 import html
 import json
@@ -10,17 +9,10 @@ import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
-from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
 
 from app.io.dicom_loader import load_dicom_series
 from app.ocr.preprocessing import preprocess_roi
 from app.pipeline.layout.echo_ocr_box_detector import TopLeftBlueGrayBoxDetector
-from app.pipeline.measurements.measurement_parsers import (
-    LocalLlmMeasurementParser,
-    LocalLlmParserConfig,
-    _postprocess_measurements,
-)
 from app.pipeline.ocr.ocr_engines import build_engine
 from app.repo_paths import DEFAULT_EXACT_LINES_PATH, PROJECT_ROOT
 from app.validation.datasets import parse_labels
@@ -770,11 +762,8 @@ def format_rate(value: float) -> str:
 
 
 def _parser_label(parser_mode: str) -> str:
-    if parser_mode == "regex":
-        return "regex_parser"
-    if parser_mode == "local_llm":
-        return "local_llm_parser"
-    return f"{parser_mode}_parser"
+    _ = parser_mode
+    return "line_first"
 
 
 def _labels_label(labels_path: Path) -> str:
@@ -783,326 +772,6 @@ def _labels_label(labels_path: Path) -> str:
 
 def _split_csv_arg(raw: str) -> list[str]:
     return [item.strip() for item in raw.split(",") if item.strip()]
-
-
-def _coerce_value_and_unit(value: str, unit: str | None) -> tuple[str, str | None]:
-    cleaned_value = value.strip().replace(",", ".")
-    cleaned_unit = (unit or "").strip() or None
-    if cleaned_unit:
-        return cleaned_value, cleaned_unit
-    match = re.fullmatch(
-        r"(?P<value>[-+]?\d+(?:\.\d+)?)\s*(?P<unit>%|mmHg|cm/s|m/s|cm|mm|ms|s|bpm|ml/m2|cm2|ml|m/s2)?",
-        cleaned_value,
-        flags=re.IGNORECASE,
-    )
-    if match is None:
-        return cleaned_value, cleaned_unit
-    parsed_value = str(match.group("value") or "").strip()
-    parsed_unit = str(match.group("unit") or "").strip() or None
-    return parsed_value, parsed_unit
-
-
-def _vision_prompt() -> str:
-    return (
-        "You extract echocardiogram measurements from the attached image.\n"
-        "Return ONLY valid JSON: an array of objects with keys "
-        "\"name\", \"value\", \"unit\".\n"
-        "Rules:\n"
-        "- Extract only actual measurements from the measurement box overlay.\n"
-        "- Preserve visible numeric row prefixes like 1, 2, 3 as part of the name when present.\n"
-        "- Ignore telemetry, timestamps, gain, frequency, depth, frame counters, and other UI text.\n"
-        "- value must be a numeric string.\n"
-        "- unit may be \"\", \"%\", \"mmHg\", \"cm/s\", \"m/s\", \"cm\", \"mm\", \"ms\", \"s\", \"bpm\", \"ml/m2\", \"cm2\", or \"ml\".\n"
-        "- Do not include commentary.\n"
-    )
-
-
-def _ollama_is_healthy(base_url: str) -> bool:
-    request = Request(f"{base_url.rstrip('/')}/api/tags", method="GET")
-    try:
-        with urlopen(request, timeout=2.0) as response:
-            status = getattr(response, "status", 200)
-            return int(status) < 500
-    except (TimeoutError, URLError, ValueError):
-        return False
-
-
-def _available_ollama_models(base_url: str) -> list[str]:
-    request = Request(f"{base_url.rstrip('/')}/api/tags", method="GET")
-    with urlopen(request, timeout=5.0) as response:
-        payload = json.loads(response.read().decode("utf-8"))
-    models = payload.get("models")
-    if not isinstance(models, list):
-        return []
-    names: list[str] = []
-    for model in models:
-        if not isinstance(model, dict):
-            continue
-        name = str(model.get("name", "")).strip()
-        if name:
-            names.append(name)
-    return names
-
-
-def _select_vision_model(explicit_model: str, base_url: str) -> str:
-    if explicit_model.strip():
-        return explicit_model.strip()
-    candidates = _available_ollama_models(base_url)
-    for name in candidates:
-        lowered = name.lower()
-        if any(token in lowered for token in ("vl", "vision", "llava", "moondream", "minicpm-v")):
-            return name
-    raise RuntimeError(
-        "No local vision-capable Ollama model found. Pass --local-llm-only-model to choose one."
-    )
-
-
-def _call_vision_model(image, *, model: str, ollama_url: str, timeout_s: float) -> str:
-    import cv2
-
-    ok, encoded = cv2.imencode(".png", image)
-    if not ok:
-        raise RuntimeError("Failed to encode ROI for local vision LLM evaluation.")
-    payload = json.dumps(
-        {
-            "model": model,
-            "prompt": _vision_prompt(),
-            "images": [base64.b64encode(encoded).decode("utf-8")],
-            "stream": False,
-        }
-    ).encode("utf-8")
-    request = Request(
-        f"{ollama_url.rstrip('/')}/api/generate",
-        data=payload,
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
-    try:
-        with urlopen(request, timeout=timeout_s) as response:
-            data = json.loads(response.read().decode("utf-8"))
-    except HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="replace").strip()
-        raise RuntimeError(f"Ollama vision request failed ({exc.code}): {detail}") from exc
-    except URLError as exc:
-        raise RuntimeError(f"Ollama vision request failed: {exc}") from exc
-    return str(data.get("response", "") or "").strip()
-
-
-def _parse_vision_predictions(payload: str, *, model: str) -> list[dict[str, str | None]]:
-    from app.models.types import AiMeasurement
-
-    parser = LocalLlmMeasurementParser(config=LocalLlmParserConfig(model=model))
-    rows = parser._parse_json_payload(payload)
-    parsed_items: list[AiMeasurement] = []
-    for idx, row in enumerate(rows):
-        name = str(row.get("name", "")).strip()
-        value = str(row.get("value", "")).strip()
-        unit = str(row.get("unit", "")).strip() or None
-        if not name or not value:
-            continue
-        coerced_value, coerced_unit = _coerce_value_and_unit(value, unit)
-        parsed_items.append(
-            AiMeasurement(
-                name=name,
-                value=coerced_value,
-                unit=coerced_unit,
-                source=f"local_vision_llm:{model}",
-                order_hint=idx,
-            )
-        )
-    items = _postprocess_measurements(parsed_items)
-    return [{"name": item.name, "value": item.value, "unit": item.unit} for item in items]
-
-
-def _match_predictions_to_expected(
-    expected_lines: list[str], predictions: list[dict[str, str | None]]
-) -> list[DetailedLineResult]:
-    predicted_lines = [_prediction_to_line(item).line for item in predictions]
-    used_indices: set[int] = set()
-    results: list[DetailedLineResult] = []
-
-    for expected_line in expected_lines:
-        best_idx: int | None = None
-        best_score = -1
-        best_detail: DetailedLineResult | None = None
-
-        for idx, predicted_line in enumerate(predicted_lines):
-            if idx in used_indices:
-                continue
-            score, flags = _score_line_pair(expected_line, predicted_line)
-            detail = DetailedLineResult(
-                expected_line=expected_line,
-                actual_line=predicted_line,
-                exact_match=flags["exact_match"],
-                prefix_match=flags["prefix_match"],
-                label_match=flags["label_match"],
-                value_match=flags["value_match"],
-                unit_match=flags["unit_match"],
-                error_type=_classify_mismatch(
-                    actual_present=True,
-                    exact_match=flags["exact_match"],
-                    prefix_match=flags["prefix_match"],
-                    label_match=flags["label_match"],
-                    value_match=flags["value_match"],
-                    unit_match=flags["unit_match"],
-                ),
-            )
-            if score > best_score:
-                best_score = score
-                best_idx = idx
-                best_detail = detail
-            if flags["exact_match"]:
-                break
-
-        if best_detail is None or best_idx is None:
-            results.append(
-                DetailedLineResult(
-                    expected_line=expected_line,
-                    actual_line=None,
-                    exact_match=False,
-                    prefix_match=False,
-                    label_match=False,
-                    value_match=False,
-                    unit_match=False,
-                    error_type="missing_prediction",
-                )
-            )
-        else:
-            used_indices.add(best_idx)
-            results.append(best_detail)
-
-    return results
-
-
-def run_local_vision_llm_eval(
-    labels,
-    *,
-    model: str,
-    ollama_url: str,
-    timeout_s: float,
-) -> tuple[dict[str, float], list[FileDebugRecord]]:
-    detector = TopLeftBlueGrayBoxDetector()
-
-    total_labels = 0
-    total_exact_match = 0
-    total_value_match = 0
-    total_label_match = 0
-    total_prefix_match = 0
-    total_detected = 0
-    total_files = 0
-    total_files_with_text = 0
-    elapsed_total = 0.0
-    file_debug_records: list[FileDebugRecord] = []
-
-    for labeled_file in labels:
-        if not labeled_file.path.exists():
-            continue
-
-        total_files += 1
-        total_labels += len(labeled_file.measurements)
-        started = time.perf_counter()
-
-        try:
-            series = load_dicom_series(labeled_file.path, load_pixels=True)
-        except Exception:
-            elapsed_total += time.perf_counter() - started
-            continue
-
-        all_predictions: list[dict[str, str | None]] = []
-        roi_frames: list[FrameDebugInfo] = []
-
-        for frame_idx in range(series.frame_count):
-            frame = series.get_frame(frame_idx)
-            detection = detector.detect(frame)
-            if not detection.present or detection.bbox is None:
-                roi_frames.append(
-                    FrameDebugInfo(
-                        frame_index=frame_idx,
-                        roi_present=False,
-                        roi_bbox=None,
-                        ocr_bbox=None,
-                        roi_confidence=float(detection.confidence),
-                        raw_text="",
-                    )
-                )
-                continue
-
-            x, y, bw, bh = detection.bbox
-            roi = frame[y : y + bh, x : x + bw]
-            ocr_bbox = (x, y, bw, bh)
-            if HEADER_TRIM_PX > 0 and roi.shape[0] > HEADER_TRIM_PX:
-                roi = roi[HEADER_TRIM_PX:, :]
-                ocr_bbox = (x, y + HEADER_TRIM_PX, bw, bh - HEADER_TRIM_PX)
-
-            prepared = preprocess_roi(roi)
-            payload = _call_vision_model(
-                prepared,
-                model=model,
-                ollama_url=ollama_url,
-                timeout_s=timeout_s,
-            )
-            roi_frames.append(
-                FrameDebugInfo(
-                    frame_index=frame_idx,
-                    roi_present=True,
-                    roi_bbox=detection.bbox,
-                    ocr_bbox=ocr_bbox,
-                    roi_confidence=float(detection.confidence),
-                    raw_text=payload,
-                )
-            )
-            all_predictions.extend(_parse_vision_predictions(payload, model=model))
-
-        elapsed_total += time.perf_counter() - started
-        if all_predictions:
-            total_files_with_text += 1
-
-        expected_lines = [_canonicalize_line(item.text) for item in labeled_file.measurements]
-        detailed_results = _match_predictions_to_expected(expected_lines, all_predictions)
-
-        total_exact_match += sum(1 for result in detailed_results if result.exact_match)
-        total_value_match += sum(1 for result in detailed_results if result.value_match)
-        total_label_match += sum(1 for result in detailed_results if result.label_match)
-        total_prefix_match += sum(1 for result in detailed_results if result.prefix_match)
-        total_detected += len(all_predictions)
-
-        file_debug_records.append(
-            FileDebugRecord(
-                label_set="",
-                labels_path="",
-                engine=model,
-                mode="local_vision_llm_only",
-                file_path=str(labeled_file.path),
-                file_name=labeled_file.file_name,
-                total_labels=len(labeled_file.measurements),
-                exact_matches=sum(1 for result in detailed_results if result.exact_match),
-                value_matches=sum(1 for result in detailed_results if result.value_match),
-                label_matches=sum(1 for result in detailed_results if result.label_match),
-                prefix_matches=sum(1 for result in detailed_results if result.prefix_match),
-                text_present=bool(all_predictions),
-                roi_frames=roi_frames,
-                expected_lines=expected_lines,
-                predicted_lines=[_prediction_to_line(item).line for item in all_predictions],
-                mismatches=[result for result in detailed_results if not result.exact_match],
-            )
-        )
-
-    return {
-        "total_labels": float(total_labels),
-        "total_exact_match": float(total_exact_match),
-        "total_value_match": float(total_value_match),
-        "total_label_match": float(total_label_match),
-        "total_prefix_match": float(total_prefix_match),
-        "total_predicted": float(total_detected),
-        "total_files": float(total_files),
-        "total_files_with_text": float(total_files_with_text),
-        "exact_match_rate": total_exact_match / max(total_labels, 1),
-        "value_match_rate": total_value_match / max(total_labels, 1),
-        "label_match_rate": total_label_match / max(total_labels, 1),
-        "prefix_match_rate": total_prefix_match / max(total_labels, 1),
-        "text_detect_rate": total_files_with_text / max(total_files, 1),
-        "elapsed_s": elapsed_total,
-    }, file_debug_records
 
 
 def main() -> None:
@@ -1177,34 +846,13 @@ def main() -> None:
     )
     parser.add_argument(
         "--parser-modes",
-        default="regex",
-        help="Comma separated parser modes to benchmark (e.g. regex,local_llm)",
+        default="line_first",
+        help="Legacy flag; measurement decoding always uses line-first (single benchmark mode).",
     )
     parser.add_argument(
         "--skip-raw",
         action="store_true",
         help="Skip raw OCR text evaluation and only run parser modes.",
-    )
-    parser.add_argument(
-        "--local-llm-only",
-        action="store_true",
-        help="Benchmark a local vision-capable LLM directly on the ROI image without OCR.",
-    )
-    parser.add_argument(
-        "--local-llm-only-model",
-        default="",
-        help="Override the Ollama vision model used by --local-llm-only.",
-    )
-    parser.add_argument(
-        "--ollama-url",
-        default="http://127.0.0.1:11434",
-        help="Base URL for the local Ollama server.",
-    )
-    parser.add_argument(
-        "--local-llm-timeout",
-        type=float,
-        default=60.0,
-        help="Timeout per local vision LLM frame request in seconds.",
     )
     args = parser.parse_args()
 
@@ -1441,60 +1089,6 @@ def main() -> None:
                         "error": err,
                     }
                 )
-
-    if args.local_llm_only:
-        if not _ollama_is_healthy(args.ollama_url):
-            raise SystemExit(f"Ollama is not reachable at {args.ollama_url}")
-        model = _select_vision_model(args.local_llm_only_model, args.ollama_url)
-        vision_mode = "local_vision_llm_only"
-        print(f"\n=== Vision LLM: {model} ({label_set}) ===")
-        vision_scores, vision_file_debug = run_local_vision_llm_eval(
-            labels,
-            model=model,
-            ollama_url=args.ollama_url,
-            timeout_s=args.local_llm_timeout,
-        )
-        print(
-            f"  {vision_mode}: "
-            f"text={format_rate(vision_scores['text_detect_rate'])}, "
-            f"exact={format_rate(vision_scores['exact_match_rate'])}, "
-            f"value={format_rate(vision_scores['value_match_rate'])}"
-        )
-        rows.append(
-            {
-                "label_set": label_set,
-                "labels_path": str(labels_path),
-                "engine": model,
-                "mode": vision_mode,
-                "status": "ok",
-                "files": int(vision_scores["total_files"]),
-                "files_with_text": int(vision_scores["total_files_with_text"]),
-                "exact_match_rate": vision_scores["exact_match_rate"],
-                "value_match_rate": vision_scores["value_match_rate"],
-                "label_match_rate": vision_scores["label_match_rate"],
-                "prefix_match_rate": vision_scores["prefix_match_rate"],
-                "predictions": int(vision_scores["total_predicted"]),
-                "elapsed_s": vision_scores["elapsed_s"],
-            }
-        )
-        for record in vision_file_debug:
-            record.label_set = label_set
-            record.labels_path = str(labels_path)
-            if args.save_roi_visualizations:
-                key = (label_set, model, vision_mode)
-                visuals = _save_roi_visualizations_for_record(
-                    output_dir=output_dir,
-                    root_dir=roi_visualization_root,
-                    label_set=label_set,
-                    engine_name=model,
-                    mode_name=vision_mode,
-                    file_record=_json_ready_file_debug_record(record),
-                    limit=args.roi_visualization_limit,
-                    counter_key=key,
-                    counts=roi_visualization_counts,
-                )
-                record.roi_visualizations = visuals
-            detailed_rows.append(_json_ready_file_debug_record(record))
 
     elapsed_all = time.perf_counter() - started_all
 

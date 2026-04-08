@@ -43,7 +43,11 @@ def main() -> None:
         default="validation",
         help="Optional comma separated split filter (e.g. train,validation)",
     )
-    parser.add_argument("--parser", default="regex")
+    parser.add_argument(
+        "--parser",
+        default="",
+        help="Ignored; evaluation uses line-first measurement decoding.",
+    )
     args = parser.parse_args()
 
     labels_path = Path(args.labels)

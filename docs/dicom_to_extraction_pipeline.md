@@ -8,7 +8,7 @@ This document maps the **end-to-end OCR path** from a `.dcm` file to structured 
 
 **Goal:** Turn ultrasound (or similar) DICOM frames into **structured measurements** — things like `LVOT Diam 2.1 cm` with a name, numeric value, and unit — so the app can show them, export them, or use them for validation at scale.
 
-**How:** The **panel is an image region**. We find it by color/geometry, cut it into **horizontal lines**, run **OCR** on each line (with preprocessing, optional fallback engines, optional vision), optionally **rerank** candidates using a lexicon built from your labels, then **parse** the text into fields.
+**How:** The **panel is an image region**. We find it by color/geometry, cut it into **horizontal lines**, run **OCR** on each line (with preprocessing and optional fallback engines), optionally **rerank** candidates using a lexicon built from your labels, then **parse** the text into fields.
 
 Everything below is **machinery** for that: loading pixels, finding the panel, splitting lines, choosing the best OCR guess, and packaging results for the UI.
 
@@ -73,14 +73,14 @@ flowchart TD
 |--------|--------|----------------------|
 | Series load | [`dicom_loader.py`](../app/io/dicom_loader.py), [`dicom_reader.py`](../app/io/dicom_reader.py) | Read DICOM bytes, metadata, and frames (eager or lazy). |
 | Frame decode / normalization | [`frame_loaders.py`](../app/io/frame_loaders.py), [`normalization.py`](../app/io/normalization.py) | Decode frames; fix photometric interpretation / shape for consistent RGB or gray images. |
-| Orchestration | [`echo_ocr_pipeline.py`](../app/pipeline/echo_ocr_pipeline.py) | Wires OCR, segmentation, parsers, lexicon, optional LLM/vision into `run()`. |
+| Orchestration | [`echo_ocr_pipeline.py`](../app/pipeline/echo_ocr_pipeline.py) | Wires OCR, segmentation, parsers, lexicon, optional panel text LLM into `run()`. |
 | Sidecar export | [`echo_sidecar_writer.py`](../app/pipeline/output/echo_sidecar_writer.py) | Persists measurement rows to disk. |
 
 ---
 
 ## 2. One frame: image → measurements
 
-For each frame index, the pipeline detects the **top-left blue-gray panel**, runs **scout OCR** on the full ROI (with optional **fallback scout** if primary tokens are useless), **segments** horizontal lines, **transcribes** each line (multiview + optional fallback engine + optional vision expert), optionally **lexicon-reranks** candidates, then **parses** into structured measurements.
+For each frame index, the pipeline detects the **top-left blue-gray panel**, runs **scout OCR** on the full ROI (with optional **fallback scout** if primary tokens are useless), **segments** horizontal lines, **transcribes** each line (multiview + optional fallback OCR engine), optionally **lexicon-reranks** candidates, then **parses** into structured measurements.
 
 ```mermaid
 flowchart TD
@@ -107,7 +107,6 @@ flowchart TD
     LT[LineTranscriber.transcribe]
     MV[Multiple preprocess_roi views]
     FB[Per-line fallback OCR if quality low]
-    Vex[OllamaVisionLineExpert optional]
     Panel[PanelTranscription LinePrediction list]
   end
 
@@ -115,7 +114,6 @@ flowchart TD
     Rerank[LexiconReranker.rerank_panel optional]
     LFP[LineFirstParser parse_lines]
     Val[LocalLlmPanelValidator optional]
-    RegexFB[parser.parse combined_text fallback]
     MR2[MeasurementRecord rows]
   end
 
@@ -128,14 +126,10 @@ flowchart TD
   PickScout --> Seg --> Lines --> LT
   LT --> MV
   LT --> FB
-  LT --> Vex
   MV --> Panel
   FB --> Panel
-  Vex --> Panel
   Panel --> Rerank --> LFP --> Val
-  LFP --> RegexFB
   Val --> MR2
-  RegexFB --> MR2
 ```
 
 ### What each step does (in order)
@@ -148,11 +142,10 @@ flowchart TD
 | **Scout OCR (primary)** | One OCR pass on the **whole** ROI for rough text + **tokens** (word boxes). | Token positions help place horizontal line cuts. |
 | **Scout fallback** | If primary scout has **no usable token text**, run the **fallback** engine on the same ROI once. | Recovers segmentation hints when the primary chokes on full-panel layout. |
 | **LineSegmenter** | Splits the ROI into horizontal **line bboxes** (default: row ink projection + gap midpoints; optional token clustering in `adaptive` mode). | Wrong cuts → wrong text per crop. |
-| **LineTranscriber** | Per line crop: preprocess, primary OCR, extra **views** (CLAHE, adaptive threshold), **fallback** OCR if quality is poor, optional **vision LLM**. Picks best candidate per line. | Main place where each measurement line is read clearly. |
+| **LineTranscriber** | Per line crop: preprocess, primary OCR, extra **views** (CLAHE, adaptive threshold), **fallback** OCR if quality is poor. Picks best candidate per line. | Main place where each measurement line is read clearly. |
 | **LexiconReranker** (optional) | If a lexicon exists: propose **repairs** and **re-score** candidates; can optimize across the **whole panel** so lines do not fight over the same best string. | Nudges “almost right” OCR toward label-like text. |
 | **LineFirstParser** | Parses each **line string** into structured fields (line-first decoder). | Aligns with how measurement lines are written. |
 | **LocalLlmPanelValidator** (optional) | Local text LLM may fix inconsistent panel output. | Usually off unless enabled. |
-| **parser.parse fallback** | Regex on **concatenated** OCR text if line-first parse yields nothing. | Safety net for odd layouts. |
 | **MeasurementRecord** | Stores line/ROI boxes, engine, confidence; feeds `_to_ai_result` and sidecars. | Bridge to UI and export. |
 
 ### Primary modules
@@ -162,13 +155,12 @@ flowchart TD
 | Panel ROI | [`echo_ocr_box_detector.py`](../app/pipeline/layout/echo_ocr_box_detector.py) | Find the measurement panel box. |
 | Preprocessing | [`preprocessing.py`](../app/ocr/preprocessing.py) | Upscale, contrast, threshold variants for OCR. |
 | Line geometry | [`line_segmenter.py`](../app/pipeline/layout/line_segmenter.py) | One ROI → many horizontal line crops. |
-| Line OCR | [`line_transcriber.py`](../app/pipeline/transcription/line_transcriber.py) | OCR per line: multiview + fallback + optional vision. |
+| Line OCR | [`line_transcriber.py`](../app/pipeline/transcription/line_transcriber.py) | OCR per line: multiview + optional fallback engine. |
 | Engines + routing | [`echo_ocr_pipeline.py`](../app/pipeline/echo_ocr_pipeline.py), [`ocr_engines.py`](../app/pipeline/ocr/ocr_engines.py) | `RoutedOcrEngine` and concrete backends (GLM, Surya, Tesseract, …). |
 | Lexicon | [`lexicon_builder.py`](../app/pipeline/lexicon/lexicon_builder.py), [`lexicon_reranker.py`](../app/pipeline/lexicon/lexicon_reranker.py) | Stats from labels; rerank/repair OCR candidates. |
-| Parsing | [`line_first_parser.py`](../app/pipeline/measurements/line_first_parser.py), [`measurement_parsers.py`](../app/pipeline/measurements/measurement_parsers.py) | String → structured measurements (+ optional LLM parser modes). |
+| Parsing | [`line_first_parser.py`](../app/pipeline/measurements/line_first_parser.py), [`measurement_parsers.py`](../app/pipeline/measurements/measurement_parsers.py) | Line-first decoding plus shared **postprocess** helpers (normalize, filter telemetry). |
 | Canonicalization | [`measurement_decoder.py`](../app/pipeline/measurements/measurement_decoder.py) | Normalize text, common OCR fixes, prefix/label/value/unit parsing. |
 | Panel LLM | [`panel_validator.py`](../app/pipeline/llm/panel_validator.py) | Optional Ollama text model for panel-level fixes. |
-| Vision LLM | [`vision_llm.py`](../app/pipeline/llm/vision_llm.py) | Optional Ollama vision for hard line crops. |
 
 ---
 

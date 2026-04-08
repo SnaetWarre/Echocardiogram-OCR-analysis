@@ -767,7 +767,7 @@ def _filter_configs(
     return selected
 
 
-def _build_pipeline(engine_name: str, parser_mode: str, config: SweepConfig) -> EchoOcrPipeline:
+def _build_pipeline(engine_name: str, config: SweepConfig) -> EchoOcrPipeline:
     engine = build_engine(engine_name)
     pipeline = EchoOcrPipeline(
         ocr_engine=engine,
@@ -775,7 +775,6 @@ def _build_pipeline(engine_name: str, parser_mode: str, config: SweepConfig) -> 
             parameters={
                 "ocr_engine": engine_name,
                 "requested_ocr_engine": engine_name,
-                "parser_mode": parser_mode,
             }
         ),
     )
@@ -877,7 +876,6 @@ def _write_checkpoint(
     config: SweepConfig,
     items: list[dict[str, Any]],
     engine: str,
-    parser_mode: str,
     input_path: Path,
     started_at: str,
     elapsed_s: float,
@@ -890,7 +888,6 @@ def _write_checkpoint(
             "config_name": config.name,
             "config": asdict(config),
             "engine": engine,
-            "parser_mode": parser_mode,
             "input_path": _canonical_path(input_path),
             "started_at": started_at,
             "elapsed_s": round(elapsed_s, 3),
@@ -968,7 +965,6 @@ def _run_sweep_file_through_pipeline(
     pipeline: EchoOcrPipeline,
     *,
     engine: str,
-    parser_mode: str,
     config: SweepConfig,
     max_frames: int,
     per_file_timeout_s: int,
@@ -988,11 +984,11 @@ def _run_sweep_file_through_pipeline(
     except PerFileTimeoutError as exc:
         item = _result_error_item(path, config, "Timeout", str(exc))
         _dispose_pipeline(pipeline)
-        return item, _build_pipeline(engine, parser_mode, config)
+        return item, _build_pipeline(engine, config)
     except Exception as exc:
         item = _result_error_item(path, config, type(exc).__name__, str(exc))
         _dispose_pipeline(pipeline)
-        return item, _build_pipeline(engine, parser_mode, config)
+        return item, _build_pipeline(engine, config)
 
 
 def _write_sweep_checkpoint_if_due(
@@ -1001,7 +997,6 @@ def _write_sweep_checkpoint_if_due(
     config: SweepConfig,
     items: list[dict[str, Any]],
     engine: str,
-    parser_mode: str,
     input_path: Path,
     started_at: str,
     elapsed_before: float,
@@ -1020,7 +1015,6 @@ def _write_sweep_checkpoint_if_due(
         config=config,
         items=items,
         engine=engine,
-        parser_mode=parser_mode,
         input_path=input_path,
         started_at=started_at,
         elapsed_s=elapsed_partial,
@@ -1051,7 +1045,6 @@ def _build_headless_run_payload(
     items: list[dict[str, Any]],
     *,
     engine: str,
-    parser_mode: str,
     input_path: Path,
     started_at: str,
     elapsed_s: float,
@@ -1065,7 +1058,6 @@ def _build_headless_run_payload(
             "config_name": config.name,
             "config": asdict(config),
             "engine": engine,
-            "parser_mode": parser_mode,
             "started_at": started_at,
             "elapsed_s": round(elapsed_s, 3),
             "input_path": _canonical_path(input_path),
@@ -1354,11 +1346,6 @@ def build_parser() -> argparse.ArgumentParser:
         help="OCR engine to keep fixed during the sweep (default: tesseract).",
     )
     parser.add_argument(
-        "--parser-mode",
-        default="off",
-        help="Parser mode passed to EchoOcrPipeline (default: off).",
-    )
-    parser.add_argument(
         "--labels",
         type=Path,
         default=DEFAULT_LABELS_PATH,
@@ -1615,7 +1602,7 @@ def main() -> int:
         error_files = sum(1 for item in items if item.get("status") == "error")
         pending = [path for path in discovered if _canonical_path(path) not in processed_keys]
         started = time.perf_counter()
-        pipeline: EchoOcrPipeline | None = _build_pipeline(args.engine, args.parser_mode, config)
+        pipeline: EchoOcrPipeline | None = _build_pipeline(args.engine, config)
 
         try:
             for path in pending:
@@ -1624,7 +1611,6 @@ def main() -> int:
                         path,
                         pipeline,
                         engine=args.engine,
-                        parser_mode=args.parser_mode,
                         config=config,
                         max_frames=args.max_frames,
                         per_file_timeout_s=args.per_file_timeout_s,
@@ -1636,7 +1622,6 @@ def main() -> int:
                         config=config,
                         items=items,
                         engine=args.engine,
-                        parser_mode=args.parser_mode,
                         input_path=input_path,
                         started_at=started_at,
                         elapsed_s=elapsed_partial,
@@ -1658,7 +1643,6 @@ def main() -> int:
                     config=config,
                     items=items,
                     engine=args.engine,
-                    parser_mode=args.parser_mode,
                     input_path=input_path,
                     started_at=started_at,
                     elapsed_before=elapsed_before,
@@ -1685,7 +1669,6 @@ def main() -> int:
             config,
             items,
             engine=args.engine,
-            parser_mode=args.parser_mode,
             input_path=input_path,
             started_at=started_at,
             elapsed_s=elapsed,
@@ -1736,7 +1719,6 @@ def main() -> int:
             "input_path": _canonical_path(input_path),
             "labels_path": _canonical_path(labels_path),
             "engine": args.engine,
-            "parser_mode": args.parser_mode,
             "config_set": args.config_set,
             "baseline_config": effective_baseline_name,
             "config_count": len(configs),

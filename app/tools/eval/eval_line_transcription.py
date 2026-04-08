@@ -11,7 +11,6 @@ import numpy as np
 
 from app.pipeline.echo_ocr_pipeline import (  # noqa: E402
     DEFAULT_OCR_ENGINE,
-    DEFAULT_PARSER_MODE,
     DEFAULT_SEGMENTATION_EXTRA_LEFT_PAD_PX,
     EchoOcrPipeline,
 )
@@ -44,7 +43,6 @@ class LineMetricTotals:
     prefix_matches: int = 0
     uncertainty_count: int = 0
     fallback_invocations: int = 0
-    vision_invocations: int = 0
     engine_disagreements: int = 0
     roi_detection_failures: int = 0
     line_segmentation_failures: int = 0
@@ -133,7 +131,6 @@ def evaluate_line_transcription(
     parameters: dict[str, object] = {
         "ocr_engine": engine_name,
         "fallback_ocr_engine": fallback_engine_name,
-        "parser_mode": DEFAULT_PARSER_MODE,
         "max_frames": 1,
         # Avoid silent chain to tesseract/easyocr/paddle when the requested fallback fails to load.
         "strict_ocr_engine_selection": True,
@@ -162,7 +159,6 @@ def evaluate_line_transcription(
         file_predicted_lines: list[str] = []
         file_uncertainty_count = 0
         file_fallback_invocations = 0
-        file_vision_invocations = 0
         file_engine_disagreements = 0
         roi_detected = False
         segmentation_line_count = 0
@@ -182,7 +178,6 @@ def evaluate_line_transcription(
             file_predicted_lines.extend(line.text for line in panel.lines if line.text)
             file_uncertainty_count += panel.uncertain_line_count
             file_fallback_invocations += panel.fallback_invocations
-            file_vision_invocations += int(getattr(panel, "vision_invocations", 0) or 0)
             file_engine_disagreements += panel.engine_disagreement_count
 
         if not roi_detected:
@@ -191,7 +186,6 @@ def evaluate_line_transcription(
         totals.ocr_predictions += len(file_predicted_lines)
         totals.uncertainty_count += file_uncertainty_count
         totals.fallback_invocations += file_fallback_invocations
-        totals.vision_invocations += file_vision_invocations
         totals.engine_disagreements += file_engine_disagreements
 
         matches = _match_count(file_predicted_lines, expected_lines)
@@ -209,7 +203,6 @@ def evaluate_line_transcription(
             "predicted_lines": file_predicted_lines,
             "uncertainty_count": file_uncertainty_count,
             "fallback_invocations": file_fallback_invocations,
-            "vision_invocations": file_vision_invocations,
             "engine_disagreements": file_engine_disagreements,
             "segmentation_line_count": segmentation_line_count,
             "sequence_similarity": similarity,
@@ -254,7 +247,6 @@ def _rates(totals: LineMetricTotals) -> dict[str, float]:
         "prefix_match_rate": totals.prefix_matches / denominator,
         "uncertainty_rate": totals.uncertainty_count / max(totals.ocr_predictions, 1),
         "fallback_invocation_rate": totals.fallback_invocations / max(totals.ocr_predictions, 1),
-        "vision_invocation_rate": totals.vision_invocations / max(totals.ocr_predictions, 1),
         "roi_detection_failure_rate": totals.roi_detection_failures / file_denominator,
         "line_segmentation_failure_rate": totals.line_segmentation_failures / max(totals.ocr_predictions, 1),
         "engine_disagreement_rate": totals.engine_disagreements / max(totals.ocr_predictions, 1),
@@ -275,13 +267,18 @@ def main() -> None:
     parser.add_argument("--output", default="", help="Optional JSON output path")
     parser.add_argument("--debug-dir", default="", help="Optional directory for segmentation debug images")
     parser.add_argument("--hard-case-limit", type=int, default=0, help="Optional maximum number of hard-case debug exports; 0 means no limit")
-    parser.add_argument("--parser-mode", default=DEFAULT_PARSER_MODE, help="Pipeline parser mode")
-    parser.add_argument("--llm-model", default="qwen2.5:7b-instruct-q4_K_M", help="Local text model for parser/panel validation")
+    parser.add_argument(
+        "--parser-mode",
+        default="",
+        help="Ignored; measurements always use line-first decoding.",
+    )
+    parser.add_argument(
+        "--llm-model",
+        default="qwen2.5:7b-instruct-q4_K_M",
+        help="Local text model for optional panel validation",
+    )
     parser.add_argument("--llm-command", default="ollama", help="Local text model command")
     parser.add_argument("--panel-validation-mode", default="off", help="Panel validation mode (off, selective, always)")
-    parser.add_argument("--vision-fallback", action="store_true", help="Enable selective local vision fallback")
-    parser.add_argument("--vision-model", default="qwen2.5vl:3b-q4_K_M", help="Local vision model for hard lines")
-    parser.add_argument("--vision-ollama-url", default="http://127.0.0.1:11434", help="Ollama base URL for vision fallback")
     parser.add_argument("--study-companion", action="store_true", help="Enable study companion discovery during evaluation")
     parser.add_argument(
         "--segmentation-extra-left-pad",
@@ -298,15 +295,11 @@ def main() -> None:
         engine_name=args.engine,
         fallback_engine_name=args.fallback_engine,
         pipeline_parameters={
-            "parser_mode": args.parser_mode,
             "llm_model": args.llm_model,
             "llm_command": args.llm_command,
             "panel_validation_mode": args.panel_validation_mode,
             "panel_validation_model": args.llm_model,
             "panel_validation_command": args.llm_command,
-            "vision_fallback_enabled": args.vision_fallback,
-            "vision_model": args.vision_model,
-            "vision_ollama_url": args.vision_ollama_url,
             "study_companion_enabled": args.study_companion,
             "segmentation_extra_left_pad_px": max(0, int(args.segmentation_extra_left_pad)),
         },
@@ -325,7 +318,6 @@ def main() -> None:
         "prefix_matches": totals.prefix_matches,
         "uncertainty_count": totals.uncertainty_count,
         "fallback_invocations": totals.fallback_invocations,
-        "vision_invocations": totals.vision_invocations,
         "engine_disagreements": totals.engine_disagreements,
         "roi_detection_failures": totals.roi_detection_failures,
         "line_segmentation_failures": totals.line_segmentation_failures,
