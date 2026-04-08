@@ -925,6 +925,8 @@ def _alarm_handler(_signum: int, _frame: Any) -> None:
 def _run_with_timeout(timeout_s: int, func: Callable[[], Any]) -> Any:
     if timeout_s <= 0:
         return func()
+    if not hasattr(signal, "SIGALRM") or not hasattr(signal, "setitimer"):
+        return func()
     previous_handler = signal.getsignal(signal.SIGALRM)
     previous_timer = signal.setitimer(signal.ITIMER_REAL, 0.0)
     try:

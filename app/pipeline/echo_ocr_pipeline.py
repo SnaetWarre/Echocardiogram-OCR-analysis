@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import time
 from collections.abc import Iterable
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Protocol
@@ -626,7 +626,6 @@ class EchoOcrPipeline(BasePipeline):
         )
         if self._reranker is not None:
             panel = self._reranker.rerank_panel(panel)
-        panel = self._drop_first_panel_line(panel)
         ocr = OcrResult(
             text=panel.combined_text,
             confidence=self._panel_confidence(panel),
@@ -850,28 +849,32 @@ class EchoOcrPipeline(BasePipeline):
                     break
         return tokens
 
-    @staticmethod
-    def _drop_first_panel_line(panel: PanelTranscription) -> PanelTranscription:
-        if len(panel.lines) <= 1:
-            return panel
-        retained_lines = tuple(
-            replace(line, order=order)
-            for order, line in enumerate(panel.lines[1:])
-        )
-        combined_text = "\n".join(line.text for line in retained_lines if line.text).strip()
-        uncertain_count = sum(1 for line in retained_lines if line.uncertain)
-        return PanelTranscription(
-            lines=retained_lines,
-            combined_text=combined_text,
-            uncertain_line_count=uncertain_count,
-            fallback_invocations=panel.fallback_invocations,
-            engine_disagreement_count=panel.engine_disagreement_count,
-        )
-
     def _parse_transcribed_panel(self, panel: PanelTranscription, *, confidence: float) -> list[AiMeasurement]:
-        lines = [line.text for line in panel.lines if line.text.strip()]
+        lines: list[str] = []
+        line_orders: list[int] = []
+        for line in panel.lines:
+            text = line.text.strip()
+            if not text:
+                continue
+            lines.append(line.text)
+            line_orders.append(line.order)
         measurements = self._line_first_parser.parse_lines(lines, confidence=confidence)
-        return self._attach_line_sources(measurements, panel, parser_source="line_first")
+        remapped_measurements: list[AiMeasurement] = []
+        for measurement in measurements:
+            order_hint = measurement.order_hint
+            if order_hint is not None and 0 <= int(order_hint) < len(line_orders):
+                remapped_measurements.append(
+                    AiMeasurement(
+                        name=measurement.name,
+                        value=measurement.value,
+                        unit=measurement.unit,
+                        source=measurement.source,
+                        order_hint=line_orders[int(order_hint)],
+                    )
+                )
+            else:
+                remapped_measurements.append(measurement)
+        return self._attach_line_sources(remapped_measurements, panel, parser_source="line_first")
 
     def _maybe_apply_panel_validator(
         self,

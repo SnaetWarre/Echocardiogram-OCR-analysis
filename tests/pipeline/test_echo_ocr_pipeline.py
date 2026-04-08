@@ -19,6 +19,7 @@ from app.pipeline.echo_ocr_pipeline import (
     TopLeftBlueGrayBoxDetector,
     preprocess_roi,
 )
+from app.pipeline.layout.line_segmenter import SegmentationResult, SegmentedLine
 from app.pipeline.measurements.line_first_parser import LineFirstParser
 from app.pipeline.transcription.line_transcriber import LinePrediction, PanelTranscription
 from app.pipeline.llm.panel_validator import LocalLlmPanelValidator, PanelValidatorConfig
@@ -141,6 +142,20 @@ class _FixedLineFirstParser:
 
     def parse_lines(self, lines, *, confidence: float) -> list[AiMeasurement]:
         return list(self._items)
+
+
+class _FirstLineOrderHintParser:
+    def parse(self, text: str, *, confidence: float) -> list[AiMeasurement]:
+        _ = (text, confidence)
+        return self.parse_lines(text.splitlines(), confidence=confidence)
+
+    def parse_text(self, text: str, *, confidence: float) -> list[AiMeasurement]:
+        _ = (text, confidence)
+        return self.parse_lines(text.splitlines(), confidence=confidence)
+
+    def parse_lines(self, lines, *, confidence: float) -> list[AiMeasurement]:
+        _ = (lines, confidence)
+        return [AiMeasurement(name="AV maxPG", value="6", unit="mmHg", source="test", order_hint=0)]
 
 
 def test_extract_measurements_trims_14px_header_before_ocr() -> None:
@@ -425,6 +440,88 @@ def test_pipeline_defaults_match_line_first_validation_configuration() -> None:
     assert pipeline._target_line_height_px == DEFAULT_TARGET_LINE_HEIGHT_PX
     assert pipeline._segmentation_extra_left_pad_px == DEFAULT_SEGMENTATION_EXTRA_LEFT_PAD_PX
     assert pipeline._line_segmenter.extra_left_pad_px == DEFAULT_SEGMENTATION_EXTRA_LEFT_PAD_PX
+
+
+def test_parse_transcribed_panel_remaps_order_hints_when_panel_has_blank_header_line() -> None:
+    pipeline = EchoOcrPipeline()
+    pipeline._line_first_parser = _FirstLineOrderHintParser()
+    panel = PanelTranscription(
+        lines=(
+            LinePrediction(
+                order=0,
+                bbox=(0, 0, 20, 4),
+                text="",
+                confidence=0.1,
+                engine_name="fake",
+                source="primary",
+                uncertain=True,
+            ),
+            LinePrediction(
+                order=1,
+                bbox=(0, 4, 20, 4),
+                text="AV maxPG 6 mmHg",
+                confidence=0.9,
+                engine_name="fake",
+                source="primary",
+                uncertain=False,
+            ),
+        ),
+        combined_text="AV maxPG 6 mmHg",
+        uncertain_line_count=1,
+    )
+
+    measurements = pipeline._parse_transcribed_panel(panel, confidence=0.9)
+
+    assert len(measurements) == 1
+    assert measurements[0].order_hint == 1
+    assert measurements[0].source is not None
+    assert "exact_line:AV maxPG 6 mmHg" in measurements[0].source
+
+
+def test_pipeline_keeps_single_segmented_measurement_line() -> None:
+    pipeline = EchoOcrPipeline(ocr_engine=_FakeOcrEngine("TR Vmax 2.1 m/s"))
+    pipeline._ensure_components()
+    pipeline._reranker = None
+    pipeline._line_first_parser = _FixedLineFirstParser(
+        [AiMeasurement(name="TR Vmax", value="2.1", unit="m/s", source="test", order_hint=0)]
+    )
+
+    frame = np.zeros((48, 80, 3), dtype=np.uint8)
+
+    pipeline._line_segmenter.segment = lambda _roi, tokens=None: SegmentationResult(  # type: ignore[method-assign]
+        header_trim_px=0,
+        content_bbox=(0, 0, 40, 16),
+        lines=(SegmentedLine(order=0, bbox=(0, 8, 40, 8)),),
+        debug={"line_count": 1},
+    )
+    pipeline._line_transcriber.transcribe = (  # type: ignore[method-assign]
+        lambda _roi, _segmentation, *, primary_engine, fallback_engine=None: PanelTranscription(
+            lines=(
+                LinePrediction(
+                    order=0,
+                    bbox=(0, 8, 40, 8),
+                    text="TR Vmax 2.1 m/s",
+                    confidence=0.91,
+                    engine_name=primary_engine.name,
+                    source="primary",
+                    uncertain=False,
+                ),
+            ),
+            combined_text="TR Vmax 2.1 m/s",
+            uncertain_line_count=0,
+        )
+    )
+
+    ocr, panel, items, bbox = pipeline._extract_measurements_for_frame(
+        frame,
+        RoiDetection(present=True, bbox=(0, 0, 40, 16), confidence=1.0),
+    )
+
+    assert ocr is not None
+    assert bbox == (0, 0, 40, 16)
+    assert [line.text for line in panel.lines] == ["TR Vmax 2.1 m/s"]
+    assert len(items) == 1
+    assert items[0].name == "TR Vmax"
 
 
 def test_panel_validator_results_are_reattached_to_exact_lines() -> None:
