@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from app.pipeline.lexicon_builder import LexiconArtifact, NumericStats
-from app.pipeline.lexicon_reranker import LexiconReranker
-from app.pipeline.line_transcriber import LineOcrCandidate, LinePrediction, PanelTranscription
-from app.pipeline.measurement_decoder import canonicalize_exact_line
+from app.pipeline.lexicon.lexicon_builder import LexiconArtifact, NumericStats
+from app.pipeline.lexicon.lexicon_reranker import LexiconReranker
+from app.pipeline.transcription.line_transcriber import LineOcrCandidate, LinePrediction, PanelTranscription
+from app.pipeline.measurements.measurement_decoder import canonicalize_exact_line
 
 
 def _artifact() -> LexiconArtifact:

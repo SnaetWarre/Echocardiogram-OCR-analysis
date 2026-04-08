@@ -10,7 +10,7 @@
 # Prerequisites (typical):
 #   bash scripts/bootstrap_headless_env.sh
 #
-# GLM worker uses env `glm_ocr` by default (see app/pipeline/ocr_engines.py):
+# GLM worker uses env `glm_ocr` by default (see app/pipeline/ocr/ocr_engines.py):
 #   export GLM_OCR_RUNNER=mamba
 #   export GLM_OCR_ENV=glm_ocr
 #
@@ -125,7 +125,7 @@ for engine in "${ENGINES[@]}"; do
     fi
     out_dir="${RUN_ROOT}/${out_suffix}"
     echo "=== ${engine} | ${morph_label} -> ${out_dir} ==="
-    "${PY[@]}" -m app.tools.sweep_preprocessing_headless \
+    "${PY[@]}" -m app.tools.batch.sweep_preprocessing_headless \
       "${common_args[@]}" \
       "${morph_args[@]}" \
       --engine "${engine}" \

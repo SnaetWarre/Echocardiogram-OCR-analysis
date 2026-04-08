@@ -25,7 +25,7 @@ Prepare a reproducible next-step path for local line recognizer training without
 - Start from a TrOCR-style recognizer using `artifacts/ocr_redesign/line_recognizer_manifest.jsonl`
 - Use `python -m app.tools.train_line_recognizer --dry-run` to stamp a reproducible run plan before any heavy training
 - Compare against the current line-first pipeline on exact-line match rate first
-- Use the existing `app/tools/eval_line_transcription.py` metrics as the acceptance gate
+- Use the existing `app/tools/eval/eval_line_transcription.py` metrics as the acceptance gate
 - Promote a trained model only if it clearly improves exact-line accuracy without raising hallucination risk
 
 ## Reproducibility

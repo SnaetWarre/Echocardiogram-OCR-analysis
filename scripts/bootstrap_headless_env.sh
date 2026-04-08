@@ -31,7 +31,7 @@ done
 
 echo "Running smoke checks"
 "$ENV_TOOL" run -n DL python -c "import sys; print('DL python:', sys.version.split()[0])"
-"$ENV_TOOL" run -n DL python -m app.tools.headless_batch_label --help >/dev/null
+"$ENV_TOOL" run -n DL python -m app.tools.batch.headless_batch_label --help >/dev/null
 "$ENV_TOOL" run -n glm_ocr python -c "import transformers; print('glm_ocr transformers ok')"
 "$ENV_TOOL" run -n surya python -c "import surya; print('surya import ok')"
 

@@ -24,7 +24,7 @@ Those alternates are only tried when the first pass looks weak or structurally s
 ## Smoke Test
 
 ```bash
-mamba run -n DL python -m app.tools.sweep_preprocessing_headless \
+mamba run -n DL python -m app.tools.batch.sweep_preprocessing_headless \
   /home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10003731 \
   --recursive \
   --config-set smoke \
@@ -36,7 +36,7 @@ mamba run -n DL python -m app.tools.sweep_preprocessing_headless \
 This runs the broader curated config set over all DICOMs under the five patient folders.
 
 ```bash
-mamba run -n DL python -m app.tools.sweep_preprocessing_headless \
+mamba run -n DL python -m app.tools.batch.sweep_preprocessing_headless \
   /home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10 \
   --recursive \
   --engine tesseract \
@@ -48,7 +48,7 @@ mamba run -n DL python -m app.tools.sweep_preprocessing_headless \
 
 1. Label measurements in the GUI; ground truth lives in `labels/labels.json` (train/validation splits).
 2. Run a sweep; each config writes `label_scores.json` with per-line match detail; `summary.csv` ranks configs by exact/value match rate on the labeled subset.
-3. For mismatches, use `python -m app.tools.export_validation_failures path/to/label_scores.json` for `validation_exact_failures.csv`, or `notebooks/validation_failure_walkthrough.ipynb` for visual replay.
+3. For mismatches, use `python -m app.tools.batch.export_validation_failures path/to/label_scores.json` for `validation_exact_failures.csv`, or `notebooks/validation_failure_walkthrough.ipynb` for visual replay.
 4. Iterate: try `--config-set order_matrix` or `--config-set manifest` with `--engine glm-ocr` (or `tesseract`, etc.) to compare preprocessing and engines on the same DICOMs.
 
 ## Full “everything” sweep (script)
@@ -73,7 +73,7 @@ Config folder names include `mv0` (no multiview) / `mv1` (pipeline multiview). O
 Builds configs from flags (Cartesian product with pruning: no binarization uses only `scale_then_threshold`; Otsu at scale 1 is omitted unless `--matrix-include-bin-1x`).
 
 ```bash
-mamba run -n DL python -m app.tools.sweep_preprocessing_headless \
+mamba run -n DL python -m app.tools.batch.sweep_preprocessing_headless \
   /path/to/dicom_root \
   --recursive \
   --engine glm-ocr \

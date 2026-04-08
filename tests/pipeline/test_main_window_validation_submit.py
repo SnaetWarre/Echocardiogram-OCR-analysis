@@ -85,7 +85,7 @@ def test_validation_submit_writes_labels_json(tmp_path: Path) -> None:
 def test_ensure_validation_manager_uses_selected_single_engine(monkeypatch) -> None:
     from app.pipeline.ai_pipeline import PipelineConfig, PipelineManager
     from app.pipeline.echo_ocr_pipeline import EchoOcrPipeline
-    from app.pipeline.ocr_engines import OcrResult
+    from app.pipeline.ocr.ocr_engines import OcrResult
 
     def _fake_build_gui_ocr_manager(
         *,

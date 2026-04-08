@@ -7,7 +7,7 @@ import numpy as np
 
 from app.models.types import PipelineRequest
 from app.pipeline.echo_ocr_pipeline import DEFAULT_SEGMENTATION_EXTRA_LEFT_PAD_PX, EchoOcrPipeline
-from app.pipeline.ocr_engines import OcrResult
+from app.pipeline.ocr.ocr_engines import OcrResult
 from app.runtime.pipeline_presets import (
     build_gui_ocr_comparison_manager,
     build_gui_ocr_manager,

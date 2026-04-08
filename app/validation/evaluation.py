@@ -7,9 +7,9 @@ from typing import Any
 
 from app.io.dicom_loader import load_dicom_series
 from app.ocr.preprocessing import preprocess_roi
-from app.pipeline.echo_ocr_box_detector import TopLeftBlueGrayBoxDetector
-from app.pipeline.measurement_parsers import build_parser
-from app.pipeline.ocr_engines import OcrEngine
+from app.pipeline.layout.echo_ocr_box_detector import TopLeftBlueGrayBoxDetector
+from app.pipeline.measurements.measurement_parsers import build_parser
+from app.pipeline.ocr.ocr_engines import OcrEngine
 from app.validation.datasets import LabeledFile, LabeledMeasurement, canonicalize_label_line, normalize_space
 
 

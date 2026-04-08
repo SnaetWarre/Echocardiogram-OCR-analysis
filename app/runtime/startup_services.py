@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from urllib.error import URLError
 from urllib.request import Request, urlopen
 
-from app.pipeline.ocr_engines import GlmOcrEngine, SuryaOcrEngine
+from app.pipeline.ocr.ocr_engines import GlmOcrEngine, SuryaOcrEngine
 
 
 @dataclass

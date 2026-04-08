@@ -160,7 +160,7 @@ Three-panel comparison for one line:
 3. **Default binarized pipeline** — unsharp → ×3 Lanczos → Otsu → morph close (Tesseract-style / legacy stack)
 
 ### Preprocessing experiments (GLM-OCR)
-Headless sweep: `app/tools/sweep_preprocessing_headless.py`, 15 configs, artifacts in `artifacts/ocr_redesign/preprocess_sweep_glm_broad/` (merged `summary.json`). Labeled validation on the p10 slice: **~95.5% exact** tied `gray_x3_lanczos`, raw gray at 1×, and `unsharp_x3_lanczos`; **gray_x3_lanczos** is the practical default (upscale for tiny crops). Default Otsu+morph land **~94.5%** with occasional file-level failures. **Adaptive-threshold** configs were **~39%** exact — keep them out of the GLM happy path.
+Headless sweep: `app/tools/batch/sweep_preprocessing_headless.py`, 15 configs, artifacts in `artifacts/ocr_redesign/preprocess_sweep_glm_broad/` (merged `summary.json`). Labeled validation on the p10 slice: **~95.5% exact** tied `gray_x3_lanczos`, raw gray at 1×, and `unsharp_x3_lanczos`; **gray_x3_lanczos** is the practical default (upscale for tiny crops). Default Otsu+morph land **~94.5%** with occasional file-level failures. **Adaptive-threshold** configs were **~39%** exact — keep them out of the GLM happy path.
 
 ## Layout suggestion
 - One row, three columns: gray → GLM-optimal upscale → binarized default.

@@ -29,7 +29,7 @@ EXTRA=()
 
 ENGINE="${SWEEP_ENGINE:-glm-ocr}"
 
-"${PY[@]}" -m app.tools.sweep_preprocessing_headless \
+"${PY[@]}" -m app.tools.batch.sweep_preprocessing_headless \
   "${SWEEP_DICOM_ROOT}" \
   --recursive \
   --config-set order_matrix_plan \

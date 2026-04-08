@@ -4,8 +4,8 @@ import importlib.util
 
 import numpy as np
 
-from app.pipeline.line_segmenter import LineSegmenter
-from app.pipeline.ocr_engines import OcrToken
+from app.pipeline.layout.line_segmenter import LineSegmenter
+from app.pipeline.ocr.ocr_engines import OcrToken
 
 
 def _make_roi() -> np.ndarray:

@@ -4,8 +4,8 @@ import csv
 import json
 from pathlib import Path
 
-from app.pipeline.echo_ocr_schema import MeasurementRecord
-from app.pipeline.echo_sidecar_writer import SidecarWriter
+from app.pipeline.output.echo_ocr_schema import MeasurementRecord
+from app.pipeline.output.echo_sidecar_writer import SidecarWriter
 
 
 def test_sidecar_writer_writes_jsonl_and_csv(tmp_path: Path) -> None:

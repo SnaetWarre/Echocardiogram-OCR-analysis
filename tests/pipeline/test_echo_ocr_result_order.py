@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from app.pipeline.echo_ocr_pipeline import EchoOcrPipeline
-from app.pipeline.echo_ocr_schema import MeasurementRecord
+from app.pipeline.output.echo_ocr_schema import MeasurementRecord
 
 
 def test_ai_result_preserves_text_order() -> None:

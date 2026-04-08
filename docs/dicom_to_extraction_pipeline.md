@@ -74,7 +74,7 @@ flowchart TD
 | Series load | [`dicom_loader.py`](../app/io/dicom_loader.py), [`dicom_reader.py`](../app/io/dicom_reader.py) | Read DICOM bytes, metadata, and frames (eager or lazy). |
 | Frame decode / normalization | [`frame_loaders.py`](../app/io/frame_loaders.py), [`normalization.py`](../app/io/normalization.py) | Decode frames; fix photometric interpretation / shape for consistent RGB or gray images. |
 | Orchestration | [`echo_ocr_pipeline.py`](../app/pipeline/echo_ocr_pipeline.py) | Wires OCR, segmentation, parsers, lexicon, optional LLM/vision into `run()`. |
-| Sidecar export | [`echo_sidecar_writer.py`](../app/pipeline/echo_sidecar_writer.py) | Persists measurement rows to disk. |
+| Sidecar export | [`echo_sidecar_writer.py`](../app/pipeline/output/echo_sidecar_writer.py) | Persists measurement rows to disk. |
 
 ---
 
@@ -159,16 +159,16 @@ flowchart TD
 
 | Step | Module | Role in one sentence |
 |------|--------|------------------------|
-| Panel ROI | [`echo_ocr_box_detector.py`](../app/pipeline/echo_ocr_box_detector.py) | Find the measurement panel box. |
+| Panel ROI | [`echo_ocr_box_detector.py`](../app/pipeline/layout/echo_ocr_box_detector.py) | Find the measurement panel box. |
 | Preprocessing | [`preprocessing.py`](../app/ocr/preprocessing.py) | Upscale, contrast, threshold variants for OCR. |
-| Line geometry | [`line_segmenter.py`](../app/pipeline/line_segmenter.py) | One ROI → many horizontal line crops. |
-| Line OCR | [`line_transcriber.py`](../app/pipeline/line_transcriber.py) | OCR per line: multiview + fallback + optional vision. |
-| Engines + routing | [`echo_ocr_pipeline.py`](../app/pipeline/echo_ocr_pipeline.py), [`ocr_engines.py`](../app/pipeline/ocr_engines.py) | `RoutedOcrEngine` and concrete backends (GLM, Surya, Tesseract, …). |
-| Lexicon | [`lexicon_builder.py`](../app/pipeline/lexicon_builder.py), [`lexicon_reranker.py`](../app/pipeline/lexicon_reranker.py) | Stats from labels; rerank/repair OCR candidates. |
-| Parsing | [`line_first_parser.py`](../app/pipeline/line_first_parser.py), [`measurement_parsers.py`](../app/pipeline/measurement_parsers.py) | String → structured measurements (+ optional LLM parser modes). |
-| Canonicalization | [`measurement_decoder.py`](../app/pipeline/measurement_decoder.py) | Normalize text, common OCR fixes, prefix/label/value/unit parsing. |
-| Panel LLM | [`panel_validator.py`](../app/pipeline/panel_validator.py) | Optional Ollama text model for panel-level fixes. |
-| Vision LLM | [`vision_llm.py`](../app/pipeline/vision_llm.py) | Optional Ollama vision for hard line crops. |
+| Line geometry | [`line_segmenter.py`](../app/pipeline/layout/line_segmenter.py) | One ROI → many horizontal line crops. |
+| Line OCR | [`line_transcriber.py`](../app/pipeline/transcription/line_transcriber.py) | OCR per line: multiview + fallback + optional vision. |
+| Engines + routing | [`echo_ocr_pipeline.py`](../app/pipeline/echo_ocr_pipeline.py), [`ocr_engines.py`](../app/pipeline/ocr/ocr_engines.py) | `RoutedOcrEngine` and concrete backends (GLM, Surya, Tesseract, …). |
+| Lexicon | [`lexicon_builder.py`](../app/pipeline/lexicon/lexicon_builder.py), [`lexicon_reranker.py`](../app/pipeline/lexicon/lexicon_reranker.py) | Stats from labels; rerank/repair OCR candidates. |
+| Parsing | [`line_first_parser.py`](../app/pipeline/measurements/line_first_parser.py), [`measurement_parsers.py`](../app/pipeline/measurements/measurement_parsers.py) | String → structured measurements (+ optional LLM parser modes). |
+| Canonicalization | [`measurement_decoder.py`](../app/pipeline/measurements/measurement_decoder.py) | Normalize text, common OCR fixes, prefix/label/value/unit parsing. |
+| Panel LLM | [`panel_validator.py`](../app/pipeline/llm/panel_validator.py) | Optional Ollama text model for panel-level fixes. |
+| Vision LLM | [`vision_llm.py`](../app/pipeline/llm/vision_llm.py) | Optional Ollama vision for hard line crops. |
 
 ---
 
@@ -209,7 +209,7 @@ flowchart LR
 | **Scout pass** | One OCR call on the **entire** panel ROI — layout hints, not the final per-line read. |
 | **Line pass** | OCR on **each** line crop — main accuracy bottleneck. |
 
-Module: [`ocr_engines.py`](../app/pipeline/ocr_engines.py).
+Module: [`ocr_engines.py`](../app/pipeline/ocr/ocr_engines.py).
 
 ---
 
@@ -235,7 +235,7 @@ flowchart TD
 | **LexiconArtifact (JSON)** | Cached stats so startup avoids recomputing every time. |
 | **LexiconReranker** | Adds repaired variants and **scores** candidates against those stats. |
 
-Modules: [`lexicon_builder.py`](../app/pipeline/lexicon_builder.py), [`lexicon_reranker.py`](../app/pipeline/lexicon_reranker.py), wired in [`echo_ocr_pipeline.py`](../app/pipeline/echo_ocr_pipeline.py) (`_load_or_build_lexicon`).
+Modules: [`lexicon_builder.py`](../app/pipeline/lexicon/lexicon_builder.py), [`lexicon_reranker.py`](../app/pipeline/lexicon/lexicon_reranker.py), wired in [`echo_ocr_pipeline.py`](../app/pipeline/echo_ocr_pipeline.py) (`_load_or_build_lexicon`).
 
 The lexicon does **not** replace OCR; it **chooses and nudges** among OCR outputs.
 
@@ -243,7 +243,7 @@ The lexicon does **not** replace OCR; it **chooses and nudges** among OCR output
 
 ## 5. Final packaging: records, `AiResult`, overlays
 
-`MeasurementRecord` rows (schema in [`echo_ocr_schema.py`](../app/pipeline/echo_ocr_schema.py)) are deduplicated and sorted, then converted to:
+`MeasurementRecord` rows (schema in [`echo_ocr_schema.py`](../app/pipeline/output/echo_ocr_schema.py)) are deduplicated and sorted, then converted to:
 
 - **`AiMeasurement`** list for the UI
 - **`raw` payload** (`exact_lines`, `line_predictions`, engine stats, and related flags)

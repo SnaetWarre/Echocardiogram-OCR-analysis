@@ -16,8 +16,8 @@ from app.pipeline.echo_ocr_pipeline import (
     DEFAULT_TARGET_LINE_HEIGHT_PX,
     EchoOcrPipeline,
 )
-from app.pipeline.measurement_parsers import LocalLlmMeasurementParser, LocalLlmParserConfig
-from app.pipeline.ocr_engines import OcrEngine, build_engine
+from app.pipeline.measurements.measurement_parsers import LocalLlmMeasurementParser, LocalLlmParserConfig
+from app.pipeline.ocr.ocr_engines import OcrEngine, build_engine
 
 
 GUI_OCR_ENGINE_NAMES = ("glm-ocr", "surya", "paddleocr", "easyocr", "tesseract")
@@ -349,7 +349,7 @@ def build_validation_manager(
         )
     )
     if parser_mode == "regex_then_llm":
-        from app.pipeline.measurement_parsers import RegexMeasurementParser, RegexThenLlmMeasurementParser
+        from app.pipeline.measurements.measurement_parsers import RegexMeasurementParser, RegexThenLlmMeasurementParser
 
         parser = RegexThenLlmMeasurementParser(
             regex_parser=RegexMeasurementParser(),

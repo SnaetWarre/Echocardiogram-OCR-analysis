@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from app.models.types import AiMeasurement
-from app.pipeline.line_transcriber import LinePrediction, PanelTranscription
-from app.pipeline.panel_validator import LocalLlmPanelValidator, PanelValidatorConfig
+from app.pipeline.transcription.line_transcriber import LinePrediction, PanelTranscription
+from app.pipeline.llm.panel_validator import LocalLlmPanelValidator, PanelValidatorConfig
 
 
 def _panel(*, uncertain: bool = True) -> PanelTranscription:

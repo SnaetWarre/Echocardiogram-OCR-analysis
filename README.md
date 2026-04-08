@@ -33,14 +33,14 @@ This repository contains a PySide6 DICOM viewer, an OCR pipeline for echo measur
 
 ### Tooling
 
-- `app/tools/echo_ocr_eval_labels.py`: CLI wrapper for exact-line evaluation.
-- `app/tools/headless_batch_label.py`: headless batch DICOM processing with aggregate JSON/CSV export.
-- `app/tools/eval_line_transcription.py`: line-first evaluation and hard-case reporting.
-- `app/tools/build_ocr_lexicon.py`: lexicon/statistics artifact generation.
+- `app/tools/eval/echo_ocr_eval_labels.py`: CLI wrapper for exact-line evaluation.
+- `app/tools/batch/headless_batch_label.py`: headless batch DICOM processing with aggregate JSON/CSV export.
+- `app/tools/eval/eval_line_transcription.py`: line-first evaluation and hard-case reporting.
+- `app/tools/artifacts/build_ocr_lexicon.py`: lexicon/statistics artifact generation.
 - `app/tools/prepare_line_training_data.py`: JSONL export for exact-line training rows.
 - `app/tools/prepare_line_recognizer_dataset.py`: crop + manifest export for recognizer experiments.
 - `app/tools/train_line_recognizer.py`: recognizer training run skeleton.
-- `app/tools/eval_segmentation.py`: segmentation benchmark entrypoint.
+- `app/tools/eval/eval_segmentation.py`: segmentation benchmark entrypoint.
 
 CLI entrypoints live under `app/tools/`; run them with `python -m app.tools.<module>`.
 
@@ -69,11 +69,11 @@ See `docs/mamba_environments.md` for the full multi-environment setup.
 ```bash
 mamba run -n DL python -m app.main
 mamba run -n DL python -m pytest
-mamba run -n DL python -m app.tools.echo_ocr_eval_labels --split validation --engine surya
-mamba run -n DL python -m app.tools.eval_line_transcription --split validation
-mamba run -n DL python -m app.tools.build_ocr_lexicon
-mamba run -n DL python -m app.tools.headless_batch_label /path/to/dicoms --recursive --output artifacts/ocr_redesign/headless_run --output-format json
-mamba run -n DL python -m app.tools.headless_batch_label /path/to/dicoms --recursive --output artifacts/ocr_redesign/headless_run --output-format both --resume
+mamba run -n DL python -m app.tools.eval.echo_ocr_eval_labels --split validation --engine surya
+mamba run -n DL python -m app.tools.eval.eval_line_transcription --split validation
+mamba run -n DL python -m app.tools.artifacts.build_ocr_lexicon
+mamba run -n DL python -m app.tools.batch.headless_batch_label /path/to/dicoms --recursive --output artifacts/ocr_redesign/headless_run --output-format json
+mamba run -n DL python -m app.tools.batch.headless_batch_label /path/to/dicoms --recursive --output artifacts/ocr_redesign/headless_run --output-format both --resume
 ```
 
 ## Notes

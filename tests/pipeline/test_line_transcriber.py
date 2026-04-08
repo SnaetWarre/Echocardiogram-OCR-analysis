@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import numpy as np
 
-from app.pipeline.line_segmenter import SegmentationResult, SegmentedLine
-from app.pipeline.line_transcriber import LineTranscriber
-from app.pipeline.ocr_engines import OcrResult, OcrToken
+from app.pipeline.layout.line_segmenter import SegmentationResult, SegmentedLine
+from app.pipeline.transcription.line_transcriber import LineTranscriber
+from app.pipeline.ocr.ocr_engines import OcrResult, OcrToken
 
 
 class _SequenceEngine:
@@ -53,7 +53,7 @@ class _FakeVisionExpert:
         _ = image
         _ = candidate_hints
         self.calls += 1
-        from app.pipeline.vision_llm import VisionLineExpertResult
+        from app.pipeline.llm.vision_llm import VisionLineExpertResult
 
         return VisionLineExpertResult(text=self.text, confidence=self.confidence, raw_response=self.text)
 

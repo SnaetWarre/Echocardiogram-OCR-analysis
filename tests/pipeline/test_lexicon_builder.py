@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from app.pipeline.lexicon_builder import LexiconArtifact, build_lexicon_artifact
+from app.pipeline.lexicon.lexicon_builder import LexiconArtifact, build_lexicon_artifact
 
 
 def test_build_lexicon_artifact_collects_line_and_label_statistics(tmp_path: Path) -> None:

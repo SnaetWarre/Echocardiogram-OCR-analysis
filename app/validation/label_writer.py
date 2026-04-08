@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, TypedDict, cast
 
 from app.models.types import AiMeasurement
-from app.pipeline.measurement_decoder import canonicalize_exact_line, extract_line_from_source
+from app.pipeline.measurements.measurement_decoder import canonicalize_exact_line, extract_line_from_source
 from app.validation.datasets import DATASET_TASK, DATASET_VERSION
 
 
@@ -100,7 +100,7 @@ class ValidationLabelWriter:
             normalized_files.append(
                 {
                     "file_name": str(file_obj.get("file_name", "")),
-                    "file_path": str(file_obj.get("file_path", "")),
+                    "file_path": self._normalize_file_path(str(file_obj.get("file_path", ""))),
                     "split": str(file_obj.get("split", "")),
                     "measurements": measurements,
                 }
@@ -155,7 +155,7 @@ class ValidationLabelWriter:
 
         return {
             "file_name": dicom_path.name,
-            "file_path": str(dicom_path),
+            "file_path": ValidationLabelWriter._normalize_file_path(dicom_path),
             "split": ValidationLabelWriter._normalize_split(split),
             "measurements": ordered_measurements,
         }
@@ -199,6 +199,14 @@ class ValidationLabelWriter:
         if not line:
             return ""
         return " ".join(line.split())
+
+    @staticmethod
+    def _normalize_file_path(value: str | Path) -> str:
+        if isinstance(value, Path):
+            raw = value.as_posix()
+        else:
+            raw = str(value).strip().replace("\\", "/")
+        return raw.strip()
 
     @staticmethod
     def _extract_exact_line_from_source(source: str | None) -> str | None:

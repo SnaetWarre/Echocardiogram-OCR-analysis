@@ -5,7 +5,7 @@ from pathlib import Path
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from app.models.types import AiMeasurement, AiResult, OverlayBox
-from app.pipeline.measurement_decoder import extract_line_from_source
+from app.pipeline.measurements.measurement_decoder import extract_line_from_source
 
 _STYLE_UNMODIFIED = (
     "QFrame#rowFrame { border: 2px solid #1E8E3E; border-radius: 6px; background: #F4FBF6; }"

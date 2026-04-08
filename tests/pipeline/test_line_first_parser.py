@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from app.models.types import AiMeasurement
-from app.pipeline.line_first_parser import LineFirstParser
+from app.pipeline.measurements.line_first_parser import LineFirstParser
 
 
 class _FallbackParser:

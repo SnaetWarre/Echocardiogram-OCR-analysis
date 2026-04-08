@@ -7,19 +7,19 @@ This command runs the Echo OCR pipeline on large DICOM batches without the GUI a
 Use the main runtime environment:
 
 ```bash
-mamba run -n DL python -m app.tools.headless_batch_label /path/to/dicoms --recursive --output artifacts/ocr_redesign/headless_run --output-format json
+mamba run -n DL python -m app.tools.batch.headless_batch_label /path/to/dicoms --recursive --output artifacts/ocr_redesign/headless_run --output-format json
 ```
 
 Dual export with resume:
 
 ```bash
-mamba run -n DL python -m app.tools.headless_batch_label /path/to/dicoms --recursive --output artifacts/ocr_redesign/headless_run --output-format both --resume
+mamba run -n DL python -m app.tools.batch.headless_batch_label /path/to/dicoms --recursive --output artifacts/ocr_redesign/headless_run --output-format both --resume
 ```
 
 Preflight-only startup validation:
 
 ```bash
-mamba run -n DL python -m app.tools.headless_batch_label /path/to/dicoms --preflight --output artifacts/ocr_redesign/headless_preflight --output-format json
+mamba run -n DL python -m app.tools.batch.headless_batch_label /path/to/dicoms --preflight --output artifacts/ocr_redesign/headless_preflight --output-format json
 ```
 
 ## Core Flags

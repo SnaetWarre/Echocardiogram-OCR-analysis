@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import cast
 
 import numpy as np
 
-from app.models.types import AiMeasurement
+from app.models.types import AiMeasurement, DicomSeries
 from app.pipeline.ai_pipeline import PipelineConfig
 from app.pipeline.echo_ocr_pipeline import (
     DEFAULT_FALLBACK_OCR_ENGINE,
@@ -20,9 +21,9 @@ from app.pipeline.echo_ocr_pipeline import (
     TopLeftBlueGrayBoxDetector,
     preprocess_roi,
 )
-from app.pipeline.line_transcriber import LinePrediction, PanelTranscription
-from app.pipeline.panel_validator import LocalLlmPanelValidator, PanelValidatorConfig
-from app.pipeline.ocr_engines import OcrResult, OcrToken
+from app.pipeline.transcription.line_transcriber import LinePrediction, PanelTranscription
+from app.pipeline.llm.panel_validator import LocalLlmPanelValidator, PanelValidatorConfig
+from app.pipeline.ocr.ocr_engines import OcrResult, OcrToken
 
 
 def test_detector_finds_measurement_roi_from_strict_color_mask() -> None:
@@ -225,7 +226,7 @@ def test_extract_records_persists_single_engine_metadata() -> None:
         def get_frame(self, index: int) -> np.ndarray:
             return frame
 
-    records = list(pipeline._extract_records(_Series(), Path("example.dcm")))
+    records = list(pipeline._extract_records(cast(DicomSeries, _Series()), Path("example.dcm")))
 
     assert records
     assert records[0].ocr_engine == "engine-a"
@@ -246,7 +247,7 @@ def test_extract_records_respects_max_frames_limit() -> None:
     pipeline = EchoOcrPipeline(
         ocr_engine=_FakeOcrEngine("TR Vmax 2.1 m/s", name="engine-a", confidence=0.9),
         parser=parser,
-        config=PipelineConfig(parameters={"max_frames": 1}),
+        config=PipelineConfig.with_parameters({"max_frames": 1}),
     )
     pipeline._ensure_components()
 
@@ -263,7 +264,7 @@ def test_extract_records_respects_max_frames_limit() -> None:
             _ = index
             return frame
 
-    records = list(pipeline._extract_records(_Series(), Path("example.dcm"), max_frames=1))
+    records = list(pipeline._extract_records(cast(DicomSeries, _Series()), Path("example.dcm"), max_frames=1))
 
     assert len(records) == 1
     assert records[0].frame_index == 0
@@ -276,7 +277,7 @@ def test_ai_result_uses_exact_line_sources_and_raw_line_predictions() -> None:
     ]
     _ = records
 
-    from app.pipeline.echo_ocr_schema import MeasurementRecord
+    from app.pipeline.output.echo_ocr_schema import MeasurementRecord
 
     result = pipeline._to_ai_result(
         [
@@ -382,8 +383,8 @@ def test_ai_result_keeps_raw_ocr_lines_without_measurement_records() -> None:
 
 def test_pipeline_respects_fixed_pitch_segmentation_parameters() -> None:
     pipeline = EchoOcrPipeline(
-        config=PipelineConfig(
-            parameters={
+        config=PipelineConfig.with_parameters(
+            {
                 "segmentation_mode": "fixed_pitch",
                 "target_line_height_px": 20.0,
             }
@@ -396,8 +397,8 @@ def test_pipeline_respects_fixed_pitch_segmentation_parameters() -> None:
 
 def test_pipeline_supports_strict_engine_selection_flag() -> None:
     pipeline = EchoOcrPipeline(
-        config=PipelineConfig(
-            parameters={
+        config=PipelineConfig.with_parameters(
+            {
                 "strict_ocr_engine_selection": True,
             }
         )

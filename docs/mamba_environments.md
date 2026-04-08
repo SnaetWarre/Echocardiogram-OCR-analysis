@@ -54,8 +54,8 @@ mamba env update -f envs/paddleocr_eval.yml --prune
 
 - App: `mamba run -n DL python -m app.main`
 - Tests: `mamba run -n DL python -m pytest ...`
-- Lexicon build: `mamba run -n DL python -m app.tools.build_ocr_lexicon`
-- Line evaluation: `mamba run -n DL python -m app.tools.eval_line_transcription ...`
+- Lexicon build: `mamba run -n DL python -m app.tools.artifacts.build_ocr_lexicon`
+- Line evaluation: `mamba run -n DL python -m app.tools.eval.eval_line_transcription ...`
 - Recognizer dataset export: `mamba run -n DL python -m app.tools.prepare_line_recognizer_dataset ...`
 - Recognizer training dry-run: `mamba run -n DL python -m app.tools.train_line_recognizer --dry-run ...`
 - Surya worker auto-detects `mamba run -n surya` unless overridden

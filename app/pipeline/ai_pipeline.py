@@ -25,6 +25,12 @@ class PipelineConfig:
     output_dir: Path | None = None
     parameters: dict[str, Any] = field(default_factory=dict)
 
+    @classmethod
+    def with_parameters(cls, parameters: dict[str, Any]) -> PipelineConfig:
+        cfg = cls()
+        cfg.parameters = dict(parameters)
+        return cfg
+
 
 class BasePipeline:
     name = "base-pipeline"

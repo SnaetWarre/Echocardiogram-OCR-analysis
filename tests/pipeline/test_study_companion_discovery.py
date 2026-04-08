@@ -10,8 +10,8 @@ from pydicom.uid import ExplicitVRLittleEndian, generate_uid
 from app.models.types import PipelineRequest
 from app.pipeline.ai_pipeline import PipelineConfig
 from app.pipeline.echo_ocr_pipeline import EchoOcrPipeline, RegexMeasurementParser
-from app.pipeline.ocr_engines import OcrResult
-from app.pipeline.study_companion_discovery import StudyCompanionDiscovery
+from app.pipeline.ocr.ocr_engines import OcrResult
+from app.pipeline.measurements.study_companion_discovery import StudyCompanionDiscovery
 from tests.io._helpers import write_dicom
 
 
@@ -92,7 +92,7 @@ def test_pipeline_prefers_study_companion_measurements_before_pixel_ocr(tmp_path
     pipeline = EchoOcrPipeline(
         ocr_engine=ocr_engine,
         parser=RegexMeasurementParser(),
-        config=PipelineConfig(parameters={"study_companion_enabled": True}),
+        config=PipelineConfig.with_parameters({"study_companion_enabled": True}),
     )
 
     result = pipeline.run(PipelineRequest(dicom_path=us_path))

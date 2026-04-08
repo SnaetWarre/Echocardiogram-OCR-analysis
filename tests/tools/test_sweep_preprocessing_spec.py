@@ -8,7 +8,7 @@ import cv2
 import numpy as np
 import pytest
 
-from app.tools.sweep_preprocessing_headless import (
+from app.tools.batch.sweep_preprocessing_headless import (
     PreprocessSpec,
     _build_order_matrix_configs,
     _order_matrix_plan_configs,

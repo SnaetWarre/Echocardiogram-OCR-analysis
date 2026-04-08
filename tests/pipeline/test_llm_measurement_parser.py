@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.pipeline.measurement_parsers import LocalLlmMeasurementParser
+from app.pipeline.measurements.measurement_parsers import LocalLlmMeasurementParser
 
 
 def test_restore_leading_index_when_llm_drops_it() -> None:

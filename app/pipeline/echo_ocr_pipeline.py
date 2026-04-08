@@ -19,23 +19,23 @@ from app.ocr.preprocessing import (
     preprocess_roi,
 )
 from app.pipeline.ai_pipeline import BasePipeline, PipelineConfig
-from app.pipeline.echo_ocr_box_detector import (
+from app.pipeline.layout.echo_ocr_box_detector import (
     RoiDetection,
     TopLeftBlueGrayBoxDetector,
 )
-from app.pipeline.line_first_parser import LineFirstParser
-from app.pipeline.line_segmenter import LineSegmenter, SegmentationResult
-from app.pipeline.line_transcriber import LineTranscriber, PanelTranscription
-from app.pipeline.lexicon_builder import LexiconArtifact, build_lexicon_artifact
-from app.pipeline.lexicon_reranker import LexiconReranker
-from app.pipeline.measurement_decoder import canonicalize_exact_line
-from app.pipeline.echo_ocr_schema import MeasurementRecord
-from app.pipeline.echo_sidecar_writer import SidecarWriter
-from app.pipeline.measurement_parsers import MeasurementParser, RegexMeasurementParser, build_parser
-from app.pipeline.ocr_engines import OcrEngine, OcrResult, OcrToken, build_engine
-from app.pipeline.panel_validator import LocalLlmPanelValidator, PanelValidatorConfig
-from app.pipeline.study_companion_discovery import StudyCompanionDiscovery
-from app.pipeline.vision_llm import OllamaVisionLineExpert, VisionLineExpert, VisionLineExpertConfig
+from app.pipeline.measurements.line_first_parser import LineFirstParser
+from app.pipeline.layout.line_segmenter import LineSegmenter, SegmentationResult
+from app.pipeline.transcription.line_transcriber import LineTranscriber, PanelTranscription
+from app.pipeline.lexicon.lexicon_builder import LexiconArtifact, build_lexicon_artifact
+from app.pipeline.lexicon.lexicon_reranker import LexiconReranker
+from app.pipeline.measurements.measurement_decoder import canonicalize_exact_line
+from app.pipeline.output.echo_ocr_schema import MeasurementRecord
+from app.pipeline.output.echo_sidecar_writer import SidecarWriter
+from app.pipeline.measurements.measurement_parsers import MeasurementParser, RegexMeasurementParser, build_parser
+from app.pipeline.ocr.ocr_engines import OcrEngine, OcrResult, OcrToken, build_engine
+from app.pipeline.llm.panel_validator import LocalLlmPanelValidator, PanelValidatorConfig
+from app.pipeline.measurements.study_companion_discovery import StudyCompanionDiscovery
+from app.pipeline.llm.vision_llm import OllamaVisionLineExpert, VisionLineExpert, VisionLineExpertConfig
 from app.repo_paths import DEFAULT_OCR_REDESIGN_LEXICON_PATH
 
 
@@ -909,7 +909,7 @@ class EchoOcrPipeline(BasePipeline):
 
     @staticmethod
     def _drop_first_panel_line(panel: PanelTranscription) -> PanelTranscription:
-        if not panel.lines:
+        if len(panel.lines) <= 1:
             return panel
         retained_lines = tuple(
             replace(line, order=order)

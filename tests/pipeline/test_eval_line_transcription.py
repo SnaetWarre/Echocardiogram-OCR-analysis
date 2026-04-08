@@ -4,7 +4,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import cast
 
-from app.tools.eval_line_transcription import _match_count, evaluate_line_transcription
+from app.tools.eval.eval_line_transcription import _match_count, evaluate_line_transcription
 
 
 def test_match_count_scores_exact_and_structured_fields() -> None:
@@ -54,7 +54,7 @@ def test_eval_counts_panel_lines_even_when_measurements_do_not_decode(monkeypatc
     )
     label.path.write_bytes(b"dicom")
 
-    monkeypatch.setattr("app.tools.eval_line_transcription.EchoOcrPipeline", _FakePipeline)
+    monkeypatch.setattr("app.tools.eval.eval_line_transcription.EchoOcrPipeline", _FakePipeline)
     monkeypatch.setattr("app.io.dicom_loader.load_dicom_series", lambda _path, load_pixels=True: _FakeSeries())
 
     totals = evaluate_line_transcription(cast(list, [label]), engine_name="surya", fallback_engine_name="")

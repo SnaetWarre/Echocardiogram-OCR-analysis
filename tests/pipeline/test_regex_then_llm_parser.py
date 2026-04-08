@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from app.models.types import AiMeasurement
-from app.pipeline.measurement_parsers import RegexMeasurementParser, RegexThenLlmMeasurementParser
+from app.pipeline.measurements.measurement_parsers import RegexMeasurementParser, RegexThenLlmMeasurementParser
 
 
 class _FakeLlmParser:

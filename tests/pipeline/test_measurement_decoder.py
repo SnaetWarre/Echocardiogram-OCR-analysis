@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.pipeline.measurement_decoder import (
+from app.pipeline.measurements.measurement_decoder import (
     canonicalize_exact_line,
     line_pattern,
     parse_measurement_line,

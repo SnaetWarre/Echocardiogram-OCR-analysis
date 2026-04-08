@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from app.models.types import AiMeasurement, AiResult, PipelineResult
-from app.tools import headless_batch_label
+from app.tools.batch import headless_batch_label
 
 
 class _FakePipeline:
