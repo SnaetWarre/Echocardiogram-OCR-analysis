@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 import time
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -42,6 +42,7 @@ DEFAULT_FALLBACK_OCR_ENGINE = "surya"
 DEFAULT_SEGMENTATION_MODE = "adaptive"
 DEFAULT_TARGET_LINE_HEIGHT_PX = 20.0
 DEFAULT_SEGMENTATION_EXTRA_LEFT_PAD_PX = 16
+DEFAULT_PREPROCESS_PROFILE = "sweep_gray_x3_lanczos"
 
 DEFAULT_LEXICON_PATH = DEFAULT_OCR_REDESIGN_LEXICON_PATH
 MEASUREMENT_BOX_RGB = (0x1A, 0x21, 0x29)
@@ -115,6 +116,9 @@ class EchoOcrPipeline(BasePipeline):
             "target_line_height_px",
             default=DEFAULT_TARGET_LINE_HEIGHT_PX,
         )
+        self._preprocess_profile = str(
+            parameters.get("preprocess_profile", DEFAULT_PREPROCESS_PROFILE)
+        ).strip().lower()
         self._segmentation_extra_left_pad_px = self._read_int_parameter(
             parameters,
             "segmentation_extra_left_pad_px",
@@ -175,32 +179,44 @@ class EchoOcrPipeline(BasePipeline):
             target_line_height_px=self._target_line_height_px,
             extra_left_pad_px=self._segmentation_extra_left_pad_px,
         )
-        self._line_transcriber = LineTranscriber(
-            preprocess_views={
-                "default": lambda image: preprocess_roi(
-                    image,
-                    scale_factor=self._scale_factor,
-                    scale_algo=self._scale_algo,
-                    contrast_mode=self._contrast_mode,
-                ),
-                "high_contrast": lambda image: preprocess_roi(
-                    image,
-                    scale_factor=self._scale_factor,
-                    scale_algo=self._scale_algo,
-                    contrast_mode="adaptive_threshold",
-                ),
-                "clahe": lambda image: preprocess_roi(
-                    image,
-                    scale_factor=self._scale_factor,
-                    scale_algo=self._scale_algo,
-                    contrast_mode="clahe",
-                ),
-            }
-        )
+        self._line_transcriber = LineTranscriber(preprocess_views=self._build_preprocess_views())
         self._line_first_parser = LineFirstParser()
         self._lexicon: LexiconArtifact | None = None
         self._reranker: LexiconReranker | None = None
         self._frame_benchmarks: list[dict[str, object]] = []
+
+    def _build_preprocess_views(self) -> dict[str, Callable[[np.ndarray], np.ndarray]]:
+        # Align GUI validation labeling with sweep_preprocessing_headless gray_x3_lanczos.
+        if self._preprocess_profile in {"sweep_gray_x3_lanczos", "gray_x3_lanczos", "sweep"}:
+            return {
+                "default": lambda image: preprocess_roi(
+                    image,
+                    scale_factor=3,
+                    scale_algo="lanczos",
+                    contrast_mode="none",
+                )
+            }
+
+        return {
+            "default": lambda image: preprocess_roi(
+                image,
+                scale_factor=self._scale_factor,
+                scale_algo=self._scale_algo,
+                contrast_mode=self._contrast_mode,
+            ),
+            "high_contrast": lambda image: preprocess_roi(
+                image,
+                scale_factor=self._scale_factor,
+                scale_algo=self._scale_algo,
+                contrast_mode="adaptive_threshold",
+            ),
+            "clahe": lambda image: preprocess_roi(
+                image,
+                scale_factor=self._scale_factor,
+                scale_algo=self._scale_algo,
+                contrast_mode="clahe",
+            ),
+        }
 
     @staticmethod
     def _read_int_parameter(parameters: dict[str, object], key: str, *, default: int) -> int:

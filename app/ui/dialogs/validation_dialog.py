@@ -7,15 +7,67 @@ from PySide6 import QtCore, QtGui, QtWidgets
 from app.models.types import AiMeasurement, AiResult, OverlayBox
 from app.pipeline.measurements.measurement_decoder import extract_line_from_source
 
+# Dark-panel palette for Windows / Fusion dark mode (dialog is self-styled so system palette
+# cannot wash out QPlainTextEdit text or clash with QLabel colors).
+_VD_BG = "#2A2F36"
+_VD_SURFACE = "#323842"
+_VD_BORDER = "#4A5568"
+_VD_TEXT = "#E8EAED"
+_VD_TEXT_MUTED = "#B0B8C4"
+_VD_TEXT_DIM = "#8B95A3"
+_VD_INPUT_BG = "#1E232A"
+_VD_INPUT_BORDER = "#5C6775"
+_VD_ACCENT_BLUE = "#60A5FA"
+_VD_ACCENT_GREEN = "#34D399"
+_VD_WARN = "#FBBF24"
+
 _STYLE_UNMODIFIED = (
-    "QFrame#rowFrame { border: 2px solid #1E8E3E; border-radius: 6px; background: #F4FBF6; }"
+    "QFrame#rowFrame { border: 2px solid #22C55E; border-radius: 6px; background: #243330; }"
 )
 _STYLE_EDITED = (
-    "QFrame#rowFrame { border: 2px solid #0055AA; border-radius: 6px; background: #F0F6FC; }"
+    "QFrame#rowFrame { border: 2px solid #3B82F6; border-radius: 6px; background: #262F3D; }"
 )
 _STYLE_EMPTY = (
-    "QFrame#rowFrame { border: 2px solid #C44; border-radius: 6px; background: #FFF5F5; }"
+    "QFrame#rowFrame { border: 2px solid #F87171; border-radius: 6px; background: #3B2C2C; }"
 )
+
+_VALIDATION_DIALOG_QSS = f"""
+QDialog {{
+    background: {_VD_BG};
+}}
+QDialog QLabel {{
+    color: {_VD_TEXT};
+}}
+"""
+
+_LIST_WIDGET_QSS = f"""
+QListWidget {{
+    background: {_VD_BG};
+    border: 1px solid {_VD_BORDER};
+    border-radius: 6px;
+    padding: 4px;
+}}
+QListWidget::item {{
+    border: none;
+}}
+QListWidget::item:selected {{
+    background: {_VD_SURFACE};
+}}
+QScrollBar:vertical {{
+    width: 10px;
+    background: {_VD_SURFACE};
+    border-radius: 5px;
+    margin: 2px;
+}}
+QScrollBar::handle:vertical {{
+    background: {_VD_INPUT_BORDER};
+    border-radius: 5px;
+    min-height: 24px;
+}}
+QScrollBar::handle:vertical:hover {{
+    background: #6B7584;
+}}
+"""
 
 
 class DragHandleLabel(QtWidgets.QLabel):
@@ -31,9 +83,9 @@ class DragHandleLabel(QtWidgets.QLabel):
         self.setToolTip("Drag to reorder")
         self.setStyleSheet(
             "QLabel {"
-            " background-color: #D8E7F6;"
-            " color: #123A63;"
-            " border: 1px solid #8FB4D8;"
+            f" background-color: {_VD_SURFACE};"
+            f" color: {_VD_ACCENT_BLUE};"
+            f" border: 1px solid {_VD_BORDER};"
             " border-radius: 4px;"
             " font-weight: 600;"
             " font-size: 16px;"
@@ -95,19 +147,23 @@ class ValidationFeedbackWidget(QtWidgets.QFrame):
 
         ai_label = QtWidgets.QLabel(f"AI detected:  <b>{self._ai_text}</b>")
         ai_label.setWordWrap(True)
-        ai_label.setStyleSheet("color: #4B5D70; font-size: 12px; border: none;")
+        ai_label.setStyleSheet(f"color: {_VD_TEXT_MUTED}; font-size: 12px; border: none;")
         body.addWidget(ai_label)
 
         self._raw_ocr_label = QtWidgets.QLabel("")
         self._raw_ocr_label.setWordWrap(True)
-        self._raw_ocr_label.setStyleSheet("color: #6B7D90; font-style: italic; font-size: 11px; border: none;")
+        self._raw_ocr_label.setStyleSheet(
+            f"color: {_VD_TEXT_DIM}; font-style: italic; font-size: 11px; border: none;"
+        )
         source_line = extract_line_from_source(measurement.source)
         if source_line:
             self._raw_ocr_label.setText(f"Source line: {source_line}")
             body.addWidget(self._raw_ocr_label)
 
         editor_label = QtWidgets.QLabel("Final value (edit if needed):")
-        editor_label.setStyleSheet("color: #333; font-weight: 600; font-size: 12px; border: none; margin-top: 2px;")
+        editor_label.setStyleSheet(
+            f"color: {_VD_TEXT}; font-weight: 600; font-size: 12px; border: none; margin-top: 2px;"
+        )
         body.addWidget(editor_label)
 
         self._editor = QtWidgets.QPlainTextEdit(self._ai_text)
@@ -118,8 +174,22 @@ class ValidationFeedbackWidget(QtWidgets.QFrame):
             "Example: TR Vmax 2.1 m/s"
         )
         self._editor.setStyleSheet(
-            "QPlainTextEdit { border: 1px solid #AAA; border-radius: 4px; padding: 4px; font-size: 13px; }"
+            f"QPlainTextEdit {{"
+            f" background-color: {_VD_INPUT_BG};"
+            f" color: {_VD_TEXT};"
+            f" border: 1px solid {_VD_INPUT_BORDER};"
+            " border-radius: 4px; padding: 6px; font-size: 13px;"
+            " selection-background-color: #3B82F6;"
+            " selection-color: #FFFFFF;"
+            "}"
         )
+        _editor_palette = self._editor.palette()
+        _editor_palette.setColor(
+            QtGui.QPalette.ColorGroup.All,
+            QtGui.QPalette.ColorRole.PlaceholderText,
+            QtGui.QColor(_VD_TEXT_DIM),
+        )
+        self._editor.setPalette(_editor_palette)
         self._editor.textChanged.connect(self._on_text_changed)
         body.addWidget(self._editor)
 
@@ -133,8 +203,9 @@ class ValidationFeedbackWidget(QtWidgets.QFrame):
         self._btn_reset = QtWidgets.QPushButton("Reset to AI")
         self._btn_reset.setToolTip("Undo your edits and restore the AI prediction.")
         self._btn_reset.setStyleSheet(
-            "QPushButton { background: #E8E8E8; color: #333; border: 1px solid #BBB; border-radius: 4px; padding: 4px 10px; }"
-            "QPushButton:hover { background: #D0D0D0; }"
+            f"QPushButton {{ background: {_VD_SURFACE}; color: {_VD_TEXT}; "
+            f"border: 1px solid {_VD_BORDER}; border-radius: 4px; padding: 4px 10px; }}"
+            f"QPushButton:hover {{ background: #3D4450; }}"
         )
         self._btn_reset.clicked.connect(self._reset_to_ai)
 
@@ -142,8 +213,9 @@ class ValidationFeedbackWidget(QtWidgets.QFrame):
         self._btn_duplicate.setText("Duplicate")
         self._btn_duplicate.setToolTip("Duplicate this row (for splitting one OCR result into multiple labels).")
         self._btn_duplicate.setStyleSheet(
-            "QToolButton { background: #E8E8E8; border: 1px solid #BBB; border-radius: 4px; padding: 4px 10px; }"
-            "QToolButton:hover { background: #D0D0D0; }"
+            f"QToolButton {{ background: {_VD_SURFACE}; color: {_VD_TEXT}; "
+            f"border: 1px solid {_VD_BORDER}; border-radius: 4px; padding: 4px 10px; }}"
+            f"QToolButton:hover {{ background: #3D4450; }}"
         )
         self._btn_duplicate.clicked.connect(lambda: self.duplicate_requested.emit(self))
 
@@ -151,8 +223,8 @@ class ValidationFeedbackWidget(QtWidgets.QFrame):
         self._btn_remove.setText("Remove")
         self._btn_remove.setToolTip("Remove this row entirely.")
         self._btn_remove.setStyleSheet(
-            "QToolButton { background: #FDECEA; color: #C44; border: 1px solid #E8A; border-radius: 4px; padding: 4px 10px; }"
-            "QToolButton:hover { background: #FBDBD8; }"
+            "QToolButton { background: #442E2E; color: #FCA5A5; border: 1px solid #B45353; border-radius: 4px; padding: 4px 10px; }"
+            "QToolButton:hover { background: #5C3838; }"
         )
         self._btn_remove.clicked.connect(lambda: self.remove_requested.emit(self))
 
@@ -193,17 +265,23 @@ class ValidationFeedbackWidget(QtWidgets.QFrame):
     def _update_status(self) -> None:
         if self.is_empty:
             self._status_label.setText("\u26A0 Empty — this row will be skipped")
-            self._status_label.setStyleSheet("color: #C44; font-weight: bold; font-size: 12px; border: none;")
+            self._status_label.setStyleSheet(
+                "color: #F87171; font-weight: bold; font-size: 12px; border: none;"
+            )
             self._btn_reset.setVisible(True)
             self.setStyleSheet(_STYLE_EMPTY)
         elif self.is_edited:
             self._status_label.setText("\u270F Your edit will be saved")
-            self._status_label.setStyleSheet("color: #0055AA; font-weight: bold; font-size: 12px; border: none;")
+            self._status_label.setStyleSheet(
+                f"color: {_VD_ACCENT_BLUE}; font-weight: bold; font-size: 12px; border: none;"
+            )
             self._btn_reset.setVisible(True)
             self.setStyleSheet(_STYLE_EDITED)
         else:
             self._status_label.setText("\u2713 AI prediction accepted — saved as-is")
-            self._status_label.setStyleSheet("color: #1E8E3E; font-weight: bold; font-size: 12px; border: none;")
+            self._status_label.setStyleSheet(
+                f"color: {_VD_ACCENT_GREEN}; font-weight: bold; font-size: 12px; border: none;"
+            )
             self._btn_reset.setVisible(False)
             self.setStyleSheet(_STYLE_UNMODIFIED)
 
@@ -228,10 +306,7 @@ class ValidationListWidget(QtWidgets.QListWidget):
         self.setSpacing(8)
         self.setAlternatingRowColors(False)
         self.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
-        self.setStyleSheet(
-            "QListWidget::item { border: none; } "
-            "QListWidget::item:selected { background: rgba(0,0,0,0.04); }"
-        )
+        self.setStyleSheet(_LIST_WIDGET_QSS)
 
     def start_drag_for_widget(self, widget: QtWidgets.QWidget) -> None:
         if self.count() <= 1:
@@ -272,6 +347,7 @@ class ValidationDialog(QtWidgets.QDialog):
         self.setWindowFlag(QtCore.Qt.WindowType.Tool, True)
         self.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose, True)
         self.resize(720, 820)
+        self.setStyleSheet(_VALIDATION_DIALOG_QSS)
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(12, 12, 12, 12)
@@ -283,7 +359,7 @@ class ValidationDialog(QtWidgets.QDialog):
             "Edit it directly if the AI got it wrong."
         )
         title.setWordWrap(True)
-        title.setStyleSheet("font-size: 13px;")
+        title.setStyleSheet(f"font-size: 13px; color: {_VD_TEXT};")
         layout.addWidget(title)
 
         roi_summary = self._build_roi_summary()
@@ -300,7 +376,7 @@ class ValidationDialog(QtWidgets.QDialog):
                 "If the OCR result is a false positive, use 'No Measurement Box / Skip File'."
             )
             warning.setWordWrap(True)
-            warning.setStyleSheet("color: #995700; font-weight: bold;")
+            warning.setStyleSheet(f"color: {_VD_WARN}; font-weight: bold;")
             layout.addWidget(warning)
 
         self._list = ValidationListWidget(self)
@@ -318,6 +394,11 @@ class ValidationDialog(QtWidgets.QDialog):
 
         button_row = QtWidgets.QHBoxLayout()
         self._skip_false_positive_button = QtWidgets.QPushButton("No Measurement Box / Skip File")
+        self._skip_false_positive_button.setStyleSheet(
+            f"QPushButton {{ background: {_VD_SURFACE}; color: {_VD_TEXT}; "
+            f"border: 1px solid {_VD_BORDER}; border-radius: 6px; padding: 8px 16px; font-size: 13px; }}"
+            f"QPushButton:hover {{ background: #3D4450; }}"
+        )
         self._skip_false_positive_button.clicked.connect(self._submit_false_positive)
         self._submit_button = QtWidgets.QPushButton("Submit && Next")
         self._submit_button.setDefault(True)
@@ -441,8 +522,8 @@ class ValidationDialog(QtWidgets.QDialog):
         frame = QtWidgets.QFrame()
         frame.setFrameShape(QtWidgets.QFrame.Shape.StyledPanel)
         frame.setStyleSheet(
-            "QFrame { background: #F4F8FC; border: 1px solid #C9D7E6; border-radius: 6px; padding: 8px; }"
-            "QLabel { color: #1D2A36; }"
+            f"QFrame {{ background: {_VD_SURFACE}; border: 1px solid {_VD_BORDER}; border-radius: 6px; padding: 8px; }}"
+            f"QLabel {{ color: {_VD_TEXT}; }}"
         )
 
         layout = QtWidgets.QVBoxLayout(frame)
@@ -465,7 +546,7 @@ class ValidationDialog(QtWidgets.QDialog):
             "Use this ROI summary to verify that the OCR was taken from the correct measurement box."
         )
         hint.setWordWrap(True)
-        hint.setStyleSheet("color: #4B5B6B;")
+        hint.setStyleSheet(f"color: {_VD_TEXT_DIM};")
         layout.addWidget(hint)
 
         return frame
@@ -487,8 +568,8 @@ class ValidationDialog(QtWidgets.QDialog):
         frame = QtWidgets.QFrame()
         frame.setFrameShape(QtWidgets.QFrame.Shape.StyledPanel)
         frame.setStyleSheet(
-            "QFrame { background: #F7F5EF; border: 1px solid #D8CBA8; border-radius: 6px; padding: 8px; }"
-            "QLabel { color: #3E3420; }"
+            f"QFrame {{ background: {_VD_SURFACE}; border: 1px solid {_VD_BORDER}; border-radius: 6px; padding: 8px; }}"
+            f"QLabel {{ color: {_VD_TEXT}; }}"
         )
 
         layout = QtWidgets.QVBoxLayout(frame)
@@ -504,6 +585,10 @@ class ValidationDialog(QtWidgets.QDialog):
         summary.setHtml(formatted_html)
         summary.setMinimumHeight(120)
         summary.setMaximumHeight(260)
+        summary.setStyleSheet(
+            f"QTextEdit {{ background: {_VD_INPUT_BG}; color: {_VD_TEXT}; "
+            f"border: 1px solid {_VD_INPUT_BORDER}; border-radius: 4px; padding: 6px; }}"
+        )
         layout.addWidget(summary)
         return frame
 
@@ -522,11 +607,11 @@ class ValidationDialog(QtWidgets.QDialog):
             parts.append(
                 f'<div style="margin-bottom:8px;">'
                 f'<b style="color:{color};">[{engine}]</b>'
-                f' <span style="color:#777;">status={status}</span>'
+                f' <span style="color:#94A3B8;">status={status}</span>'
             )
             error = str(row.get("error", "")).strip()
             if error:
-                parts.append(f'<br><span style="color:#C44;">error: {error}</span></div>')
+                parts.append(f'<br><span style="color:#F87171;">error: {error}</span></div>')
                 continue
             exact_lines = row.get("exact_lines")
             if isinstance(exact_lines, list) and exact_lines:
@@ -534,7 +619,7 @@ class ValidationDialog(QtWidgets.QDialog):
                     escaped = str(line).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
                     parts.append(f'<br><span style="color:{color}; font-family:monospace;">{escaped}</span>')
             else:
-                parts.append('<br><span style="color:#999;">No measurements found.</span>')
+                parts.append('<br><span style="color:#94A3B8;">No measurements found.</span>')
             parts.append("</div>")
         return "".join(parts)
 

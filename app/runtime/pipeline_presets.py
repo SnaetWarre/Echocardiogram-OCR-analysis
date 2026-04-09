@@ -23,6 +23,7 @@ DEFAULT_GUI_OCR_ENGINE = DEFAULT_OCR_ENGINE
 DEFAULT_GUI_SEGMENTATION_MODE = DEFAULT_SEGMENTATION_MODE
 DEFAULT_GUI_TARGET_LINE_HEIGHT_PX = DEFAULT_TARGET_LINE_HEIGHT_PX
 DEFAULT_GUI_MAX_FRAMES = 1
+DEFAULT_GUI_PREPROCESS_PROFILE = "sweep_gray_x3_lanczos"
 _GUI_OCR_FALLBACK_ORDER = ("surya", "paddleocr", "easyocr", "tesseract")
 
 
@@ -48,6 +49,7 @@ def _base_gui_parameters(
     segmentation_mode: str,
     target_line_height_px: float,
     max_frames: int,
+    preprocess_profile: str = DEFAULT_GUI_PREPROCESS_PROFILE,
     panel_validation_mode: str = "off",
     panel_validation_model: str | None = None,
     panel_validation_command: str | None = None,
@@ -59,6 +61,7 @@ def _base_gui_parameters(
         "scale_algo": DEFAULT_SCALE_ALGO,
         "contrast_mode": DEFAULT_CONTRAST_MODE,
         "max_frames": max_frames,
+        "preprocess_profile": preprocess_profile,
         "segmentation_mode": segmentation_mode,
         "target_line_height_px": target_line_height_px,
         "segmentation_extra_left_pad_px": DEFAULT_SEGMENTATION_EXTRA_LEFT_PAD_PX,

@@ -85,6 +85,93 @@ def _discover_files(root: Path, pattern: str, recursive: bool) -> list[Path]:
     return sorted(files, key=lambda p: _canonical_path(p))
 
 
+def _non_root_path_parts(path: Path) -> tuple[str, ...]:
+    """Strip POSIX / Windows drive segments so label paths can be re-rooted onto input_path."""
+    out: list[str] = []
+    for part in path.parts:
+        if part in ("/", "\\"):
+            continue
+        # "D:" or "D:\\" style drive + root
+        if len(part) >= 2 and part[0].isalpha() and part[1] == ":":
+            continue
+        out.append(part)
+    return tuple(out)
+
+
+def _resolve_labeled_dicom_under_input(
+    labeled_path: Path,
+    file_name: str,
+    input_root: Path,
+) -> Path | None:
+    """Map labels.json file_path onto a file under input_root (dataset copy / new drive)."""
+    labeled_path = labeled_path.expanduser()
+    input_root = input_root.expanduser()
+    try:
+        resolved_input = input_root.resolve()
+    except OSError:
+        resolved_input = input_root
+
+    if labeled_path.is_file():
+        return labeled_path.resolve()
+
+    if resolved_input.is_file():
+        return resolved_input.resolve() if resolved_input.is_file() else None
+
+    if not resolved_input.is_dir():
+        return None
+
+    parts = _non_root_path_parts(labeled_path)
+    for i in range(len(parts)):
+        candidate = resolved_input.joinpath(*parts[i:])
+        if candidate.is_file():
+            return candidate.resolve()
+
+    if file_name:
+        direct = resolved_input / file_name
+        if direct.is_file():
+            return direct.resolve()
+    return None
+
+
+def _discovered_from_labels_only(
+    *,
+    input_path: Path,
+    labels_path: Path,
+    label_splits: set[str],
+) -> tuple[list[Path], list[LabeledFile], list[str]]:
+    """
+    Build the DICOM work list from --labels only (after split filter).
+
+    Resolves each label path under ``input_path`` when ``file_path`` no longer exists
+    (e.g. Linux vs Windows or C: vs D:) by trying path suffix joins and ``input/file_name``.
+    """
+    raw = parse_labels(labels_path, split_filter=label_splits)
+    discovered_map: dict[str, Path] = {}
+    labeled_by_key: dict[str, LabeledFile] = {}
+    missing: list[str] = []
+
+    for lf in raw:
+        resolved = _resolve_labeled_dicom_under_input(lf.path, lf.file_name, input_path)
+        if resolved is None:
+            missing.append(f"{lf.file_name} (labels path {lf.path})")
+            continue
+        key = _canonical_path(resolved)
+        if key in discovered_map:
+            continue
+        discovered_map[key] = resolved
+        labeled_by_key[key] = LabeledFile(
+            path=resolved,
+            file_name=lf.file_name,
+            split=lf.split,
+            measurements=lf.measurements,
+        )
+
+    ordered_keys = sorted(discovered_map.keys())
+    discovered = [discovered_map[k] for k in ordered_keys]
+    labeled_files = [labeled_by_key[k] for k in ordered_keys]
+    return discovered, labeled_files, missing
+
+
 def _interpolation_flag(algo: str) -> int:
     interpolation_map = {
         "linear": cv2.INTER_LINEAR,
@@ -1359,6 +1446,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="Optional label split filter, e.g. validation or train,validation.",
     )
     parser.add_argument(
+        "--only-labeled",
+        action="store_true",
+        help=(
+            "Do not scan the input tree. Only process DICOMs listed in --labels (after --split). "
+            "Each label path is resolved under input_path when file_path points to another root/drive."
+        ),
+    )
+    parser.add_argument(
         "--config-set",
         choices=("smoke", "broad", "order_matrix", "order_matrix_plan", "manifest"),
         default="broad",
@@ -1500,40 +1595,79 @@ def main() -> int:
         print(f"Input path not found: {input_path}")
         return 2
 
-    label_splits = parse_requested_splits(args.split)
-    discovered = _discover_files(input_path, args.pattern, args.recursive)
-    before_restrict = len(discovered)
-    discovered = _restrict_discovered_paths(
-        discovered,
-        label_scores_path=args.restrict_from_label_scores,
-        paths_file=args.restrict_dicom_paths_file,
-        split_filter=label_splits,
-    )
-    if (
-        before_restrict > len(discovered)
-        and (args.restrict_from_label_scores or args.restrict_dicom_paths_file)
-    ):
-        print(f"Restrict filter: DICOMs {len(discovered)} (was {before_restrict}).")
-    if args.max_files > 0:
-        discovered = discovered[: args.max_files]
-    if not discovered:
-        print(
-            "No matching DICOM files found. "
-            f"input={_canonical_path(input_path)} pattern={args.pattern!r} "
-            f"recursive={bool(args.recursive)} max_files={args.max_files or 'all'}"
-        )
-        if args.restrict_from_label_scores or args.restrict_dicom_paths_file:
-            print("Restrict filters may have removed every path; check --split and filter files.")
-        return 1
-
     labels_path = args.labels.expanduser()
     if not labels_path.exists():
         print(f"Labels file not found: {labels_path}")
         return 2
 
-    labeled_files = parse_labels(labels_path, split_filter=label_splits)
-    discovered_keys = {_canonical_path(path) for path in discovered}
-    labeled_files = [item for item in labeled_files if _canonical_path(item.path) in discovered_keys]
+    label_splits = parse_requested_splits(args.split)
+
+    if args.only_labeled:
+        discovered, labeled_files, missing = _discovered_from_labels_only(
+            input_path=input_path,
+            labels_path=labels_path,
+            label_splits=label_splits,
+        )
+        if missing:
+            print(
+                f"Warning: {len(missing)} labeled file(s) not found under "
+                f"{input_path} (check --split and dataset layout):"
+            )
+            for line in missing[:25]:
+                print(f"  {line}")
+            if len(missing) > 25:
+                print(f"  ... and {len(missing) - 25} more")
+        before_restrict = len(discovered)
+        discovered = _restrict_discovered_paths(
+            discovered,
+            label_scores_path=args.restrict_from_label_scores,
+            paths_file=args.restrict_dicom_paths_file,
+            split_filter=label_splits,
+        )
+        if before_restrict > len(discovered) and (
+            args.restrict_from_label_scores or args.restrict_dicom_paths_file
+        ):
+            print(f"Restrict filter: DICOMs {len(discovered)} (was {before_restrict}).")
+        allow_keys = {_canonical_path(p) for p in discovered}
+        labeled_files = [lf for lf in labeled_files if _canonical_path(lf.path) in allow_keys]
+    else:
+        discovered = _discover_files(input_path, args.pattern, args.recursive)
+        before_restrict = len(discovered)
+        discovered = _restrict_discovered_paths(
+            discovered,
+            label_scores_path=args.restrict_from_label_scores,
+            paths_file=args.restrict_dicom_paths_file,
+            split_filter=label_splits,
+        )
+        if (
+            before_restrict > len(discovered)
+            and (args.restrict_from_label_scores or args.restrict_dicom_paths_file)
+        ):
+            print(f"Restrict filter: DICOMs {len(discovered)} (was {before_restrict}).")
+
+        labeled_files = parse_labels(labels_path, split_filter=label_splits)
+        discovered_keys = {_canonical_path(path) for path in discovered}
+        labeled_files = [
+            item for item in labeled_files if _canonical_path(item.path) in discovered_keys
+        ]
+
+    if args.max_files > 0:
+        discovered = discovered[: args.max_files]
+        limit_keys = {_canonical_path(p) for p in discovered}
+        labeled_files = [lf for lf in labeled_files if _canonical_path(lf.path) in limit_keys]
+
+    if not discovered:
+        print(
+            "No matching DICOM files found. "
+            f"input={_canonical_path(input_path)} pattern={args.pattern!r} "
+            f"recursive={bool(args.recursive)} only_labeled={bool(args.only_labeled)} "
+            f"max_files={args.max_files or 'all'}"
+        )
+        if args.restrict_from_label_scores or args.restrict_dicom_paths_file:
+            print("Restrict filters may have removed every path; check --split and filter files.")
+        if args.only_labeled:
+            print("With --only-labeled, ensure label file_path tails exist under input_path.")
+        return 1
 
     output_dir = args.output_dir.expanduser()
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -1726,6 +1860,7 @@ def main() -> int:
             "config_count": len(configs),
             "file_count": len(discovered),
             "labeled_file_count": len(labeled_files),
+            "only_labeled": bool(args.only_labeled),
         },
         "results": summary_rows,
     }
