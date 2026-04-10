@@ -1599,6 +1599,116 @@ def _print_sweep_file_progress_if_due(
     )
 
 
+def _build_headless_issues_only(items: list[dict[str, Any]]) -> dict[str, Any]:
+    error_items: list[dict[str, Any]] = []
+    flagged_measurements: list[dict[str, Any]] = []
+
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        dicom_path = str(item.get("dicom_path") or "").strip()
+        status = str(item.get("status") or "").strip()
+        if status and status != "ok":
+            error_items.append(
+                {
+                    "dicom_path": dicom_path,
+                    "status": status,
+                    "error": _flatten_error_message(item.get("error")),
+                }
+            )
+
+        measurements = item.get("measurements", [])
+        if not isinstance(measurements, list):
+            continue
+        for measurement in measurements:
+            if not isinstance(measurement, dict):
+                continue
+            flags = measurement.get("flags", [])
+            if not isinstance(flags, list) or not flags:
+                continue
+            flagged_measurements.append(
+                {
+                    "dicom_path": dicom_path,
+                    "name": str(measurement.get("name") or ""),
+                    "raw_ocr_text": str(measurement.get("raw_ocr_text") or ""),
+                    "value": str(measurement.get("value") or ""),
+                    "corrected_value": str(measurement.get("corrected_value") or ""),
+                    "flags": [str(flag) for flag in flags if str(flag).strip()],
+                }
+            )
+
+    return {
+        "summary": {
+            "error_item_count": len(error_items),
+            "flagged_measurement_count": len(flagged_measurements),
+        },
+        "error_items": error_items,
+        "flagged_measurements": flagged_measurements,
+    }
+
+
+def _build_label_score_issues_only(label_scores: dict[str, Any]) -> dict[str, Any]:
+    details = label_scores.get("file_details", [])
+    if not isinstance(details, list):
+        details = []
+
+    file_errors: list[dict[str, Any]] = []
+    mismatched_lines: list[dict[str, Any]] = []
+
+    for fd in details:
+        if not isinstance(fd, dict):
+            continue
+        file_name = str(fd.get("file_name") or "").strip()
+        file_path = str(fd.get("file_path") or "").strip()
+        split = str(fd.get("split") or "").strip()
+        status = str(fd.get("status") or "").strip()
+        error_text = _flatten_error_message(fd.get("error"))
+
+        if (status and status != "ok") or error_text:
+            file_errors.append(
+                {
+                    "file_name": file_name,
+                    "file_path": file_path,
+                    "split": split,
+                    "status": status,
+                    "error": error_text,
+                }
+            )
+
+        matches = fd.get("matches", [])
+        if not isinstance(matches, list):
+            continue
+        for idx, match in enumerate(matches):
+            if not isinstance(match, dict):
+                continue
+            if bool(match.get("full_match", False)):
+                continue
+            mismatched_lines.append(
+                {
+                    "file_name": file_name,
+                    "file_path": file_path,
+                    "split": split,
+                    "line_index": idx,
+                    "expected_text": str(match.get("expected_text") or ""),
+                    "predicted_text": str(match.get("predicted_text") or ""),
+                    "label_match": bool(match.get("label_match", False)),
+                    "value_match": bool(match.get("value_match", False)),
+                    "unit_match": bool(match.get("unit_match", False)),
+                    "prefix_match": bool(match.get("prefix_match", False)),
+                    "full_match": False,
+                }
+            )
+
+    return {
+        "summary": {
+            "file_error_count": len(file_errors),
+            "mismatched_line_count": len(mismatched_lines),
+        },
+        "file_errors": file_errors,
+        "mismatched_lines": mismatched_lines,
+    }
+
+
 def _build_headless_run_payload(
     config: SweepConfig,
     items: list[dict[str, Any]],
@@ -1627,6 +1737,7 @@ def _build_headless_run_payload(
             },
         },
         "items": items,
+        "issues_only": _build_headless_issues_only(items),
     }
 
 
@@ -1659,6 +1770,7 @@ def _build_label_scores_payload(
             "error_files": error_files,
         },
         "file_details": label_scores["file_details"],
+        "issues_only": _build_label_score_issues_only(label_scores),
     }
 
 

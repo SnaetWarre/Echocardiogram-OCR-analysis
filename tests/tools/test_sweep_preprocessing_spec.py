@@ -10,7 +10,10 @@ import pytest
 
 from app.tools.batch.sweep_preprocessing_headless import (
     PreprocessSpec,
+    SweepConfig,
     _build_order_matrix_configs,
+    _build_headless_run_payload,
+    _build_label_scores_payload,
     _order_matrix_plan_configs,
     _preprocess_with_spec,
     _restrict_discovered_paths,
@@ -237,3 +240,103 @@ def test_threshold_none_ignores_order(order: str) -> None:
         ),
     )
     assert np.array_equal(a, b)
+
+
+def test_headless_payload_contains_issues_only_section() -> None:
+    config = SweepConfig(
+        name="x",
+        description="x",
+        default_view=PreprocessSpec(),
+    )
+    payload = _build_headless_run_payload(
+        config,
+        [
+            {
+                "dicom_path": "C:/a.dcm",
+                "status": "ok",
+                "measurements": [
+                    {
+                        "name": "LVOT maxPG",
+                        "raw_ocr_text": "LVOT maxPG 2 mmHg",
+                        "value": "12",
+                        "corrected_value": "12",
+                        "flags": ["implausible_value", "rule_recovered_leading_digit"],
+                    }
+                ],
+            },
+            {
+                "dicom_path": "C:/b.dcm",
+                "status": "error",
+                "measurements": [],
+                "error": {"type": "RuntimeError", "message": "boom"},
+            },
+        ],
+        engine="glm-ocr",
+        input_path=Path("."),
+        started_at="2026-01-01T00:00:00Z",
+        elapsed_s=1.0,
+        ok_files=1,
+        error_files=1,
+        discovered_count=2,
+    )
+
+    assert payload["issues_only"]["summary"]["error_item_count"] == 1
+    assert payload["issues_only"]["summary"]["flagged_measurement_count"] == 1
+
+
+def test_label_scores_payload_contains_mismatched_lines_issues_only() -> None:
+    config = SweepConfig(
+        name="x",
+        description="x",
+        default_view=PreprocessSpec(),
+    )
+    label_scores = {
+        "labeled_files": 1,
+        "files_with_predictions": 1,
+        "total_labels": 1,
+        "exact_matches": 0,
+        "line_matches": 0,
+        "value_matches": 0,
+        "label_matches": 1,
+        "prefix_matches": 1,
+        "exact_match_rate": 0.0,
+        "line_match_rate": 0.0,
+        "value_match_rate": 0.0,
+        "label_match_rate": 1.0,
+        "prefix_match_rate": 1.0,
+        "detection_rate": 1.0,
+        "file_details": [
+            {
+                "file_name": "x.dcm",
+                "file_path": "C:/x.dcm",
+                "split": "validation",
+                "status": "ok",
+                "error": None,
+                "matches": [
+                    {
+                        "expected_text": "%FS 16 %",
+                        "predicted_text": "%FS 6 %",
+                        "label_match": True,
+                        "value_match": False,
+                        "unit_match": True,
+                        "prefix_match": True,
+                        "full_match": False,
+                    }
+                ],
+            }
+        ],
+    }
+    payload = _build_label_scores_payload(
+        config,
+        label_scores,
+        engine="glm-ocr",
+        labels_path=Path("labels.json"),
+        label_splits={"validation"},
+        elapsed_s=1.0,
+        discovered_count=1,
+        ok_files=1,
+        error_files=0,
+    )
+
+    assert payload["issues_only"]["summary"]["mismatched_line_count"] == 1
+    assert payload["issues_only"]["mismatched_lines"][0]["predicted_text"] == "%FS 6 %"
