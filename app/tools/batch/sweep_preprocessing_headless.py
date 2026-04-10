@@ -44,9 +44,14 @@ class PreprocessSpec:
     scale_factor: int = 1
     scale_algo: str = "linear"
     unsharp: bool = False
+    unsharp_amount: float = 0.5
     threshold_mode: str = "none"
     morph_close: bool = False
     smooth: bool = False
+    denoise_mode: str = "none"
+    invert: bool = False
+    adaptive_block_size: int = 11
+    adaptive_c: float = 2.0
     input_mode: str = "gray"
     preprocess_order: str = "scale_then_threshold"
     binary_scale_algo: str = "nearest"
@@ -217,7 +222,27 @@ def _apply_unsharp(working: np.ndarray, spec: PreprocessSpec) -> np.ndarray:
     if not spec.unsharp:
         return working
     gaussian = cv2.GaussianBlur(working, (5, 5), 1.0)
-    return cv2.addWeighted(working, 1.5, gaussian, -0.5, 0)
+    amount = max(0.0, min(float(spec.unsharp_amount), 1.25))
+    if amount <= 0.0:
+        return working
+    return cv2.addWeighted(working, 1.0 + amount, gaussian, -amount, 0)
+
+
+def _apply_denoise(working: np.ndarray, spec: PreprocessSpec) -> np.ndarray:
+    mode = str(spec.denoise_mode or "none").lower()
+    if mode == "none":
+        return working
+    if mode == "median3":
+        if working.ndim == 2:
+            return cv2.medianBlur(working, 3)
+        return cv2.medianBlur(working, 3)
+    return working
+
+
+def _apply_invert(working: np.ndarray, spec: PreprocessSpec) -> np.ndarray:
+    if not bool(spec.invert):
+        return working
+    return cv2.bitwise_not(working)
 
 
 def _apply_resize(working: np.ndarray, scale: int, algo: str) -> np.ndarray:
@@ -234,13 +259,18 @@ def _apply_threshold_morph_smooth(working: np.ndarray, spec: PreprocessSpec) -> 
         return working
     gray = _to_gray_plane_if_needed(working)
     if spec.threshold_mode == "adaptive":
+        block_size = int(spec.adaptive_block_size)
+        if block_size < 3:
+            block_size = 3
+        if block_size % 2 == 0:
+            block_size += 1
         binary = cv2.adaptiveThreshold(
             gray,
             255,
             cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
             cv2.THRESH_BINARY,
-            11,
-            2,
+            block_size,
+            float(spec.adaptive_c),
         )
     elif spec.threshold_mode == "otsu":
         _ret, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
@@ -266,6 +296,8 @@ def _preprocess_with_spec(image: np.ndarray, spec: PreprocessSpec) -> np.ndarray
 
     working = _apply_contrast(working, spec)
     working = _apply_unsharp(working, spec)
+    working = _apply_denoise(working, spec)
+    working = _apply_invert(working, spec)
 
     scale = max(1, min(int(spec.scale_factor), 6))
     order = str(spec.preprocess_order or "scale_then_threshold").lower()
@@ -382,9 +414,38 @@ def _broad_configs() -> list[SweepConfig]:
             default_view=PreprocessSpec(scale_factor=3, scale_algo="lanczos"),
         ),
         SweepConfig(
+            name="gray_x4_nearest",
+            description="Grayscale only with x4 nearest upscale (stroke-preserving).",
+            default_view=PreprocessSpec(scale_factor=4, scale_algo="nearest"),
+        ),
+        SweepConfig(
+            name="gray_x4_lanczos",
+            description="Grayscale only with x4 Lanczos upscale.",
+            default_view=PreprocessSpec(scale_factor=4, scale_algo="lanczos"),
+        ),
+        SweepConfig(
             name="unsharp_x3_lanczos",
             description="Grayscale + unsharp mask + x3 Lanczos, no binarization.",
             default_view=PreprocessSpec(scale_factor=3, scale_algo="lanczos", unsharp=True),
+        ),
+        SweepConfig(
+            name="unsharp_mild_x3_lanczos",
+            description="Grayscale + mild unsharp + x3 Lanczos, no binarization.",
+            default_view=PreprocessSpec(
+                scale_factor=3,
+                scale_algo="lanczos",
+                unsharp=True,
+                unsharp_amount=0.25,
+            ),
+        ),
+        SweepConfig(
+            name="median3_gray_x3_lanczos",
+            description="Median denoise (3x3) + grayscale x3 Lanczos, no binarization.",
+            default_view=PreprocessSpec(
+                scale_factor=3,
+                scale_algo="lanczos",
+                denoise_mode="median3",
+            ),
         ),
         SweepConfig(
             name="otsu_x3_lanczos_no_unsharp",
@@ -492,6 +553,18 @@ def _broad_configs() -> list[SweepConfig]:
             ),
         ),
         SweepConfig(
+            name="clahe_gray_x3_no_bin",
+            description="CLAHE + x3 Lanczos grayscale, no thresholding.",
+            default_view=PreprocessSpec(
+                contrast_mode="clahe",
+                scale_factor=3,
+                scale_algo="lanczos",
+                unsharp=False,
+                threshold_mode="none",
+                morph_close=False,
+            ),
+        ),
+        SweepConfig(
             name="adaptive_single",
             description="Equalize hist + unsharp + x3 Lanczos + adaptive threshold + morph close.",
             default_view=PreprocessSpec(
@@ -514,6 +587,53 @@ def _broad_configs() -> list[SweepConfig]:
                 threshold_mode="adaptive",
                 morph_close=True,
                 smooth=True,
+            ),
+        ),
+        SweepConfig(
+            name="adaptive_weak_single",
+            description="Weaker adaptive threshold (block 21, C=6), x3 Lanczos, no morph close.",
+            default_view=PreprocessSpec(
+                contrast_mode="none",
+                scale_factor=3,
+                scale_algo="lanczos",
+                unsharp=False,
+                threshold_mode="adaptive",
+                morph_close=False,
+                adaptive_block_size=21,
+                adaptive_c=6.0,
+            ),
+        ),
+        SweepConfig(
+            name="otsu_then_scale_x3_nearest_no_close",
+            description="Otsu at 1x then nearest upscale to 3x (no morph close).",
+            default_view=PreprocessSpec(
+                scale_factor=3,
+                scale_algo="lanczos",
+                threshold_mode="otsu",
+                morph_close=False,
+                preprocess_order="threshold_then_scale",
+                binary_scale_algo="nearest",
+            ),
+        ),
+        SweepConfig(
+            name="otsu_then_scale_x4_nearest_no_close",
+            description="Otsu at 1x then nearest upscale to 4x (no morph close).",
+            default_view=PreprocessSpec(
+                scale_factor=4,
+                scale_algo="lanczos",
+                threshold_mode="otsu",
+                morph_close=False,
+                preprocess_order="threshold_then_scale",
+                binary_scale_algo="nearest",
+            ),
+        ),
+        SweepConfig(
+            name="invert_gray_x3_lanczos",
+            description="Inverted grayscale with x3 Lanczos upscale.",
+            default_view=PreprocessSpec(
+                scale_factor=3,
+                scale_algo="lanczos",
+                invert=True,
             ),
         ),
     ]
@@ -1243,6 +1363,70 @@ def _summary_row_from_skipped_config(
     }
 
 
+def _flatten_error_message(error_value: Any) -> str:
+    if isinstance(error_value, dict):
+        err_type = str(error_value.get("type") or "").strip()
+        err_msg = str(error_value.get("message") or "").strip()
+        if err_type and err_msg:
+            return f"{err_type}: {err_msg}"
+        return err_type or err_msg
+    if error_value is None:
+        return ""
+    return str(error_value)
+
+
+def _line_match_rows_from_score_payload(
+    score_payload: dict[str, Any],
+    *,
+    config_name: str,
+) -> list[dict[str, Any]]:
+    details = score_payload.get("file_details", [])
+    if not isinstance(details, list):
+        return []
+
+    rows: list[dict[str, Any]] = []
+    for fd in details:
+        if not isinstance(fd, dict):
+            continue
+        file_name = str(fd.get("file_name") or "").strip()
+        file_path = str(fd.get("file_path") or "").strip()
+        split = str(fd.get("split") or "").strip()
+        status = str(fd.get("status") or "").strip()
+        error_text = _flatten_error_message(fd.get("error"))
+        matches = fd.get("matches", [])
+        if not isinstance(matches, list):
+            matches = []
+        for idx, match in enumerate(matches):
+            if not isinstance(match, dict):
+                continue
+            rows.append(
+                {
+                    "config_name": config_name,
+                    "file_name": file_name,
+                    "file_path": file_path,
+                    "split": split,
+                    "line_index": idx,
+                    "expected_text": str(match.get("expected_text") or ""),
+                    "predicted_text": str(match.get("predicted_text") or ""),
+                    "full_match": bool(match.get("full_match", False)),
+                    "line_match": bool(match.get("line_match", False)),
+                    "label_match": bool(match.get("label_match", False)),
+                    "value_match": bool(match.get("value_match", False)),
+                    "unit_match": bool(match.get("unit_match", False)),
+                    "prefix_match": bool(match.get("prefix_match", False)),
+                    "expected_label": str(match.get("expected_label") or ""),
+                    "predicted_label": str(match.get("predicted_label") or ""),
+                    "expected_value": str(match.get("expected_value") or ""),
+                    "predicted_value": str(match.get("predicted_value") or ""),
+                    "expected_unit": str(match.get("expected_unit") or ""),
+                    "predicted_unit": str(match.get("predicted_unit") or ""),
+                    "status": status,
+                    "error": error_text,
+                }
+            )
+    return rows
+
+
 def _resolve_baseline_row(
     summary_rows: list[dict[str, Any]],
     explicit_baseline: str,
@@ -1386,6 +1570,14 @@ def _score_labeled_subset(
                     {
                         "expected_text": match.expected_text,
                         "predicted_text": match.predicted_text,
+                        "expected_prefix": match.expected_prefix,
+                        "predicted_prefix": match.predicted_prefix,
+                        "expected_label": match.expected_label,
+                        "predicted_label": match.predicted_label,
+                        "expected_value": match.expected_value,
+                        "predicted_value": match.predicted_value,
+                        "expected_unit": match.expected_unit,
+                        "predicted_unit": match.predicted_unit,
                         "line_match": match.line_match,
                         "prefix_match": match.prefix_match,
                         "label_match": match.label_match,
@@ -1703,6 +1895,7 @@ def main() -> int:
 
     summary_rows: list[dict[str, Any]] = []
     summary_payload: list[dict[str, Any]] = []
+    all_line_match_rows: list[dict[str, Any]] = []
 
     for index, config in enumerate(configs, start=1):
         config_dir = output_dir / config.name
@@ -1712,6 +1905,38 @@ def main() -> int:
         if args.skip_existing and headless_path.exists() and score_path.exists():
             print(f"[{index}/{len(configs)}] skip existing: {config.name}")
             score_payload = json.loads(score_path.read_text(encoding="utf-8"))
+            config_line_rows = _line_match_rows_from_score_payload(
+                score_payload,
+                config_name=config.name,
+            )
+            all_line_match_rows.extend(config_line_rows)
+            _write_csv(
+                config_dir / "line_match_details.csv",
+                config_line_rows,
+                [
+                    "config_name",
+                    "file_name",
+                    "file_path",
+                    "split",
+                    "line_index",
+                    "expected_text",
+                    "predicted_text",
+                    "full_match",
+                    "line_match",
+                    "label_match",
+                    "value_match",
+                    "unit_match",
+                    "prefix_match",
+                    "expected_label",
+                    "predicted_label",
+                    "expected_value",
+                    "predicted_value",
+                    "expected_unit",
+                    "predicted_unit",
+                    "status",
+                    "error",
+                ],
+            )
             summary_rows.append(
                 _summary_row_from_skipped_config(config, score_payload, engine=args.engine)
             )
@@ -1828,6 +2053,38 @@ def main() -> int:
             error_files=error_files,
         )
         _write_json(score_path, score_payload)
+        config_line_rows = _line_match_rows_from_score_payload(
+            score_payload,
+            config_name=config.name,
+        )
+        all_line_match_rows.extend(config_line_rows)
+        _write_csv(
+            config_dir / "line_match_details.csv",
+            config_line_rows,
+            [
+                "config_name",
+                "file_name",
+                "file_path",
+                "split",
+                "line_index",
+                "expected_text",
+                "predicted_text",
+                "full_match",
+                "line_match",
+                "label_match",
+                "value_match",
+                "unit_match",
+                "prefix_match",
+                "expected_label",
+                "predicted_label",
+                "expected_value",
+                "predicted_value",
+                "expected_unit",
+                "predicted_unit",
+                "status",
+                "error",
+            ],
+        )
         summary_payload.append(score_payload)
 
         summary_rows.append(
@@ -1883,6 +2140,33 @@ def main() -> int:
             "processed_files",
             "ok_files",
             "error_files",
+        ],
+    )
+    _write_csv(
+        output_dir / "line_match_details_all_configs.csv",
+        all_line_match_rows,
+        [
+            "config_name",
+            "file_name",
+            "file_path",
+            "split",
+            "line_index",
+            "expected_text",
+            "predicted_text",
+            "full_match",
+            "line_match",
+            "label_match",
+            "value_match",
+            "unit_match",
+            "prefix_match",
+            "expected_label",
+            "predicted_label",
+            "expected_value",
+            "predicted_value",
+            "expected_unit",
+            "predicted_unit",
+            "status",
+            "error",
         ],
     )
 

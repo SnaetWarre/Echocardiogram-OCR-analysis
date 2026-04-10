@@ -1356,6 +1356,577 @@
       ]
     },
     {
+      "file_name": "93489296_0011.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s93489296/93489296_0011.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 IVSd 1.0 cm"
+        },
+        {
+          "order": 2,
+          "text": "LVIDd 5.1 cm"
+        },
+        {
+          "order": 3,
+          "text": "LVPWd 0.9 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "93489296_0012.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s93489296/93489296_0012.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 LVIDs 4.8 cm"
+        },
+        {
+          "order": 2,
+          "text": "EF (Teich) 13 %"
+        },
+        {
+          "order": 3,
+          "text": "%FS 6 %"
+        }
+      ]
+    },
+    {
+      "file_name": "93489296_0013.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s93489296/93489296_0013.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 LA Diam 4.8 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "93489296_0014.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s93489296/93489296_0014.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 LVOT Diam 2.0 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "93489296_0015.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s93489296/93489296_0015.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 Ao Diam 2.8 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "93489296_0016.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s93489296/93489296_0016.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 Ao asc 3.7 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "93489296_0017.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s93489296/93489296_0017.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 Ao asc 3.7 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "93489296_0021.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s93489296/93489296_0021.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 TR Vmax 3.8 m/s"
+        },
+        {
+          "order": 2,
+          "text": "TR maxPG 59 mmHg"
+        }
+      ]
+    },
+    {
+      "file_name": "93489296_0022.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s93489296/93489296_0022.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 TR Vmax 3.8 m/s"
+        },
+        {
+          "order": 2,
+          "text": "TR maxPG 58 mmHg"
+        }
+      ]
+    },
+    {
+      "file_name": "93489296_0025.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s93489296/93489296_0025.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 PRend Vmax 1.45 m/s"
+        },
+        {
+          "order": 2,
+          "text": "PRend PG 8.38 mmHg"
+        }
+      ]
+    },
+    {
+      "file_name": "93489296_0029.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s93489296/93489296_0029.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 TR Vmax 3.8 m/s"
+        },
+        {
+          "order": 2,
+          "text": "TR maxPG 58 mmHg"
+        }
+      ]
+    },
+    {
+      "file_name": "93489296_0050.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s93489296/93489296_0050.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "2 RA LENGTH 4.4 cm"
+        },
+        {
+          "order": 2,
+          "text": "1 LA LENGTH 5.8 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "93489296_0051.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s93489296/93489296_0051.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 RVIDd 3.3 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "93489296_0055.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s93489296/93489296_0055.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 TR Vmax 3.9 m/s"
+        },
+        {
+          "order": 2,
+          "text": "TR maxPG 62 mmHg"
+        }
+      ]
+    },
+    {
+      "file_name": "93489296_0056.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s93489296/93489296_0056.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 TR Vmax 3.9 m/s"
+        },
+        {
+          "order": 2,
+          "text": "TR maxPG 60 mmHg"
+        }
+      ]
+    },
+    {
+      "file_name": "93489296_0059.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s93489296/93489296_0059.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "2 MV DecT 161 ms"
+        },
+        {
+          "order": 2,
+          "text": "1 MV E Vel 1.2 m/s"
+        }
+      ]
+    },
+    {
+      "file_name": "93489296_0064.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s93489296/93489296_0064.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "3 P Vein A 0.2 m/s"
+        },
+        {
+          "order": 2,
+          "text": "2 P Vein D 1.1 m/s"
+        },
+        {
+          "order": 3,
+          "text": "P Vein S/D Ratio 0.4"
+        },
+        {
+          "order": 4,
+          "text": "1 P Vein s 0.5 m/s"
+        }
+      ]
+    },
+    {
+      "file_name": "93489296_0065.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s93489296/93489296_0065.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 E' Lat 0.09 m/s"
+        }
+      ]
+    },
+    {
+      "file_name": "93489296_0066.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s93489296/93489296_0066.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 E' Sept 0.05 m/s"
+        }
+      ]
+    },
+    {
+      "file_name": "93489296_0067.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s93489296/93489296_0067.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 LVLd A4C 8.36 cm"
+        },
+        {
+          "order": 2,
+          "text": "LVEDV MOD A4C 120.62 ml"
+        }
+      ]
+    },
+    {
+      "file_name": "93489296_0068.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s93489296/93489296_0068.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "LVEF MOD A4C 22.26 %"
+        },
+        {
+          "order": 2,
+          "text": "SV MOD A4C 26.85 ml"
+        },
+        {
+          "order": 3,
+          "text": "1 LVLs A4C 7.69 cm"
+        },
+        {
+          "order": 4,
+          "text": "LVESV MOD A4C 93.78 ml"
+        }
+      ]
+    },
+    {
+      "file_name": "93489296_0069.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s93489296/93489296_0069.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 LALs A4C 4.6 cm"
+        },
+        {
+          "order": 2,
+          "text": "LAAs A4C 15.0 cm2"
+        },
+        {
+          "order": 3,
+          "text": "LAESV A-L A4C 41 ml"
+        }
+      ]
+    },
+    {
+      "file_name": "93489296_0070.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s93489296/93489296_0070.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "LAESV (A-L) 66.91 ml"
+        },
+        {
+          "order": 2,
+          "text": "LAESV Index (A-L) 36.57 ml/m2"
+        },
+        {
+          "order": 3,
+          "text": "1 LALs A2C 6.0 cm"
+        },
+        {
+          "order": 4,
+          "text": "LAAs A2C 24 cm2"
+        },
+        {
+          "order": 5,
+          "text": "LAESV A-L A2C 83.2 ml"
+        }
+      ]
+    },
+    {
+      "file_name": "93489296_0071.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s93489296/93489296_0071.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 LVLs A2C 7.53 cm"
+        },
+        {
+          "order": 2,
+          "text": "LVESV MOD A2C 84.58 ml"
+        }
+      ]
+    },
+    {
+      "file_name": "93489296_0072.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s93489296/93489296_0072.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "EF Biplane 41 %"
+        },
+        {
+          "order": 2,
+          "text": "LVEDV MOD BP 150 ml"
+        },
+        {
+          "order": 3,
+          "text": "LVESV MOD BP 89 ml"
+        },
+        {
+          "order": 4,
+          "text": "LVEF MOD A2C 53.98 %"
+        },
+        {
+          "order": 5,
+          "text": "SV MOD A2C 99.21 ml"
+        },
+        {
+          "order": 6,
+          "text": "1 LVLd A2C 8.48 cm"
+        },
+        {
+          "order": 7,
+          "text": "LVEDV MOD A2C 183.79 ml"
+        }
+      ]
+    },
+    {
+      "file_name": "93489296_0083.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s93489296/93489296_0083.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "+ v 0.01 m/s"
+        },
+        {
+          "order": 2,
+          "text": "p 0.00 mmHg"
+        },
+        {
+          "order": 3,
+          "text": "1 LVOT Vmax 1.0 m/s"
+        },
+        {
+          "order": 4,
+          "text": "LVOT maxPG 4 mmHg"
+        },
+        {
+          "order": 5,
+          "text": "LVOT VTI 16.6 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "93489296_0084.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s93489296/93489296_0084.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 AR Vmax 3.3 m/s"
+        },
+        {
+          "order": 2,
+          "text": "AR maxPG 43 mmHg"
+        },
+        {
+          "order": 3,
+          "text": "AR PHT 374 ms"
+        },
+        {
+          "order": 4,
+          "text": "AR Dec Time 1290 ms"
+        },
+        {
+          "order": 5,
+          "text": "MV Dec Slope 3 m/s2"
+        }
+      ]
+    },
+    {
+      "file_name": "93489296_0085.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s93489296/93489296_0085.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "AVA Vmax 1.8 cm2"
+        },
+        {
+          "order": 2,
+          "text": "AVA (VTI) 1.6 cm2"
+        },
+        {
+          "order": 3,
+          "text": "1 AV Vmax 1.9 m/s"
+        },
+        {
+          "order": 4,
+          "text": "AV Vmean 1.3 m/s"
+        },
+        {
+          "order": 5,
+          "text": "AV maxPG 14 mmHg"
+        },
+        {
+          "order": 6,
+          "text": "AV meanPG 7 mmHg"
+        },
+        {
+          "order": 7,
+          "text": "AV VTI 33 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "93489296_0086.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s93489296/93489296_0086.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 AV Vmax 1.9 m/s"
+        },
+        {
+          "order": 2,
+          "text": "1 AV Vmean 1.2 m/s"
+        },
+        {
+          "order": 3,
+          "text": "AV maxPG 14 mmHg"
+        },
+        {
+          "order": 4,
+          "text": "AV meanPG 7 mmHg"
+        },
+        {
+          "order": 5,
+          "text": "AV VTI 32 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "93489296_0098.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s93489296/93489296_0098.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 IVC 2.4 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "93489296_0100.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s93489296/93489296_0100.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 Ao Arch Diam 3.1 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "93489296_0112.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s93489296/93489296_0112.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 L 1.97 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "93489296_0113.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s93489296/93489296_0113.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 V 1.79 m/s"
+        },
+        {
+          "order": 2,
+          "text": "p 12.81 mmHg"
+        },
+        {
+          "order": 3,
+          "text": "Frq 4.41 kHz"
+        }
+      ]
+    },
+    {
       "file_name": "94106955_0011.dcm",
       "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0011.dcm",
       "split": "validation",
@@ -1881,6 +2452,1194 @@
         {
           "order": 1,
           "text": "1 L 2.37 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "94134445_0005.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10014610/s94134445/94134445_0005.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 LVOT Diam 1.9 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "94134445_0006.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10014610/s94134445/94134445_0006.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 Ao Diam 2.8 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "94134445_0007.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10014610/s94134445/94134445_0007.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 Ao asc 3.0 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "94134445_0008.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10014610/s94134445/94134445_0008.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 IVSd 1.7 cm"
+        },
+        {
+          "order": 2,
+          "text": "LVIDd 3.7 cm"
+        },
+        {
+          "order": 3,
+          "text": "LVPWd 1.4 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "94134445_0009.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10014610/s94134445/94134445_0009.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 LVIDs 2.5 cm"
+        },
+        {
+          "order": 2,
+          "text": "EF (Teich) 63 %"
+        },
+        {
+          "order": 3,
+          "text": "%FS 33 %"
+        }
+      ]
+    },
+    {
+      "file_name": "94134445_0010.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10014610/s94134445/94134445_0010.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 LA Diam 4.4 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "94134445_0042.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10014610/s94134445/94134445_0042.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "2 RA LENGTH 5.4 cm"
+        },
+        {
+          "order": 2,
+          "text": "1 LA LENGTH 5.7 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "94134445_0043.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10014610/s94134445/94134445_0043.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 RVIDd 3.6 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "94134445_0044.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10014610/s94134445/94134445_0044.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 LALs A4C 5.5 cm"
+        },
+        {
+          "order": 2,
+          "text": "LAAs A4C 21.1 cm2"
+        },
+        {
+          "order": 3,
+          "text": "LAESV A-L A4C 69 ml"
+        }
+      ]
+    },
+    {
+      "file_name": "94134445_0045.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10014610/s94134445/94134445_0045.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "LAESV (A-L) 64.44 ml"
+        },
+        {
+          "order": 2,
+          "text": "LAESV Index (A-L) 28.90 ml/m2"
+        },
+        {
+          "order": 3,
+          "text": "1 LALs A2C 5.6 cm"
+        },
+        {
+          "order": 4,
+          "text": "LAAs A2C 20 cm2"
+        },
+        {
+          "order": 5,
+          "text": "LAESV A-L A2C 58.9 ml"
+        }
+      ]
+    },
+    {
+      "file_name": "94134445_0049.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10014610/s94134445/94134445_0049.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 MV E Vel 0.6 m/s"
+        },
+        {
+          "order": 2,
+          "text": "MV DecT 268 ms"
+        },
+        {
+          "order": 3,
+          "text": "MV Dec Slope 2 m/s2"
+        },
+        {
+          "order": 4,
+          "text": "MV A Vel 1.3 m/s"
+        },
+        {
+          "order": 5,
+          "text": "MV E/A Ratio 0.5"
+        }
+      ]
+    },
+    {
+      "file_name": "94134445_0051.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10014610/s94134445/94134445_0051.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 E' Sept 0.05 m/s"
+        }
+      ]
+    },
+    {
+      "file_name": "94134445_0052.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10014610/s94134445/94134445_0052.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 E' Lat 0.09 m/s"
+        }
+      ]
+    },
+    {
+      "file_name": "94134445_0057.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10014610/s94134445/94134445_0057.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 LVOT Vmax 1.0 m/s"
+        },
+        {
+          "order": 2,
+          "text": "LVOT maxPG 4 mmHg"
+        },
+        {
+          "order": 3,
+          "text": "LVOT VTI 21.4 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "94134445_0058.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10014610/s94134445/94134445_0058.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "AVA Vmax 2.2 cm2"
+        },
+        {
+          "order": 2,
+          "text": "AVA (VTI) 2.4 cm2"
+        },
+        {
+          "order": 3,
+          "text": "1 AV Vmax 1.3 m/s"
+        },
+        {
+          "order": 4,
+          "text": "AV Vmean 0.9 m/s"
+        },
+        {
+          "order": 5,
+          "text": "AV maxPG 7 mmHg"
+        },
+        {
+          "order": 6,
+          "text": "AV meanPG 4 mmHg"
+        },
+        {
+          "order": 7,
+          "text": "AV VTI 25 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "94134445_0061.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10014610/s94134445/94134445_0061.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "+ v 1.55 m/s"
+        },
+        {
+          "order": 2,
+          "text": "p 9.66 mmHg"
+        }
+      ]
+    },
+    {
+      "file_name": "94134445_0062.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10014610/s94134445/94134445_0062.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 AV Vmax 1.5 m/s"
+        },
+        {
+          "order": 2,
+          "text": "AV Vmean 1.0 m/s"
+        },
+        {
+          "order": 3,
+          "text": "AV maxPG 9 mmHg"
+        },
+        {
+          "order": 4,
+          "text": "AV meanPG 4 mmHg"
+        },
+        {
+          "order": 5,
+          "text": "AV VTI 28 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "94134445_0064.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10014610/s94134445/94134445_0064.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 TR Vmax 1.9 m/s"
+        },
+        {
+          "order": 2,
+          "text": "TR maxPG 15 mmHg"
+        }
+      ]
+    },
+    {
+      "file_name": "94134445_0077.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10014610/s94134445/94134445_0077.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 Ao Arch Diam 3.5 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "95253372_0007.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s95253372/95253372_0007.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 LVOT Diam 2.0 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "95253372_0008.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s95253372/95253372_0008.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "2 LA Diam 3.9 cm"
+        },
+        {
+          "order": 2,
+          "text": "1 Ao Diam 2.7 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "95253372_0009.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s95253372/95253372_0009.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 IVSd 0.6 cm"
+        },
+        {
+          "order": 2,
+          "text": "LVIDd 5.3 cm"
+        },
+        {
+          "order": 3,
+          "text": "LVPWd 0.7 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "95253372_0010.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s95253372/95253372_0010.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 IVSd 0.5 cm"
+        },
+        {
+          "order": 2,
+          "text": "LVIDd 5.1 cm"
+        },
+        {
+          "order": 3,
+          "text": "LVPWd 0.9 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "95253372_0011.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s95253372/95253372_0011.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 LVIDs 5.0 cm"
+        },
+        {
+          "order": 2,
+          "text": "EF (Teich) 9 %"
+        },
+        {
+          "order": 3,
+          "text": "%FS 4 %"
+        }
+      ]
+    },
+    {
+      "file_name": "95253372_0013.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s95253372/95253372_0013.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 IVSd 0.6 cm"
+        },
+        {
+          "order": 2,
+          "text": "LVIDd 5.4 cm"
+        },
+        {
+          "order": 3,
+          "text": "LVPWd 0.7 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "95253372_0014.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s95253372/95253372_0014.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 LVIDs 4.9 cm"
+        },
+        {
+          "order": 2,
+          "text": "EF (Teich) 8 %"
+        },
+        {
+          "order": 3,
+          "text": "%FS 4 %"
+        }
+      ]
+    },
+    {
+      "file_name": "95253372_0016.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s95253372/95253372_0016.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 Ao asc 3.4 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "95253372_0019.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s95253372/95253372_0019.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "+ v 3.34 m/s"
+        },
+        {
+          "order": 2,
+          "text": "p 44.50 mmHg"
+        }
+      ]
+    },
+    {
+      "file_name": "95253372_0022.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s95253372/95253372_0022.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "+ v 1.94 m/s"
+        },
+        {
+          "order": 2,
+          "text": "p 15.10 mmHg"
+        }
+      ]
+    },
+    {
+      "file_name": "95253372_0030.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s95253372/95253372_0030.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "+ v 3.53 m/s"
+        },
+        {
+          "order": 2,
+          "text": "p 49.81 mmHg"
+        }
+      ]
+    },
+    {
+      "file_name": "95253372_0041.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s95253372/95253372_0041.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "2 RA LENGTH 5.4 cm"
+        },
+        {
+          "order": 2,
+          "text": "1 LA LENGTH 5.7 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "95253372_0042.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s95253372/95253372_0042.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 LALs A4C 5.3 cm"
+        },
+        {
+          "order": 2,
+          "text": "LAAs A4C 24.5 cm2"
+        },
+        {
+          "order": 3,
+          "text": "LAESV A-L A4C 96 ml"
+        }
+      ]
+    },
+    {
+      "file_name": "95253372_0043.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s95253372/95253372_0043.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 RVIDd 5.4 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "95253372_0044.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s95253372/95253372_0044.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "LAESV (A-L) 109.75 ml"
+        },
+        {
+          "order": 2,
+          "text": "LAESV Index (A-L) 62.72 ml/m2"
+        },
+        {
+          "order": 3,
+          "text": "1 LALs A2C 5.7 cm"
+        },
+        {
+          "order": 4,
+          "text": "LAAs A2C 28 cm2"
+        },
+        {
+          "order": 5,
+          "text": "LAESV A-L A2C 115.8 ml"
+        }
+      ]
+    },
+    {
+      "file_name": "95253372_0048.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s95253372/95253372_0048.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "2 MV DecT 119 ms"
+        },
+        {
+          "order": 2,
+          "text": "1 MV E Vel 0.9 m/s"
+        }
+      ]
+    },
+    {
+      "file_name": "95253372_0053.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s95253372/95253372_0053.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "+ v 3.26 m/s"
+        },
+        {
+          "order": 2,
+          "text": "p 42.49 mmHg"
+        }
+      ]
+    },
+    {
+      "file_name": "95253372_0054.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s95253372/95253372_0054.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 TAPSE 0.86 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "95253372_0056.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s95253372/95253372_0056.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "+ v 0.08 m/s"
+        },
+        {
+          "order": 2,
+          "text": "p 0.02 mmHg"
+        },
+        {
+          "order": 3,
+          "text": "1 AV Vmax 1.0 m/s"
+        },
+        {
+          "order": 4,
+          "text": "AV Vmean 0.7 m/s"
+        },
+        {
+          "order": 5,
+          "text": "AV maxPG 4 mmHg"
+        },
+        {
+          "order": 6,
+          "text": "AV meanPG 2 mmHg"
+        },
+        {
+          "order": 7,
+          "text": "AV VTI 14 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "95253372_0058.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s95253372/95253372_0058.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "+ v 0.11 m/s"
+        },
+        {
+          "order": 2,
+          "text": "p 0.05 mmHg"
+        },
+        {
+          "order": 3,
+          "text": "AVA Vmax 2.2 cm2"
+        },
+        {
+          "order": 4,
+          "text": "AVA (VTI) 2.0 cm2"
+        },
+        {
+          "order": 5,
+          "text": "1 LVOT Vmax 0.7 m/s"
+        },
+        {
+          "order": 6,
+          "text": "LVOT maxPG 2 mmHg"
+        },
+        {
+          "order": 7,
+          "text": "LVOT VTI 9.5 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "95253372_0059.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s95253372/95253372_0059.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "+ v 0.14 m/s"
+        },
+        {
+          "order": 2,
+          "text": "p 0.08 mmHg"
+        },
+        {
+          "order": 3,
+          "text": "AVA Vmax 3.1 cm2"
+        },
+        {
+          "order": 4,
+          "text": "AVA (VTI) 2.5 cm2"
+        },
+        {
+          "order": 5,
+          "text": "2 LVOT Vmax 1.0 m/s"
+        },
+        {
+          "order": 6,
+          "text": "LVOT maxPG 4 mmHg"
+        },
+        {
+          "order": 7,
+          "text": "LVOT VTI 11.5 cm"
+        },
+        {
+          "order": 8,
+          "text": "AVA Vmax 3.2 cm2"
+        },
+        {
+          "order": 9,
+          "text": "AVA (VTI) 3.2 cm2"
+        },
+        {
+          "order": 10,
+          "text": "1 LVOT Vmax 0.7 m/s"
+        },
+        {
+          "order": 11,
+          "text": "LVOT maxPG 2 mmHg"
+        },
+        {
+          "order": 12,
+          "text": "LVOT VTI 8.5 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "95253372_0060.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s95253372/95253372_0060.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "+ v 0.07 m/s"
+        },
+        {
+          "order": 2,
+          "text": "p 0.02 mmHg"
+        }
+      ]
+    },
+    {
+      "file_name": "95253372_0061.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s95253372/95253372_0061.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "+ v 0.04 m/s"
+        },
+        {
+          "order": 2,
+          "text": "p 0.01 mmHg"
+        }
+      ]
+    },
+    {
+      "file_name": "95253372_0069.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s95253372/95253372_0069.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 IVC 2.2 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "95253372_0074.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s95253372/95253372_0074.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 Ao Arch Diam 1.8 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "95253372_0075.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s95253372/95253372_0075.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 Ao Desc Diam 1.7 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "95253372_0099.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s95253372/95253372_0099.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 V 3.26 m/s"
+        },
+        {
+          "order": 2,
+          "text": "p 42.62 mmHg"
+        },
+        {
+          "order": 3,
+          "text": "Frq 8.05 kHz"
+        }
+      ]
+    },
+    {
+      "file_name": "97273331_0003.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s97273331/97273331_0003.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 Ao asc 3.1 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "97273331_0004.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s97273331/97273331_0004.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 LVOT Diam 2.0 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "97273331_0005.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s97273331/97273331_0005.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 Ao Diam 2.8 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "97273331_0006.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s97273331/97273331_0006.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "2 LA LENGTH 0.0 cm"
+        },
+        {
+          "order": 2,
+          "text": "1 LA Diam 3.6 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "97273331_0008.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s97273331/97273331_0008.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 IVSd 1.0 cm"
+        },
+        {
+          "order": 2,
+          "text": "LVIDd 5.1 cm"
+        },
+        {
+          "order": 3,
+          "text": "LVPWd 0.9 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "97273331_0009.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s97273331/97273331_0009.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 IVSd 0.8 cm"
+        },
+        {
+          "order": 2,
+          "text": "LVIDd 4.9 cm"
+        },
+        {
+          "order": 3,
+          "text": "LVPWd 1.0 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "97273331_0010.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s97273331/97273331_0010.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 LVIDs 4.4 cm"
+        },
+        {
+          "order": 2,
+          "text": "EF (Teich) 31 %"
+        },
+        {
+          "order": 3,
+          "text": "%FS 15 %"
+        }
+      ]
+    },
+    {
+      "file_name": "97273331_0015.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s97273331/97273331_0015.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 TR Vmax 3.9 m/s"
+        },
+        {
+          "order": 2,
+          "text": "TR maxPG 60 mmHg"
+        }
+      ]
+    },
+    {
+      "file_name": "97273331_0017.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s97273331/97273331_0017.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "2 TR Vmax 3.4 m/s"
+        },
+        {
+          "order": 2,
+          "text": "TR maxPG 48 mmHg"
+        },
+        {
+          "order": 3,
+          "text": "1 TR Vmax 3.6 m/s"
+        },
+        {
+          "order": 4,
+          "text": "TR maxPG 52 mmHg"
+        }
+      ]
+    },
+    {
+      "file_name": "97273331_0020.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s97273331/97273331_0020.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 PV Vmax 1.92 m/s"
+        },
+        {
+          "order": 2,
+          "text": "PV maxPG 15 mmHg"
+        }
+      ]
+    },
+    {
+      "file_name": "97273331_0029.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s97273331/97273331_0029.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "3 TR Vmax 3.7 m/s"
+        },
+        {
+          "order": 2,
+          "text": "TR maxPG 55 mmHg"
+        },
+        {
+          "order": 3,
+          "text": "2 TR Vmax 3.3 m/s"
+        },
+        {
+          "order": 4,
+          "text": "TR maxPG 44 mmHg"
+        },
+        {
+          "order": 5,
+          "text": "1 TR Vmax 4.2 m/s"
+        },
+        {
+          "order": 6,
+          "text": "TR maxPG 70 mmHg"
+        }
+      ]
+    },
+    {
+      "file_name": "97273331_0038.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s97273331/97273331_0038.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 MV E Vel 1.1 m/s"
+        }
+      ]
+    },
+    {
+      "file_name": "97273331_0039.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s97273331/97273331_0039.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 MV DecT 210 ms"
+        }
+      ]
+    },
+    {
+      "file_name": "97273331_0040.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s97273331/97273331_0040.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 TR Vmax 4.1 m/s"
+        },
+        {
+          "order": 2,
+          "text": "TR maxPG 66 mmHg"
+        }
+      ]
+    },
+    {
+      "file_name": "97273331_0041.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s97273331/97273331_0041.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "2 RA LENGTH 4.9 cm"
+        },
+        {
+          "order": 2,
+          "text": "1 LA LENGTH 4.9 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "97273331_0059.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s97273331/97273331_0059.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 E' Sept 0.09 m/s"
+        }
+      ]
+    },
+    {
+      "file_name": "97273331_0060.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s97273331/97273331_0060.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 E' Lat 0.10 m/s"
+        }
+      ]
+    },
+    {
+      "file_name": "97273331_0063.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s97273331/97273331_0063.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 LVOT Vmax 0.9 m/s"
+        },
+        {
+          "order": 2,
+          "text": "LVOT maxPG 4 mmHg"
+        },
+        {
+          "order": 3,
+          "text": "LVOT VTI 16.5 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "97273331_0064.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s97273331/97273331_0064.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "AVA Vmax 1.7 cm2"
+        },
+        {
+          "order": 2,
+          "text": "AVAI Vmax 0.901 cm2/m2"
+        },
+        {
+          "order": 3,
+          "text": "1 AV Vmax 1.68 m/s"
+        },
+        {
+          "order": 4,
+          "text": "AV maxPG 11 mmHg"
+        }
+      ]
+    },
+    {
+      "file_name": "97273331_0065.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s97273331/97273331_0065.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 LALs A4C 4.7 cm"
+        },
+        {
+          "order": 2,
+          "text": "LAAs A4C 16.2 cm2"
+        },
+        {
+          "order": 3,
+          "text": "LAESV A-L A4C 47 ml"
+        }
+      ]
+    },
+    {
+      "file_name": "97273331_0066.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s97273331/97273331_0066.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "2 LAAs A4C 0.0 cm2"
+        },
+        {
+          "order": 2,
+          "text": "LAESV (A-L) 56.02 ml"
+        },
+        {
+          "order": 3,
+          "text": "LAESV Index (A-L) 29.96 ml/m2"
+        },
+        {
+          "order": 4,
+          "text": "1 LALs A2C 5.2 cm"
+        },
+        {
+          "order": 5,
+          "text": "LAAs A2C 19 cm2"
+        },
+        {
+          "order": 6,
+          "text": "LAESV A-L A2C 59.9 ml"
+        }
+      ]
+    },
+    {
+      "file_name": "97273331_0089.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s97273331/97273331_0089.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 RVIDd 2.5 cm"
         }
       ]
     },
@@ -3347,6 +5106,514 @@
         {
           "order": 1,
           "text": "1 Ao Arch Diam 2.6 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "99583722_0004.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s99583722/99583722_0004.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 Ao Desc Diam 2.3 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "99583722_0010.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s99583722/99583722_0010.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 IVSd 1.0 cm"
+        },
+        {
+          "order": 2,
+          "text": "LVIDd 4.8 cm"
+        },
+        {
+          "order": 3,
+          "text": "LVPWd 1.0 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "99583722_0011.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s99583722/99583722_0011.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 LVIDs 4.5 cm"
+        },
+        {
+          "order": 2,
+          "text": "EF (Teich) 13 %"
+        },
+        {
+          "order": 3,
+          "text": "%FS 6 %"
+        }
+      ]
+    },
+    {
+      "file_name": "99583722_0012.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s99583722/99583722_0012.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 LA Diam 5.0 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "99583722_0013.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s99583722/99583722_0013.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 LVOT Diam 2.0 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "99583722_0014.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s99583722/99583722_0014.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 Ao Diam 2.6 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "99583722_0015.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s99583722/99583722_0015.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 Ao asc 3.7 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "99583722_0018.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s99583722/99583722_0018.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 TR Vmax 3.4 m/s"
+        },
+        {
+          "order": 2,
+          "text": "TR maxPG 45 mmHg"
+        }
+      ]
+    },
+    {
+      "file_name": "99583722_0019.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s99583722/99583722_0019.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 TR Vmax 3.7 m/s"
+        },
+        {
+          "order": 2,
+          "text": "TR maxPG 54 mmHg"
+        }
+      ]
+    },
+    {
+      "file_name": "99583722_0020.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s99583722/99583722_0020.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 TR Vmax 3.5 m/s"
+        },
+        {
+          "order": 2,
+          "text": "TR maxPG 48 mmHg"
+        }
+      ]
+    },
+    {
+      "file_name": "99583722_0027.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s99583722/99583722_0027.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 TR Vmax 3.7 m/s"
+        },
+        {
+          "order": 2,
+          "text": "TR maxPG 54 mmHg"
+        }
+      ]
+    },
+    {
+      "file_name": "99583722_0029.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s99583722/99583722_0029.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 PRend Vmax 1.91 m/s"
+        },
+        {
+          "order": 2,
+          "text": "PRend PG 14.53 mmHg"
+        }
+      ]
+    },
+    {
+      "file_name": "99583722_0049.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s99583722/99583722_0049.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "2 RA LENGTH 5.0 cm"
+        },
+        {
+          "order": 2,
+          "text": "1 LA LENGTH 4.7 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "99583722_0050.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s99583722/99583722_0050.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 RVIDd 3.5 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "99583722_0051.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s99583722/99583722_0051.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 TAPSE 2.02 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "99583722_0055.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s99583722/99583722_0055.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 TR Vmax 3.9 m/s"
+        },
+        {
+          "order": 2,
+          "text": "TR maxPG 60 mmHg"
+        }
+      ]
+    },
+    {
+      "file_name": "99583722_0056.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s99583722/99583722_0056.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 TR Vmax 4.0 m/s"
+        },
+        {
+          "order": 2,
+          "text": "TR maxPG 65 mmHg"
+        }
+      ]
+    },
+    {
+      "file_name": "99583722_0057.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s99583722/99583722_0057.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 TR Vmax 4.1 m/s"
+        },
+        {
+          "order": 2,
+          "text": "TR maxPG 66 mmHg"
+        }
+      ]
+    },
+    {
+      "file_name": "99583722_0059.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s99583722/99583722_0059.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "2 MV DecT 123 ms"
+        },
+        {
+          "order": 2,
+          "text": "1 MV E Vel 1.2 m/s"
+        }
+      ]
+    },
+    {
+      "file_name": "99583722_0062.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s99583722/99583722_0062.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 P Vein s 0.6 m/s"
+        }
+      ]
+    },
+    {
+      "file_name": "99583722_0063.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s99583722/99583722_0063.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 E' Lat 0.05 m/s"
+        }
+      ]
+    },
+    {
+      "file_name": "99583722_0064.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s99583722/99583722_0064.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 E' Sept 0.05 m/s"
+        }
+      ]
+    },
+    {
+      "file_name": "99583722_0065.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s99583722/99583722_0065.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 LVLd A4C 7.48 cm"
+        },
+        {
+          "order": 2,
+          "text": "LVEDV MOD A4C 110.38 ml"
+        }
+      ]
+    },
+    {
+      "file_name": "99583722_0066.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s99583722/99583722_0066.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "LVEF MOD A4C 24.86 %"
+        },
+        {
+          "order": 2,
+          "text": "SV MOD A4C 27.44 ml"
+        },
+        {
+          "order": 3,
+          "text": "1 LVLs A4C 7.01 cm"
+        },
+        {
+          "order": 4,
+          "text": "LVESV MOD A4C 82.93 ml"
+        }
+      ]
+    },
+    {
+      "file_name": "99583722_0067.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s99583722/99583722_0067.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 LALs A4C 5.5 cm"
+        },
+        {
+          "order": 2,
+          "text": "LAAs A4C 22.8 cm2"
+        },
+        {
+          "order": 3,
+          "text": "LAESV A-L A4C 80 ml"
+        }
+      ]
+    },
+    {
+      "file_name": "99583722_0068.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s99583722/99583722_0068.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "LAESV (A-L) 61.20 ml"
+        },
+        {
+          "order": 2,
+          "text": "LAESV Index (A-L) 35.79 ml/m2"
+        },
+        {
+          "order": 3,
+          "text": "1 LALs A2C 4.8 cm"
+        },
+        {
+          "order": 4,
+          "text": "LAAs A2C 15 cm2"
+        },
+        {
+          "order": 5,
+          "text": "LAESV A-L A2C 41.2 ml"
+        }
+      ]
+    },
+    {
+      "file_name": "99583722_0069.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s99583722/99583722_0069.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 LVLs A2C 7.47 cm"
+        },
+        {
+          "order": 2,
+          "text": "LVESV MOD A2C 90.59 ml"
+        }
+      ]
+    },
+    {
+      "file_name": "99583722_0070.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s99583722/99583722_0070.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "EF Biplane 21 %"
+        },
+        {
+          "order": 2,
+          "text": "LVEDV MOD BP 113 ml"
+        },
+        {
+          "order": 3,
+          "text": "LVESV MOD BP 89 ml"
+        },
+        {
+          "order": 4,
+          "text": "LVEF MOD A2C 18.66 %"
+        },
+        {
+          "order": 5,
+          "text": "SV MOD A2C 20.78 ml"
+        },
+        {
+          "order": 6,
+          "text": "1 LVLd A2C 7.92 cm"
+        },
+        {
+          "order": 7,
+          "text": "LVEDV MOD A2C 111.38 ml"
+        }
+      ]
+    },
+    {
+      "file_name": "99583722_0081.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s99583722/99583722_0081.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 LVOT Vmax 0.6 m/s"
+        },
+        {
+          "order": 2,
+          "text": "LVOT maxPG 1 mmHg"
+        },
+        {
+          "order": 3,
+          "text": "LVOT VTI 10.4 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "99583722_0083.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s99583722/99583722_0083.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "AVA Vmax 1.6 cm2"
+        },
+        {
+          "order": 2,
+          "text": "AVA (VTI) 1.9 cm2"
+        },
+        {
+          "order": 3,
+          "text": "1 AV Vmax 1.2 m/s"
+        },
+        {
+          "order": 4,
+          "text": "AV Vmean 0.8 m/s"
+        },
+        {
+          "order": 5,
+          "text": "AV maxPG 6 mmHg"
+        },
+        {
+          "order": 6,
+          "text": "AV meanPG 3 mmHg"
+        },
+        {
+          "order": 7,
+          "text": "AV VTI 17 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "99583722_0091.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s99583722/99583722_0091.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 IVC 1.2 cm"
+        }
+      ]
+    },
+    {
+      "file_name": "99583722_0092.dcm",
+      "file_path": "D:/MIMIC-IV-ECHO/files/p10/p10020306/s99583722/99583722_0092.dcm",
+      "split": "validation",
+      "measurements": [
+        {
+          "order": 1,
+          "text": "1 Ao Arch Diam 2.8 cm"
         }
       ]
     },

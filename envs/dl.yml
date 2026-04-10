@@ -19,3 +19,4 @@ dependencies:
   - pip:
       - opencv-python
       - pytesseract
+      - easyocr==1.7.2
