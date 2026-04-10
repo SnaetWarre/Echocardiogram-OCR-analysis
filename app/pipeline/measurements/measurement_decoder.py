@@ -72,6 +72,7 @@ _VALUE_ONLY_RE = re.compile(
     rf"^(?P<value>[-+]?\d+(?:[.,]\d+)?)\s*(?P<unit>{_UNIT_TOKEN_PATTERN})?$",
     flags=re.IGNORECASE,
 )
+_ONE_DIGIT_INTEGER_RE = re.compile(r"^[1-9]$")
 _LABEL_REPAIRS = (
     (re.compile(r"\bAVS\b", flags=re.IGNORECASE), "AVA"),
     (re.compile(r"\bL[YV]IDd\b", flags=re.IGNORECASE), "LVIDd"),
@@ -98,6 +99,10 @@ _LABEL_REPAIRS = (
 )
 _TRAILING_FILLER_RE = re.compile(r"(?:\s*(?:_+|(?:[.-]\s*){3,}|-+))+\s*$")
 _LEADING_PREFIX_GLYPH_RE = re.compile(r"^(?:ı|I|l)\s+(?=[A-Za-z])")
+_SAFE_BOUND_RULES = (
+    (re.compile(r"\bLVOT\s+maxPG\b", flags=re.IGNORECASE), "mmHg", 10.0, 250.0),
+    (re.compile(r"\bAV\s+maxPG\b", flags=re.IGNORECASE), "mmHg", 10.0, 250.0),
+)
 
 
 def normalize_space(text: str) -> str:
@@ -241,6 +246,65 @@ def extract_line_from_source(source: str | None) -> str | None:
     return None
 
 
+def _safe_correct_value(*, label: str, value: str, unit: str | None) -> tuple[str, list[str]]:
+    normalized_unit = (unit or "").strip().lower()
+    flags: list[str] = []
+    for pattern, expected_unit, lower_bound, upper_bound in _SAFE_BOUND_RULES:
+        if normalized_unit != expected_unit.lower():
+            continue
+        if not pattern.search(label):
+            continue
+        try:
+            parsed_value = float(value)
+        except ValueError:
+            return value, ["invalid_numeric_value"]
+
+        if lower_bound <= parsed_value <= upper_bound:
+            return value, flags
+
+        flags.append("implausible_value")
+        if _ONE_DIGIT_INTEGER_RE.fullmatch(value.strip()):
+            recovered_value = parsed_value + 10.0
+            if lower_bound <= recovered_value <= upper_bound:
+                return str(int(recovered_value)), [*flags, "rule_recovered_leading_digit"]
+        return value, flags
+    return value, flags
+
+
+def apply_safe_measurement_correction(item: AiMeasurement) -> AiMeasurement:
+    updated_flags = list(item.flags or [])
+    corrected_value = item.value
+    correction_flags: list[str] = []
+    if item.name and item.value:
+        corrected_value, correction_flags = _safe_correct_value(
+            label=item.name,
+            value=item.value,
+            unit=item.unit,
+        )
+        for flag in correction_flags:
+            if flag not in updated_flags:
+                updated_flags.append(flag)
+
+    raw_text = item.raw_ocr_text
+    if not raw_text:
+        raw_text = extract_line_from_source(item.source)
+
+    return AiMeasurement(
+        name=item.name,
+        value=corrected_value,
+        unit=item.unit,
+        source=item.source,
+        order_hint=item.order_hint,
+        raw_ocr_text=raw_text,
+        corrected_value=corrected_value,
+        flags=updated_flags,
+    )
+
+
+def apply_safe_measurement_corrections(items: list[AiMeasurement]) -> list[AiMeasurement]:
+    return [apply_safe_measurement_correction(item) for item in items]
+
+
 @dataclass(frozen=True)
 class DecodedMeasurementLine:
     raw_text: str
@@ -268,13 +332,16 @@ class DecodedMeasurementLine:
         if not self.is_measurement:
             return None
         assert self.display_name is not None
-        return AiMeasurement(
+        item = AiMeasurement(
             name=self.display_name,
             value=self.value or "",
             unit=self.unit,
             source=f"exact_line:{self.canonical_text}:{confidence:.3f}",
             order_hint=order_hint,
+            raw_ocr_text=self.raw_text,
+            corrected_value=self.value or "",
         )
+        return apply_safe_measurement_correction(item)
 
 
 def parse_measurement_line(text: str) -> DecodedMeasurementLine:

@@ -41,14 +41,22 @@ class PerFileTimeoutError(TimeoutError):
 @dataclass(frozen=True)
 class PreprocessSpec:
     contrast_mode: str = "none"
+    gamma: float = 1.0
     scale_factor: int = 1
     scale_algo: str = "linear"
     unsharp: bool = False
     unsharp_amount: float = 0.5
     threshold_mode: str = "none"
+    threshold_invert: bool = False
     morph_close: bool = False
+    morph_open: bool = False
+    morph_kernel: int = 2
     smooth: bool = False
     denoise_mode: str = "none"
+    blur_mode: str = "none"
+    blur_ksize: int = 3
+    top_hat: bool = False
+    black_hat: bool = False
     invert: bool = False
     adaptive_block_size: int = 11
     adaptive_c: float = 2.0
@@ -218,6 +226,16 @@ def _apply_contrast(working: np.ndarray, spec: PreprocessSpec) -> np.ndarray:
     return base
 
 
+def _apply_gamma(working: np.ndarray, spec: PreprocessSpec) -> np.ndarray:
+    gamma = float(spec.gamma)
+    if abs(gamma - 1.0) < 1e-6:
+        return working
+    gamma = max(0.2, min(gamma, 4.0))
+    inv = 1.0 / gamma
+    table = np.array([((i / 255.0) ** inv) * 255 for i in np.arange(256)], dtype=np.uint8)
+    return cv2.LUT(working, table)
+
+
 def _apply_unsharp(working: np.ndarray, spec: PreprocessSpec) -> np.ndarray:
     if not spec.unsharp:
         return working
@@ -239,6 +257,42 @@ def _apply_denoise(working: np.ndarray, spec: PreprocessSpec) -> np.ndarray:
     return working
 
 
+def _apply_blur(working: np.ndarray, spec: PreprocessSpec) -> np.ndarray:
+    mode = str(spec.blur_mode or "none").lower()
+    if mode == "none":
+        return working
+    k = max(1, int(spec.blur_ksize))
+    if k % 2 == 0:
+        k += 1
+    if mode == "gaussian":
+        return cv2.GaussianBlur(working, (k, k), 0.0)
+    if mode == "median":
+        return cv2.medianBlur(working, k)
+    if mode == "bilateral":
+        gray = _to_gray_plane_if_needed(working)
+        out = cv2.bilateralFilter(gray, d=max(3, k), sigmaColor=60.0, sigmaSpace=60.0)
+        if working.ndim == 3:
+            return cv2.cvtColor(out, cv2.COLOR_GRAY2BGR)
+        return out
+    return working
+
+
+def _apply_morph_emphasis(working: np.ndarray, spec: PreprocessSpec) -> np.ndarray:
+    if not spec.top_hat and not spec.black_hat:
+        return working
+    gray = _to_gray_plane_if_needed(working)
+    k = max(1, int(spec.morph_kernel))
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (k, k))
+    out = gray
+    if spec.top_hat:
+        out = cv2.morphologyEx(out, cv2.MORPH_TOPHAT, kernel)
+    if spec.black_hat:
+        out = cv2.morphologyEx(out, cv2.MORPH_BLACKHAT, kernel)
+    if working.ndim == 3:
+        return cv2.cvtColor(out, cv2.COLOR_GRAY2BGR)
+    return out
+
+
 def _apply_invert(working: np.ndarray, spec: PreprocessSpec) -> np.ndarray:
     if not bool(spec.invert):
         return working
@@ -258,6 +312,7 @@ def _apply_threshold_morph_smooth(working: np.ndarray, spec: PreprocessSpec) -> 
     if spec.threshold_mode == "none":
         return working
     gray = _to_gray_plane_if_needed(working)
+    thresh_flag = cv2.THRESH_BINARY_INV if bool(spec.threshold_invert) else cv2.THRESH_BINARY
     if spec.threshold_mode == "adaptive":
         block_size = int(spec.adaptive_block_size)
         if block_size < 3:
@@ -268,18 +323,21 @@ def _apply_threshold_morph_smooth(working: np.ndarray, spec: PreprocessSpec) -> 
             gray,
             255,
             cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-            cv2.THRESH_BINARY,
+            thresh_flag,
             block_size,
             float(spec.adaptive_c),
         )
     elif spec.threshold_mode == "otsu":
-        _ret, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        _ret, binary = cv2.threshold(gray, 0, 255, thresh_flag + cv2.THRESH_OTSU)
     else:
         return working
 
     out = binary
+    kernel_size = max(1, int(spec.morph_kernel))
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (kernel_size, kernel_size))
+    if spec.morph_open:
+        out = cv2.morphologyEx(out, cv2.MORPH_OPEN, kernel)
     if spec.morph_close:
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
         out = cv2.morphologyEx(out, cv2.MORPH_CLOSE, kernel)
 
     if spec.smooth:
@@ -295,9 +353,12 @@ def _preprocess_with_spec(image: np.ndarray, spec: PreprocessSpec) -> np.ndarray
         return working
 
     working = _apply_contrast(working, spec)
+    working = _apply_gamma(working, spec)
     working = _apply_unsharp(working, spec)
     working = _apply_denoise(working, spec)
+    working = _apply_blur(working, spec)
     working = _apply_invert(working, spec)
+    working = _apply_morph_emphasis(working, spec)
 
     scale = max(1, min(int(spec.scale_factor), 6))
     order = str(spec.preprocess_order or "scale_then_threshold").lower()
@@ -639,6 +700,288 @@ def _broad_configs() -> list[SweepConfig]:
     ]
 
 
+def _weird_configs() -> list[SweepConfig]:
+    return [
+        SweepConfig(
+            name="weird_invert_x6_nearest",
+            description="Invert + 6x nearest upscale.",
+            default_view=PreprocessSpec(scale_factor=6, scale_algo="nearest", invert=True),
+        ),
+        SweepConfig(
+            name="weird_invert_clahe_x4_nearest",
+            description="Invert + CLAHE + 4x nearest, no threshold.",
+            default_view=PreprocessSpec(
+                contrast_mode="clahe",
+                scale_factor=4,
+                scale_algo="nearest",
+                invert=True,
+            ),
+        ),
+        SweepConfig(
+            name="weird_adaptive_inv_ts_x6",
+            description="Invert + adaptive threshold then 6x nearest upscale.",
+            default_view=PreprocessSpec(
+                scale_factor=6,
+                scale_algo="lanczos",
+                threshold_mode="adaptive",
+                morph_close=False,
+                preprocess_order="threshold_then_scale",
+                binary_scale_algo="nearest",
+                adaptive_block_size=31,
+                adaptive_c=12.0,
+                invert=True,
+            ),
+        ),
+        SweepConfig(
+            name="weird_otsu_inv_ts_x6",
+            description="Invert + Otsu then 6x nearest upscale.",
+            default_view=PreprocessSpec(
+                scale_factor=6,
+                scale_algo="lanczos",
+                threshold_mode="otsu",
+                morph_close=False,
+                preprocess_order="threshold_then_scale",
+                binary_scale_algo="nearest",
+                invert=True,
+            ),
+        ),
+        SweepConfig(
+            name="weird_bgr_x4_unsharp_high",
+            description="BGR input + high unsharp + 4x cubic.",
+            default_view=PreprocessSpec(
+                input_mode="bgr",
+                scale_factor=4,
+                scale_algo="cubic",
+                unsharp=True,
+                unsharp_amount=1.0,
+                threshold_mode="none",
+            ),
+        ),
+        SweepConfig(
+            name="weird_bgr_median_inv_x4",
+            description="BGR + median denoise + invert + 4x nearest.",
+            default_view=PreprocessSpec(
+                input_mode="bgr",
+                scale_factor=4,
+                scale_algo="nearest",
+                denoise_mode="median3",
+                invert=True,
+            ),
+        ),
+        SweepConfig(
+            name="weird_unsharp_high_smooth_x6",
+            description="6x linear + high unsharp + Otsu + morph + smooth.",
+            default_view=PreprocessSpec(
+                scale_factor=6,
+                scale_algo="linear",
+                unsharp=True,
+                unsharp_amount=1.1,
+                threshold_mode="otsu",
+                morph_close=True,
+                smooth=True,
+            ),
+        ),
+        SweepConfig(
+            name="weird_adaptive_smooth_x5",
+            description="5x Lanczos + adaptive threshold + smooth, no morph.",
+            default_view=PreprocessSpec(
+                scale_factor=5,
+                scale_algo="lanczos",
+                threshold_mode="adaptive",
+                morph_close=False,
+                smooth=True,
+                adaptive_block_size=25,
+                adaptive_c=8.0,
+            ),
+        ),
+        SweepConfig(
+            name="weird_clahe_otsu_ts_x5",
+            description="CLAHE + Otsu then 5x nearest upscale.",
+            default_view=PreprocessSpec(
+                contrast_mode="clahe",
+                scale_factor=5,
+                scale_algo="lanczos",
+                threshold_mode="otsu",
+                morph_close=False,
+                preprocess_order="threshold_then_scale",
+                binary_scale_algo="nearest",
+            ),
+        ),
+        SweepConfig(
+            name="weird_gray_x5_cubic_median_unsharp",
+            description="5x cubic + median denoise + mild unsharp, no threshold.",
+            default_view=PreprocessSpec(
+                scale_factor=5,
+                scale_algo="cubic",
+                denoise_mode="median3",
+                unsharp=True,
+                unsharp_amount=0.3,
+                threshold_mode="none",
+            ),
+        ),
+        SweepConfig(
+            name="weird_inv_otsu_mc_smooth_x4",
+            description="Invert + Otsu + morph + smooth + 4x nearest.",
+            default_view=PreprocessSpec(
+                scale_factor=4,
+                scale_algo="nearest",
+                threshold_mode="otsu",
+                morph_close=True,
+                smooth=True,
+                invert=True,
+            ),
+        ),
+        SweepConfig(
+            name="weird_clahe_inv_adaptive_mv",
+            description="Invert + CLAHE + adaptive threshold with pipeline multiview.",
+            default_view=PreprocessSpec(
+                contrast_mode="clahe",
+                scale_factor=4,
+                scale_algo="lanczos",
+                threshold_mode="adaptive",
+                morph_close=False,
+                adaptive_block_size=29,
+                adaptive_c=10.0,
+                invert=True,
+            ),
+            multiview_mode="pipeline",
+        ),
+    ]
+
+
+def _ocr_best_configs() -> list[SweepConfig]:
+    return [
+        SweepConfig(
+            name="ocrbest_clahe_gamma09_x4_nearest",
+            description="CLAHE + gamma 0.9 + x4 nearest grayscale, no threshold.",
+            default_view=PreprocessSpec(
+                contrast_mode="clahe",
+                gamma=0.9,
+                scale_factor=4,
+                scale_algo="nearest",
+            ),
+        ),
+        SweepConfig(
+            name="ocrbest_bilateral_clahe_otsu_openclose",
+            description="Bilateral + CLAHE + Otsu + open/close at x4.",
+            default_view=PreprocessSpec(
+                contrast_mode="clahe",
+                blur_mode="bilateral",
+                scale_factor=4,
+                scale_algo="lanczos",
+                threshold_mode="otsu",
+                morph_open=True,
+                morph_close=True,
+                morph_kernel=2,
+            ),
+        ),
+        SweepConfig(
+            name="ocrbest_tophat_otsu_ts_x4",
+            description="Top-hat emphasis + Otsu then nearest x4 upscale.",
+            default_view=PreprocessSpec(
+                top_hat=True,
+                morph_kernel=3,
+                threshold_mode="otsu",
+                preprocess_order="threshold_then_scale",
+                scale_factor=4,
+                binary_scale_algo="nearest",
+            ),
+        ),
+        SweepConfig(
+            name="ocrbest_blackhat_otsu_x4",
+            description="Black-hat emphasis + x4 + Otsu threshold.",
+            default_view=PreprocessSpec(
+                black_hat=True,
+                morph_kernel=3,
+                scale_factor=4,
+                scale_algo="lanczos",
+                threshold_mode="otsu",
+                morph_close=False,
+            ),
+        ),
+        SweepConfig(
+            name="ocrbest_gamma12_otsu_inv_x4",
+            description="Gamma 1.2 + x4 + inverse Otsu.",
+            default_view=PreprocessSpec(
+                gamma=1.2,
+                scale_factor=4,
+                scale_algo="cubic",
+                threshold_mode="otsu",
+                threshold_invert=True,
+                morph_close=False,
+            ),
+        ),
+        SweepConfig(
+            name="ocrbest_gamma08_adaptive_x4",
+            description="Gamma 0.8 + x4 + adaptive threshold (block 21, C=6).",
+            default_view=PreprocessSpec(
+                gamma=0.8,
+                scale_factor=4,
+                scale_algo="nearest",
+                threshold_mode="adaptive",
+                adaptive_block_size=21,
+                adaptive_c=6.0,
+                morph_close=False,
+            ),
+        ),
+        SweepConfig(
+            name="ocrbest_bgr_unsharp_bilateral_x4",
+            description="BGR input + mild unsharp + bilateral + x4.",
+            default_view=PreprocessSpec(
+                input_mode="bgr",
+                unsharp=True,
+                unsharp_amount=0.35,
+                blur_mode="bilateral",
+                scale_factor=4,
+                scale_algo="cubic",
+            ),
+        ),
+        SweepConfig(
+            name="ocrbest_invert_clahe_adaptive_inv",
+            description="Invert + CLAHE + inverse adaptive threshold.",
+            default_view=PreprocessSpec(
+                invert=True,
+                contrast_mode="clahe",
+                threshold_mode="adaptive",
+                threshold_invert=True,
+                adaptive_block_size=25,
+                adaptive_c=8.0,
+                scale_factor=4,
+                scale_algo="nearest",
+                morph_close=False,
+            ),
+        ),
+        SweepConfig(
+            name="ocrbest_median_gaussian_stack_otsu",
+            description="Median denoise + Gaussian blur + x5 + Otsu.",
+            default_view=PreprocessSpec(
+                denoise_mode="median3",
+                blur_mode="gaussian",
+                blur_ksize=3,
+                scale_factor=5,
+                scale_algo="lanczos",
+                threshold_mode="otsu",
+                morph_close=True,
+                morph_kernel=2,
+            ),
+        ),
+        SweepConfig(
+            name="ocrbest_clahe_multiview_extreme",
+            description="CLAHE-heavy default with pipeline multiview.",
+            default_view=PreprocessSpec(
+                contrast_mode="clahe",
+                scale_factor=4,
+                scale_algo="lanczos",
+                unsharp=True,
+                unsharp_amount=0.45,
+                threshold_mode="otsu",
+                morph_close=True,
+            ),
+            multiview_mode="pipeline",
+        ),
+    ]
+
+
 def _parse_csv_ints(text: str) -> list[int]:
     return [int(item.strip()) for item in text.split(",") if item.strip()]
 
@@ -955,6 +1298,10 @@ def _select_configs(config_set: str) -> list[SweepConfig]:
         return _smoke_configs()
     if config_set == "broad":
         return _broad_configs()
+    if config_set == "weird":
+        return _weird_configs()
+    if config_set == "ocr_best":
+        return _ocr_best_configs()
     raise ValueError(f"Unsupported config set: {config_set}")
 
 
@@ -1009,6 +1356,9 @@ def _result_to_item(path: Path, result: Any, config: SweepConfig) -> dict[str, A
             "value": measurement.value,
             "unit": measurement.unit,
             "source": measurement.source,
+            "raw_ocr_text": measurement.raw_ocr_text,
+            "corrected_value": measurement.corrected_value,
+            "flags": list(measurement.flags or []),
         }
         for measurement in ai_result.measurements
     ]
@@ -1647,10 +1997,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--config-set",
-        choices=("smoke", "broad", "order_matrix", "order_matrix_plan", "manifest"),
+        choices=("smoke", "broad", "weird", "ocr_best", "order_matrix", "order_matrix_plan", "manifest"),
         default="broad",
         help=(
-            "smoke/broad presets; order_matrix = factorial from --matrix-* flags; "
+            "smoke/broad/weird/ocr_best presets; order_matrix = factorial from --matrix-* flags; "
             "order_matrix_plan = fixed 8-row bin/up/order ablation (3× Lanczos vs cubic where upscale on); manifest = JSON."
         ),
     )

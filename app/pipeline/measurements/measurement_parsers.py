@@ -195,6 +195,9 @@ def _postprocess_measurements(items: List[AiMeasurement]) -> List[AiMeasurement]
                 unit=unit,
                 source=item.source,
                 order_hint=item.order_hint,
+                raw_ocr_text=item.raw_ocr_text,
+                corrected_value=item.corrected_value,
+                flags=list(item.flags or []),
             )
         )
 
@@ -218,6 +221,9 @@ def _postprocess_measurements(items: List[AiMeasurement]) -> List[AiMeasurement]
                 unit=unit,
                 source=item.source,
                 order_hint=item.order_hint,
+                raw_ocr_text=item.raw_ocr_text,
+                corrected_value=item.corrected_value,
+                flags=list(item.flags or []),
             )
         )
 

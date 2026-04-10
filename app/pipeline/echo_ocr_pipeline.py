@@ -28,7 +28,11 @@ from app.pipeline.layout.line_segmenter import LineSegmenter, SegmentationResult
 from app.pipeline.transcription.line_transcriber import LineTranscriber, PanelTranscription
 from app.pipeline.lexicon.lexicon_builder import LexiconArtifact, build_lexicon_artifact
 from app.pipeline.lexicon.lexicon_reranker import LexiconReranker
-from app.pipeline.measurements.measurement_decoder import canonicalize_exact_line
+from app.pipeline.measurements.measurement_decoder import (
+    apply_safe_measurement_corrections,
+    canonicalize_exact_line,
+    parse_measurement_line,
+)
 from app.pipeline.output.echo_ocr_schema import MeasurementRecord
 from app.pipeline.output.echo_sidecar_writer import SidecarWriter
 from app.pipeline.ocr.ocr_engines import OcrEngine, OcrResult, OcrToken, build_engine
@@ -650,6 +654,7 @@ class EchoOcrPipeline(BasePipeline):
         )
         measurements = self._parse_transcribed_panel(panel, confidence=ocr.confidence)
         measurements = self._maybe_apply_panel_validator(panel, measurements, confidence=ocr.confidence)
+        measurements = apply_safe_measurement_corrections(measurements)
         if not measurements:
             if not panel.lines or ocr is None:
                 return detection, segmentation, None, panel, [], None
@@ -666,22 +671,29 @@ class EchoOcrPipeline(BasePipeline):
     ) -> AiResult:
         seen: dict[tuple[str, str, str], tuple[AiMeasurement, MeasurementRecord]] = {}
         for record in records:
-            key = (
-                record.measurement_name.lower().strip(),
-                record.measurement_value.strip(),
-                (record.measurement_unit or "").strip().lower(),
-            )
-            if key not in seen or record.parser_confidence > seen[key][1].parser_confidence:
-                seen[key] = (
+            decoded_line = parse_measurement_line(record.exact_line_text)
+            raw_value = decoded_line.value or record.measurement_value
+            raw_unit = (record.measurement_unit or decoded_line.unit or "").strip() or None
+            normalized_item = apply_safe_measurement_corrections(
+                [
                     AiMeasurement(
                         name=record.measurement_name,
-                        value=record.measurement_value,
-                        unit=record.measurement_unit or None,
+                        value=raw_value,
+                        unit=raw_unit,
                         source=f"exact_line:{record.exact_line_text}:{record.line_confidence:.3f}",
                         order_hint=record.text_order,
-                    ),
-                    record,
-                )
+                        raw_ocr_text=record.exact_line_text,
+                        corrected_value=record.measurement_value,
+                    )
+                ]
+            )[0]
+            key = (
+                record.measurement_name.lower().strip(),
+                normalized_item.value.strip(),
+                (normalized_item.unit or "").strip().lower(),
+            )
+            if key not in seen or record.parser_confidence > seen[key][1].parser_confidence:
+                seen[key] = (normalized_item, record)
         ordered = sorted(
             seen.values(),
             key=lambda item: (
@@ -886,6 +898,9 @@ class EchoOcrPipeline(BasePipeline):
                         unit=measurement.unit,
                         source=measurement.source,
                         order_hint=line_orders[int(order_hint)],
+                        raw_ocr_text=measurement.raw_ocr_text,
+                        corrected_value=measurement.corrected_value,
+                        flags=list(measurement.flags or []),
                     )
                 )
             else:
@@ -954,6 +969,9 @@ class EchoOcrPipeline(BasePipeline):
                             unit=measurement.unit,
                             source=source,
                             order_hint=measurement.order_hint,
+                            raw_ocr_text=measurement.raw_ocr_text,
+                            corrected_value=measurement.corrected_value,
+                            flags=list(measurement.flags or []),
                         )
                     )
                 continue
@@ -968,6 +986,9 @@ class EchoOcrPipeline(BasePipeline):
                         parser_source=parser_source,
                     ),
                     order_hint=line.order,
+                    raw_ocr_text=measurement.raw_ocr_text or line.text,
+                    corrected_value=measurement.corrected_value,
+                    flags=list(measurement.flags or []),
                 )
             )
         return attached

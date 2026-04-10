@@ -102,6 +102,9 @@ class AiMeasurement:
     unit: str | None = None
     source: str | None = None
     order_hint: int | None = None
+    raw_ocr_text: str | None = None
+    corrected_value: str | None = None
+    flags: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)

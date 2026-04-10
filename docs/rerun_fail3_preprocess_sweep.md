@@ -164,3 +164,27 @@ mamba run -n DL tesseract --version
 - `otsu_then_scale_x3_nearest_no_close`
 - `otsu_then_scale_x4_nearest_no_close`
 - `invert_gray_x3_lanczos`
+
+## OCR-best preset (correct command from `Master`)
+
+Use this when you want the dedicated OCR-oriented configs (`--config-set ocr_best`) and to guarantee all 3 fail files are included.
+
+```powershell
+Set-Location "C:\Users\G513\Documents\howest\Semester_5\Stage\StageOpdracht\Master"
+
+$env:OMP_NUM_THREADS = "1"
+$env:MKL_NUM_THREADS = "1"
+$env:OPENBLAS_NUM_THREADS = "1"
+$env:NUMEXPR_NUM_THREADS = "1"
+
+mamba run -n DL python -m app.tools.batch.sweep_preprocessing_headless `
+  ".." `
+  --recursive `
+  --pattern *.dcm `
+  --engine glm-ocr `
+  --config-set ocr_best `
+  --labels labels/labels.json `
+  --restrict-dicom-paths-file artifacts/ocr_redesign/fail3_paths.txt `
+  --max-frames 1 `
+  --output-dir "artifacts/ocr_redesign/preprocess_sweep_glm_fail3_ocrbest_$(Get-Date -Format 'yyyyMMddTHHmmss')"
+```

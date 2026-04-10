@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from app.pipeline.measurements.measurement_decoder import (
     canonicalize_exact_line,
+    decode_lines_to_measurements,
     line_pattern,
     parse_measurement_line,
 )
@@ -89,3 +90,32 @@ def test_canonicalize_exact_line_repairs_eval_label_near_misses() -> None:
     assert canonicalize_exact_line("AVS Vmax 2.6 cm2") == "AVA Vmax 2.6 cm2"
     assert canonicalize_exact_line("PRand PG 4.69 mmHg") == "PRend PG 4.69 mmHg"
     assert canonicalize_exact_line("LAAS A4C 24.5 cm2") == "LAAs A4C 24.5 cm2"
+
+
+def test_decode_lines_to_measurements_recovers_missing_leading_digit_for_safe_pg_rule() -> None:
+    items = decode_lines_to_measurements(["LVOT maxPG 2 mmHg"], confidence=0.95)
+
+    assert len(items) == 1
+    assert items[0].value == "12"
+    assert items[0].corrected_value == "12"
+    assert items[0].raw_ocr_text == "LVOT maxPG 2 mmHg"
+    assert "rule_recovered_leading_digit" in items[0].flags
+    assert "implausible_value" in items[0].flags
+
+
+def test_decode_lines_to_measurements_recovers_av_maxpg_missing_leading_digit() -> None:
+    items = decode_lines_to_measurements(["AV maxPG 6 mmHg"], confidence=0.95)
+
+    assert len(items) == 1
+    assert items[0].value == "16"
+    assert items[0].corrected_value == "16"
+    assert "rule_recovered_leading_digit" in items[0].flags
+
+
+def test_decode_lines_to_measurements_abstains_when_rule_not_safe_for_other_units() -> None:
+    items = decode_lines_to_measurements(["LVOT maxPG 2 cm"], confidence=0.95)
+
+    assert len(items) == 1
+    assert items[0].value == "2"
+    assert items[0].corrected_value == "2"
+    assert items[0].flags == []
