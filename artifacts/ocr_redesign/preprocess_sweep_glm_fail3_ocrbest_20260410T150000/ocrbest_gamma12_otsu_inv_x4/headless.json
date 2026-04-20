@@ -1,0 +1,104 @@
+{
+  "manifest": {
+    "run_type": "preprocess_sweep_headless",
+    "config_name": "ocrbest_gamma12_otsu_inv_x4",
+    "config": {
+      "name": "ocrbest_gamma12_otsu_inv_x4",
+      "description": "Gamma 1.2 + x4 + inverse Otsu.",
+      "default_view": {
+        "contrast_mode": "none",
+        "gamma": 1.2,
+        "scale_factor": 4,
+        "scale_algo": "cubic",
+        "unsharp": false,
+        "unsharp_amount": 0.5,
+        "threshold_mode": "otsu",
+        "threshold_invert": true,
+        "morph_close": false,
+        "morph_open": false,
+        "morph_kernel": 2,
+        "smooth": false,
+        "denoise_mode": "none",
+        "blur_mode": "none",
+        "blur_ksize": 3,
+        "top_hat": false,
+        "black_hat": false,
+        "invert": false,
+        "adaptive_block_size": 11,
+        "adaptive_c": 2.0,
+        "input_mode": "gray",
+        "preprocess_order": "scale_then_threshold",
+        "binary_scale_algo": "nearest"
+      },
+      "multiview_mode": "none"
+    },
+    "engine": "glm-ocr",
+    "started_at": "2026-04-10T13:21:24.883514+00:00",
+    "elapsed_s": 13.422,
+    "input_path": "C:\\Users\\G513\\Documents\\howest\\Semester_5\\Stage\\StageOpdracht\\Master",
+    "summary": {
+      "processed_files": 1,
+      "ok_files": 1,
+      "error_files": 0
+    }
+  },
+  "items": [
+    {
+      "dicom_path": "C:\\Users\\G513\\Documents\\howest\\Semester_5\\Stage\\StageOpdracht\\Master\\91243943_0007.dcm",
+      "status": "ok",
+      "measurements": [
+        {
+          "name": "1 IVSd",
+          "value": "1.2",
+          "unit": "cm",
+          "source": "exact_line:1 IVSd 1.2 cm:0.990"
+        },
+        {
+          "name": "LVIDd",
+          "value": "4.7",
+          "unit": "cm",
+          "source": "exact_line:LVIDd 4.7 cm:0.990"
+        },
+        {
+          "name": "LVPWd",
+          "value": "1.1",
+          "unit": "cm",
+          "source": "exact_line:LVPWd 1.1 cm:0.990"
+        }
+      ],
+      "line_predictions": [
+        {
+          "order": 1,
+          "text": "1 IVSd 1.2 cm",
+          "confidence": 0.99,
+          "parser_source": "primary"
+        },
+        {
+          "order": 2,
+          "text": "LVIDd 4.7 cm",
+          "confidence": 0.99,
+          "parser_source": "primary"
+        },
+        {
+          "order": 3,
+          "text": "LVPWd 1.1 cm",
+          "confidence": 0.99,
+          "parser_source": "primary"
+        }
+      ],
+      "metadata": {
+        "config_name": "ocrbest_gamma12_otsu_inv_x4",
+        "model_name": "echo-ocr:glm-ocr",
+        "record_count": 3,
+        "line_prediction_count": 3,
+        "parser_sources": [
+          "primary"
+        ],
+        "source_kinds": [
+          "pixel_ocr"
+        ]
+      },
+      "error": null
+    }
+  ]
+}

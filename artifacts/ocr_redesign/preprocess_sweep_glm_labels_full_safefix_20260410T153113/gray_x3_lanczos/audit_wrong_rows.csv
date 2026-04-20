@@ -1,0 +1,2 @@
+﻿"record_type","file_name","file_path","line_index","expected_text","predicted_text","label_match","value_match","unit_match","prefix_match","status","error"
+"wrong_line","92290733_0004.dcm","C:\Users\G513\Documents\howest\Semester_5\Stage\StageOpdracht\database_stage\files\p10\p10002430\s92290733\92290733_0004.dcm","3","%FS 16 %","%FS 6 %","True","False","True","True","ok",""

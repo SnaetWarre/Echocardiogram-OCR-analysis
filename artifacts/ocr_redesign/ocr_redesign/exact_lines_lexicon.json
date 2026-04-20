@@ -1,0 +1,2058 @@
+{
+  "artifact_version": 1,
+  "created_at": "2026-03-13T00:54:16.455549+00:00",
+  "labels_path": "labels/exact_lines.json",
+  "dataset_version": 1,
+  "dataset_task": "exact_roi_measurement_transcription",
+  "total_files": 43,
+  "total_lines": 101,
+  "split_counts": {
+    "validation": 43
+  },
+  "exact_line_frequencies": {
+    "1 IVSd 1.1 cm": 1,
+    "LVIDd 5.0 cm": 1,
+    "LVPWd 1.1 cm": 1,
+    "2 LA Diam 5.5 cm": 1,
+    "1 LVIDs 4.2 cm": 1,
+    "EF (Teich) 34 %": 1,
+    "%FS 16 %": 1,
+    "1 LVOT Diam 2.0 cm": 2,
+    "1 Ao asc 3.0 cm": 1,
+    "1 Ao Diam 3.1 cm": 1,
+    "1 TR Vmax 3.4 m/s": 1,
+    "TR maxPG 47 mmHg": 1,
+    "1 TR Vmax 2.7 m/s": 1,
+    "TR maxPG 29 mmHg": 1,
+    "2 RA LENGTH 6.1 cm": 1,
+    "1 LA LENGTH 6.0 cm": 1,
+    "1 E' Lat 0.06 m/s": 1,
+    "1 E' Sept 0.06 m/s": 1,
+    "1 MV E Vel 0.8 m/s": 1,
+    "MV DecT 287 m/s": 1,
+    "MV Dec Slope 3 m/s2": 1,
+    "MV A Vel 1.2 m/s": 1,
+    "MV E/A Ratio 0.7": 1,
+    "1 Ao Diam 3.2 cm": 1,
+    "1 LA Diam 4.0 cm": 1,
+    "1 Ao asc 3.2 cm": 1,
+    "1 IVSd 0.9 cm": 1,
+    "LVIDd 5.4 cm": 1,
+    "LVPWd 1.0 cm": 1,
+    "1 LVIDs 3.6 cm": 1,
+    "EF (Teich) 62 %": 1,
+    "%FS 34 %": 1,
+    "1 TR Vmax 1.9 m/s": 2,
+    "TR maxPG 14 mmHg": 2,
+    "1 PV Vmax 0.87 m/s": 1,
+    "PV maxPG 3 mmHg": 1,
+    "1 PV Vmax 0.96 m/s": 1,
+    "PV maxPG 4 mmHg": 1,
+    "1 TR Vmax 2.3 m/s": 1,
+    "TR maxPG 21 mmHg": 1,
+    "2 RA LENGTH 5.9 cm": 1,
+    "1 LA LENGTH 6.6 cm": 1,
+    "1 MV E Vel 0.7 m/s": 1,
+    "MV DecT 183 ms": 1,
+    "MV Dec Slope 4 m/s2": 1,
+    "MV A Vel 0.6 m/s": 1,
+    "MV E/A Ratio 1.2": 1,
+    "3 P Vein A 0.3 m/s": 1,
+    "2 P Vein D 0.4 m/s": 1,
+    "P Vein S/D Ratio 1.2": 1,
+    "1 P Vein S 0.5 m/s": 1,
+    "1 LALs A4C 5.8 cm": 1,
+    "LAAs A4C 19.5 cm2": 1,
+    "LAESV A-L A4C 56 ml": 1,
+    "1 LVLd A4C 7.18 cm": 1,
+    "LVEDV MOD A4C 105.47 ml": 1,
+    "LVEF MOD A4C 63.66 %": 1,
+    "SV MOD A4C 67.14 ml": 1,
+    "1 LVLs A4C 5.93 cm": 1,
+    "LVESV MOD A4C 38.32 ml": 1,
+    "1 E' Lat 0.09 m/s": 1,
+    "1 E' Sept 0.08 m/s": 1,
+    "1 LVOT Vmax 1.1 m/s": 1,
+    "LVOT maxPG 5 mmHg": 1,
+    "LVOT VTI 19.9 cm": 1,
+    "AVA Vmax 2.8 cm2": 1,
+    "AVA Vmax 2.3 cm2": 1,
+    "1 AV Vmax 1.3 m/s": 1,
+    "AV Vmean 1.0 m/s": 1,
+    "AV maxPG 6 mmHg": 1,
+    "AV meanPG 4 mmHg": 1,
+    "AV VTI 28 cm": 1,
+    "1 AV Vmax 1.1 m/s": 1,
+    "1 AV Vmean 0.9 m/s": 1,
+    "AV maxPG 5 mmHg": 1,
+    "AV meanPG 3 mmHg": 1,
+    "AV VTI 2.8 cm": 1,
+    "1 RVIDd 3.2 cm": 1,
+    "1 TR Vmax 2.1 m/s": 1,
+    "TR maxPG 17 mmHg": 1,
+    "LAESV (A-L) 70.05 ml": 1,
+    "LAESV Index (A-L) 31.99 ml/m2": 1,
+    "1 LALs A2C 6.0 cm": 1,
+    "LAAs A2C 24 cm2": 1,
+    "LAESV A-L A2C 84.0 ml": 1,
+    "1 LVLd A2C 7.76 cm": 1,
+    "LVEDV MOD A2C 93.58 ml": 1,
+    "LVEF Biplane 64 %": 1,
+    "LVEDV MOD BP 102 ml": 1,
+    "LVESV MOD BP 37 ml": 1,
+    "LVEF MOD A2C 62.09 %": 1,
+    "SV MOD A2C 58.10 ml": 1,
+    "1 LVLs A2C 6.07 cm": 1,
+    "LVESV MOD A2C 35.48 ml": 1,
+    "1 IVC 2.2 cm": 1,
+    "1 Ao Desc Diam 2.6 cm": 1,
+    "1 Ao Arch Diam 2.8 cm": 1,
+    "1 L 2.37 cm": 1
+  },
+  "label_frequencies": {
+    "ivsd": 2,
+    "lvidd": 2,
+    "lvpwd": 2,
+    "la diam": 2,
+    "lvids": 2,
+    "ef (teich)": 2,
+    "%fs": 2,
+    "lvot diam": 2,
+    "ao asc": 2,
+    "ao diam": 2,
+    "tr vmax": 6,
+    "tr maxpg": 6,
+    "ra length": 2,
+    "la length": 2,
+    "e' lat": 2,
+    "e' sept": 2,
+    "mv e vel": 2,
+    "mv dect": 2,
+    "mv dec slope 3 m/s": 1,
+    "mv a vel": 2,
+    "mv e/a ratio": 2,
+    "pv vmax": 2,
+    "pv maxpg": 2,
+    "mv dec slope 4 m/s": 1,
+    "p vein a": 1,
+    "p vein d": 1,
+    "p vein s/d ratio": 1,
+    "p vein s": 1,
+    "lals a4c": 1,
+    "laas a4c 19.5 cm": 1,
+    "laesv a-l a4c": 1,
+    "lvld a4c": 1,
+    "lvedv mod a4c": 1,
+    "lvef mod a4c": 1,
+    "sv mod a4c": 1,
+    "lvls a4c": 1,
+    "lvesv mod a4c": 1,
+    "lvot vmax": 1,
+    "lvot maxpg": 1,
+    "lvot vti": 1,
+    "ava vmax 2.8 cm": 1,
+    "ava vmax 2.3 cm": 1,
+    "av vmax": 2,
+    "av vmean": 2,
+    "av maxpg": 2,
+    "av meanpg": 2,
+    "av vti": 2,
+    "rvidd": 1,
+    "laesv (a-l)": 1,
+    "laesv index (a-l) 31.99 ml/m": 1,
+    "lals a2c": 1,
+    "laas a2c 24 cm": 1,
+    "laesv a-l a2c": 1,
+    "lvld a2c": 1,
+    "lvedv mod a2c": 1,
+    "lvef biplane": 1,
+    "lvedv mod bp": 1,
+    "lvesv mod bp": 1,
+    "lvef mod a2c": 1,
+    "sv mod a2c": 1,
+    "lvls a2c": 1,
+    "lvesv mod a2c": 1,
+    "ivc": 1,
+    "ao desc diam": 1,
+    "ao arch diam": 1,
+    "l": 1
+  },
+  "label_family_lines": {
+    "ivsd": [
+      "1 IVSd 0.9 cm",
+      "1 IVSd 1.1 cm"
+    ],
+    "lvidd": [
+      "LVIDd 5.0 cm",
+      "LVIDd 5.4 cm"
+    ],
+    "lvpwd": [
+      "LVPWd 1.0 cm",
+      "LVPWd 1.1 cm"
+    ],
+    "la diam": [
+      "1 LA Diam 4.0 cm",
+      "2 LA Diam 5.5 cm"
+    ],
+    "lvids": [
+      "1 LVIDs 3.6 cm",
+      "1 LVIDs 4.2 cm"
+    ],
+    "ef (teich)": [
+      "EF (Teich) 34 %",
+      "EF (Teich) 62 %"
+    ],
+    "%fs": [
+      "%FS 16 %",
+      "%FS 34 %"
+    ],
+    "lvot diam": [
+      "1 LVOT Diam 2.0 cm"
+    ],
+    "ao asc": [
+      "1 Ao asc 3.0 cm",
+      "1 Ao asc 3.2 cm"
+    ],
+    "ao diam": [
+      "1 Ao Diam 3.1 cm",
+      "1 Ao Diam 3.2 cm"
+    ],
+    "tr vmax": [
+      "1 TR Vmax 1.9 m/s",
+      "1 TR Vmax 2.1 m/s",
+      "1 TR Vmax 2.3 m/s",
+      "1 TR Vmax 2.7 m/s",
+      "1 TR Vmax 3.4 m/s"
+    ],
+    "tr maxpg": [
+      "TR maxPG 14 mmHg",
+      "TR maxPG 17 mmHg",
+      "TR maxPG 21 mmHg",
+      "TR maxPG 29 mmHg",
+      "TR maxPG 47 mmHg"
+    ],
+    "ra length": [
+      "2 RA LENGTH 5.9 cm",
+      "2 RA LENGTH 6.1 cm"
+    ],
+    "la length": [
+      "1 LA LENGTH 6.0 cm",
+      "1 LA LENGTH 6.6 cm"
+    ],
+    "e' lat": [
+      "1 E' Lat 0.06 m/s",
+      "1 E' Lat 0.09 m/s"
+    ],
+    "e' sept": [
+      "1 E' Sept 0.06 m/s",
+      "1 E' Sept 0.08 m/s"
+    ],
+    "mv e vel": [
+      "1 MV E Vel 0.7 m/s",
+      "1 MV E Vel 0.8 m/s"
+    ],
+    "mv dect": [
+      "MV DecT 183 ms",
+      "MV DecT 287 m/s"
+    ],
+    "mv dec slope 3 m/s": [
+      "MV Dec Slope 3 m/s2"
+    ],
+    "mv a vel": [
+      "MV A Vel 0.6 m/s",
+      "MV A Vel 1.2 m/s"
+    ],
+    "mv e/a ratio": [
+      "MV E/A Ratio 0.7",
+      "MV E/A Ratio 1.2"
+    ],
+    "pv vmax": [
+      "1 PV Vmax 0.87 m/s",
+      "1 PV Vmax 0.96 m/s"
+    ],
+    "pv maxpg": [
+      "PV maxPG 3 mmHg",
+      "PV maxPG 4 mmHg"
+    ],
+    "mv dec slope 4 m/s": [
+      "MV Dec Slope 4 m/s2"
+    ],
+    "p vein a": [
+      "3 P Vein A 0.3 m/s"
+    ],
+    "p vein d": [
+      "2 P Vein D 0.4 m/s"
+    ],
+    "p vein s/d ratio": [
+      "P Vein S/D Ratio 1.2"
+    ],
+    "p vein s": [
+      "1 P Vein S 0.5 m/s"
+    ],
+    "lals a4c": [
+      "1 LALs A4C 5.8 cm"
+    ],
+    "laas a4c 19.5 cm": [
+      "LAAs A4C 19.5 cm2"
+    ],
+    "laesv a-l a4c": [
+      "LAESV A-L A4C 56 ml"
+    ],
+    "lvld a4c": [
+      "1 LVLd A4C 7.18 cm"
+    ],
+    "lvedv mod a4c": [
+      "LVEDV MOD A4C 105.47 ml"
+    ],
+    "lvef mod a4c": [
+      "LVEF MOD A4C 63.66 %"
+    ],
+    "sv mod a4c": [
+      "SV MOD A4C 67.14 ml"
+    ],
+    "lvls a4c": [
+      "1 LVLs A4C 5.93 cm"
+    ],
+    "lvesv mod a4c": [
+      "LVESV MOD A4C 38.32 ml"
+    ],
+    "lvot vmax": [
+      "1 LVOT Vmax 1.1 m/s"
+    ],
+    "lvot maxpg": [
+      "LVOT maxPG 5 mmHg"
+    ],
+    "lvot vti": [
+      "LVOT VTI 19.9 cm"
+    ],
+    "ava vmax 2.8 cm": [
+      "AVA Vmax 2.8 cm2"
+    ],
+    "ava vmax 2.3 cm": [
+      "AVA Vmax 2.3 cm2"
+    ],
+    "av vmax": [
+      "1 AV Vmax 1.1 m/s",
+      "1 AV Vmax 1.3 m/s"
+    ],
+    "av vmean": [
+      "1 AV Vmean 0.9 m/s",
+      "AV Vmean 1.0 m/s"
+    ],
+    "av maxpg": [
+      "AV maxPG 5 mmHg",
+      "AV maxPG 6 mmHg"
+    ],
+    "av meanpg": [
+      "AV meanPG 3 mmHg",
+      "AV meanPG 4 mmHg"
+    ],
+    "av vti": [
+      "AV VTI 2.8 cm",
+      "AV VTI 28 cm"
+    ],
+    "rvidd": [
+      "1 RVIDd 3.2 cm"
+    ],
+    "laesv (a-l)": [
+      "LAESV (A-L) 70.05 ml"
+    ],
+    "laesv index (a-l) 31.99 ml/m": [
+      "LAESV Index (A-L) 31.99 ml/m2"
+    ],
+    "lals a2c": [
+      "1 LALs A2C 6.0 cm"
+    ],
+    "laas a2c 24 cm": [
+      "LAAs A2C 24 cm2"
+    ],
+    "laesv a-l a2c": [
+      "LAESV A-L A2C 84.0 ml"
+    ],
+    "lvld a2c": [
+      "1 LVLd A2C 7.76 cm"
+    ],
+    "lvedv mod a2c": [
+      "LVEDV MOD A2C 93.58 ml"
+    ],
+    "lvef biplane": [
+      "LVEF Biplane 64 %"
+    ],
+    "lvedv mod bp": [
+      "LVEDV MOD BP 102 ml"
+    ],
+    "lvesv mod bp": [
+      "LVESV MOD BP 37 ml"
+    ],
+    "lvef mod a2c": [
+      "LVEF MOD A2C 62.09 %"
+    ],
+    "sv mod a2c": [
+      "SV MOD A2C 58.10 ml"
+    ],
+    "lvls a2c": [
+      "1 LVLs A2C 6.07 cm"
+    ],
+    "lvesv mod a2c": [
+      "LVESV MOD A2C 35.48 ml"
+    ],
+    "ivc": [
+      "1 IVC 2.2 cm"
+    ],
+    "ao desc diam": [
+      "1 Ao Desc Diam 2.6 cm"
+    ],
+    "ao arch diam": [
+      "1 Ao Arch Diam 2.8 cm"
+    ],
+    "l": [
+      "1 L 2.37 cm"
+    ]
+  },
+  "label_unit_frequencies": {
+    "ivsd": {
+      "cm": 2
+    },
+    "lvidd": {
+      "cm": 2
+    },
+    "lvpwd": {
+      "cm": 2
+    },
+    "la diam": {
+      "cm": 2
+    },
+    "lvids": {
+      "cm": 2
+    },
+    "ef (teich)": {
+      "%": 2
+    },
+    "%fs": {
+      "%": 2
+    },
+    "lvot diam": {
+      "cm": 2
+    },
+    "ao asc": {
+      "cm": 2
+    },
+    "ao diam": {
+      "cm": 2
+    },
+    "tr vmax": {
+      "m/s": 6
+    },
+    "tr maxpg": {
+      "mmHg": 6
+    },
+    "ra length": {
+      "cm": 2
+    },
+    "la length": {
+      "cm": 2
+    },
+    "e' lat": {
+      "m/s": 2
+    },
+    "e' sept": {
+      "m/s": 2
+    },
+    "mv e vel": {
+      "m/s": 2
+    },
+    "mv dect": {
+      "m/s": 1,
+      "ms": 1
+    },
+    "mv a vel": {
+      "m/s": 2
+    },
+    "pv vmax": {
+      "m/s": 2
+    },
+    "pv maxpg": {
+      "mmHg": 2
+    },
+    "p vein a": {
+      "m/s": 1
+    },
+    "p vein d": {
+      "m/s": 1
+    },
+    "p vein s": {
+      "m/s": 1
+    },
+    "lals a4c": {
+      "cm": 1
+    },
+    "laesv a-l a4c": {
+      "ml": 1
+    },
+    "lvld a4c": {
+      "cm": 1
+    },
+    "lvedv mod a4c": {
+      "ml": 1
+    },
+    "lvef mod a4c": {
+      "%": 1
+    },
+    "sv mod a4c": {
+      "ml": 1
+    },
+    "lvls a4c": {
+      "cm": 1
+    },
+    "lvesv mod a4c": {
+      "ml": 1
+    },
+    "lvot vmax": {
+      "m/s": 1
+    },
+    "lvot maxpg": {
+      "mmHg": 1
+    },
+    "lvot vti": {
+      "cm": 1
+    },
+    "av vmax": {
+      "m/s": 2
+    },
+    "av vmean": {
+      "m/s": 2
+    },
+    "av maxpg": {
+      "mmHg": 2
+    },
+    "av meanpg": {
+      "mmHg": 2
+    },
+    "av vti": {
+      "cm": 2
+    },
+    "rvidd": {
+      "cm": 1
+    },
+    "laesv (a-l)": {
+      "ml": 1
+    },
+    "lals a2c": {
+      "cm": 1
+    },
+    "laesv a-l a2c": {
+      "ml": 1
+    },
+    "lvld a2c": {
+      "cm": 1
+    },
+    "lvedv mod a2c": {
+      "ml": 1
+    },
+    "lvef biplane": {
+      "%": 1
+    },
+    "lvedv mod bp": {
+      "ml": 1
+    },
+    "lvesv mod bp": {
+      "ml": 1
+    },
+    "lvef mod a2c": {
+      "%": 1
+    },
+    "sv mod a2c": {
+      "ml": 1
+    },
+    "lvls a2c": {
+      "cm": 1
+    },
+    "lvesv mod a2c": {
+      "ml": 1
+    },
+    "ivc": {
+      "cm": 1
+    },
+    "ao desc diam": {
+      "cm": 1
+    },
+    "ao arch diam": {
+      "cm": 1
+    },
+    "l": {
+      "cm": 1
+    }
+  },
+  "label_order_frequencies": {
+    "ivsd": {
+      "1": 2
+    },
+    "lvidd": {
+      "2": 2
+    },
+    "lvpwd": {
+      "3": 2
+    },
+    "la diam": {
+      "1": 2
+    },
+    "lvids": {
+      "2": 1,
+      "1": 1
+    },
+    "ef (teich)": {
+      "3": 1,
+      "2": 1
+    },
+    "%fs": {
+      "4": 1,
+      "3": 1
+    },
+    "lvot diam": {
+      "1": 2
+    },
+    "ao asc": {
+      "1": 2
+    },
+    "ao diam": {
+      "1": 2
+    },
+    "tr vmax": {
+      "1": 6
+    },
+    "tr maxpg": {
+      "2": 6
+    },
+    "ra length": {
+      "1": 2
+    },
+    "la length": {
+      "2": 2
+    },
+    "e' lat": {
+      "1": 2
+    },
+    "e' sept": {
+      "1": 2
+    },
+    "mv e vel": {
+      "1": 2
+    },
+    "mv dect": {
+      "2": 2
+    },
+    "mv dec slope 3 m/s": {
+      "3": 1
+    },
+    "mv a vel": {
+      "4": 2
+    },
+    "mv e/a ratio": {
+      "5": 2
+    },
+    "pv vmax": {
+      "1": 2
+    },
+    "pv maxpg": {
+      "2": 2
+    },
+    "mv dec slope 4 m/s": {
+      "3": 1
+    },
+    "p vein a": {
+      "1": 1
+    },
+    "p vein d": {
+      "2": 1
+    },
+    "p vein s/d ratio": {
+      "3": 1
+    },
+    "p vein s": {
+      "4": 1
+    },
+    "lals a4c": {
+      "1": 1
+    },
+    "laas a4c 19.5 cm": {
+      "2": 1
+    },
+    "laesv a-l a4c": {
+      "3": 1
+    },
+    "lvld a4c": {
+      "1": 1
+    },
+    "lvedv mod a4c": {
+      "2": 1
+    },
+    "lvef mod a4c": {
+      "1": 1
+    },
+    "sv mod a4c": {
+      "2": 1
+    },
+    "lvls a4c": {
+      "3": 1
+    },
+    "lvesv mod a4c": {
+      "4": 1
+    },
+    "lvot vmax": {
+      "1": 1
+    },
+    "lvot maxpg": {
+      "2": 1
+    },
+    "lvot vti": {
+      "3": 1
+    },
+    "ava vmax 2.8 cm": {
+      "1": 1
+    },
+    "ava vmax 2.3 cm": {
+      "2": 1
+    },
+    "av vmax": {
+      "3": 1,
+      "1": 1
+    },
+    "av vmean": {
+      "4": 1,
+      "2": 1
+    },
+    "av maxpg": {
+      "5": 1,
+      "3": 1
+    },
+    "av meanpg": {
+      "6": 1,
+      "4": 1
+    },
+    "av vti": {
+      "7": 1,
+      "5": 1
+    },
+    "rvidd": {
+      "1": 1
+    },
+    "laesv (a-l)": {
+      "1": 1
+    },
+    "laesv index (a-l) 31.99 ml/m": {
+      "2": 1
+    },
+    "lals a2c": {
+      "3": 1
+    },
+    "laas a2c 24 cm": {
+      "4": 1
+    },
+    "laesv a-l a2c": {
+      "5": 1
+    },
+    "lvld a2c": {
+      "1": 1
+    },
+    "lvedv mod a2c": {
+      "2": 1
+    },
+    "lvef biplane": {
+      "1": 1
+    },
+    "lvedv mod bp": {
+      "2": 1
+    },
+    "lvesv mod bp": {
+      "3": 1
+    },
+    "lvef mod a2c": {
+      "4": 1
+    },
+    "sv mod a2c": {
+      "5": 1
+    },
+    "lvls a2c": {
+      "6": 1
+    },
+    "lvesv mod a2c": {
+      "7": 1
+    },
+    "ivc": {
+      "1": 1
+    },
+    "ao desc diam": {
+      "1": 1
+    },
+    "ao arch diam": {
+      "1": 1
+    },
+    "l": {
+      "1": 1
+    }
+  },
+  "label_value_stats": {
+    "ivsd": {
+      "count": 2,
+      "min": 0.9,
+      "max": 1.1,
+      "mean": 1.0
+    },
+    "lvidd": {
+      "count": 2,
+      "min": 5.0,
+      "max": 5.4,
+      "mean": 5.2
+    },
+    "lvpwd": {
+      "count": 2,
+      "min": 1.0,
+      "max": 1.1,
+      "mean": 1.05
+    },
+    "la diam": {
+      "count": 2,
+      "min": 4.0,
+      "max": 5.5,
+      "mean": 4.75
+    },
+    "lvids": {
+      "count": 2,
+      "min": 3.6,
+      "max": 4.2,
+      "mean": 3.9000000000000004
+    },
+    "ef (teich)": {
+      "count": 2,
+      "min": 34.0,
+      "max": 62.0,
+      "mean": 48.0
+    },
+    "%fs": {
+      "count": 2,
+      "min": 16.0,
+      "max": 34.0,
+      "mean": 25.0
+    },
+    "lvot diam": {
+      "count": 2,
+      "min": 2.0,
+      "max": 2.0,
+      "mean": 2.0
+    },
+    "ao asc": {
+      "count": 2,
+      "min": 3.0,
+      "max": 3.2,
+      "mean": 3.1
+    },
+    "ao diam": {
+      "count": 2,
+      "min": 3.1,
+      "max": 3.2,
+      "mean": 3.1500000000000004
+    },
+    "tr vmax": {
+      "count": 6,
+      "min": 1.9,
+      "max": 3.4,
+      "mean": 2.3833333333333333
+    },
+    "tr maxpg": {
+      "count": 6,
+      "min": 14.0,
+      "max": 47.0,
+      "mean": 23.666666666666668
+    },
+    "ra length": {
+      "count": 2,
+      "min": 5.9,
+      "max": 6.1,
+      "mean": 6.0
+    },
+    "la length": {
+      "count": 2,
+      "min": 6.0,
+      "max": 6.6,
+      "mean": 6.3
+    },
+    "e' lat": {
+      "count": 2,
+      "min": 0.06,
+      "max": 0.09,
+      "mean": 0.075
+    },
+    "e' sept": {
+      "count": 2,
+      "min": 0.06,
+      "max": 0.08,
+      "mean": 0.07
+    },
+    "mv e vel": {
+      "count": 2,
+      "min": 0.7,
+      "max": 0.8,
+      "mean": 0.75
+    },
+    "mv dect": {
+      "count": 2,
+      "min": 183.0,
+      "max": 287.0,
+      "mean": 235.0
+    },
+    "mv dec slope 3 m/s": {
+      "count": 1,
+      "min": 2.0,
+      "max": 2.0,
+      "mean": 2.0
+    },
+    "mv a vel": {
+      "count": 2,
+      "min": 0.6,
+      "max": 1.2,
+      "mean": 0.8999999999999999
+    },
+    "mv e/a ratio": {
+      "count": 2,
+      "min": 0.7,
+      "max": 1.2,
+      "mean": 0.95
+    },
+    "pv vmax": {
+      "count": 2,
+      "min": 0.87,
+      "max": 0.96,
+      "mean": 0.915
+    },
+    "pv maxpg": {
+      "count": 2,
+      "min": 3.0,
+      "max": 4.0,
+      "mean": 3.5
+    },
+    "mv dec slope 4 m/s": {
+      "count": 1,
+      "min": 2.0,
+      "max": 2.0,
+      "mean": 2.0
+    },
+    "p vein a": {
+      "count": 1,
+      "min": 0.3,
+      "max": 0.3,
+      "mean": 0.3
+    },
+    "p vein d": {
+      "count": 1,
+      "min": 0.4,
+      "max": 0.4,
+      "mean": 0.4
+    },
+    "p vein s/d ratio": {
+      "count": 1,
+      "min": 1.2,
+      "max": 1.2,
+      "mean": 1.2
+    },
+    "p vein s": {
+      "count": 1,
+      "min": 0.5,
+      "max": 0.5,
+      "mean": 0.5
+    },
+    "lals a4c": {
+      "count": 1,
+      "min": 5.8,
+      "max": 5.8,
+      "mean": 5.8
+    },
+    "laas a4c 19.5 cm": {
+      "count": 1,
+      "min": 2.0,
+      "max": 2.0,
+      "mean": 2.0
+    },
+    "laesv a-l a4c": {
+      "count": 1,
+      "min": 56.0,
+      "max": 56.0,
+      "mean": 56.0
+    },
+    "lvld a4c": {
+      "count": 1,
+      "min": 7.18,
+      "max": 7.18,
+      "mean": 7.18
+    },
+    "lvedv mod a4c": {
+      "count": 1,
+      "min": 105.47,
+      "max": 105.47,
+      "mean": 105.47
+    },
+    "lvef mod a4c": {
+      "count": 1,
+      "min": 63.66,
+      "max": 63.66,
+      "mean": 63.66
+    },
+    "sv mod a4c": {
+      "count": 1,
+      "min": 67.14,
+      "max": 67.14,
+      "mean": 67.14
+    },
+    "lvls a4c": {
+      "count": 1,
+      "min": 5.93,
+      "max": 5.93,
+      "mean": 5.93
+    },
+    "lvesv mod a4c": {
+      "count": 1,
+      "min": 38.32,
+      "max": 38.32,
+      "mean": 38.32
+    },
+    "lvot vmax": {
+      "count": 1,
+      "min": 1.1,
+      "max": 1.1,
+      "mean": 1.1
+    },
+    "lvot maxpg": {
+      "count": 1,
+      "min": 5.0,
+      "max": 5.0,
+      "mean": 5.0
+    },
+    "lvot vti": {
+      "count": 1,
+      "min": 19.9,
+      "max": 19.9,
+      "mean": 19.9
+    },
+    "ava vmax 2.8 cm": {
+      "count": 1,
+      "min": 2.0,
+      "max": 2.0,
+      "mean": 2.0
+    },
+    "ava vmax 2.3 cm": {
+      "count": 1,
+      "min": 2.0,
+      "max": 2.0,
+      "mean": 2.0
+    },
+    "av vmax": {
+      "count": 2,
+      "min": 1.1,
+      "max": 1.3,
+      "mean": 1.2000000000000002
+    },
+    "av vmean": {
+      "count": 2,
+      "min": 0.9,
+      "max": 1.0,
+      "mean": 0.95
+    },
+    "av maxpg": {
+      "count": 2,
+      "min": 5.0,
+      "max": 6.0,
+      "mean": 5.5
+    },
+    "av meanpg": {
+      "count": 2,
+      "min": 3.0,
+      "max": 4.0,
+      "mean": 3.5
+    },
+    "av vti": {
+      "count": 2,
+      "min": 2.8,
+      "max": 28.0,
+      "mean": 15.4
+    },
+    "rvidd": {
+      "count": 1,
+      "min": 3.2,
+      "max": 3.2,
+      "mean": 3.2
+    },
+    "laesv (a-l)": {
+      "count": 1,
+      "min": 70.05,
+      "max": 70.05,
+      "mean": 70.05
+    },
+    "laesv index (a-l) 31.99 ml/m": {
+      "count": 1,
+      "min": 2.0,
+      "max": 2.0,
+      "mean": 2.0
+    },
+    "lals a2c": {
+      "count": 1,
+      "min": 6.0,
+      "max": 6.0,
+      "mean": 6.0
+    },
+    "laas a2c 24 cm": {
+      "count": 1,
+      "min": 2.0,
+      "max": 2.0,
+      "mean": 2.0
+    },
+    "laesv a-l a2c": {
+      "count": 1,
+      "min": 84.0,
+      "max": 84.0,
+      "mean": 84.0
+    },
+    "lvld a2c": {
+      "count": 1,
+      "min": 7.76,
+      "max": 7.76,
+      "mean": 7.76
+    },
+    "lvedv mod a2c": {
+      "count": 1,
+      "min": 93.58,
+      "max": 93.58,
+      "mean": 93.58
+    },
+    "lvef biplane": {
+      "count": 1,
+      "min": 64.0,
+      "max": 64.0,
+      "mean": 64.0
+    },
+    "lvedv mod bp": {
+      "count": 1,
+      "min": 102.0,
+      "max": 102.0,
+      "mean": 102.0
+    },
+    "lvesv mod bp": {
+      "count": 1,
+      "min": 37.0,
+      "max": 37.0,
+      "mean": 37.0
+    },
+    "lvef mod a2c": {
+      "count": 1,
+      "min": 62.09,
+      "max": 62.09,
+      "mean": 62.09
+    },
+    "sv mod a2c": {
+      "count": 1,
+      "min": 58.1,
+      "max": 58.1,
+      "mean": 58.1
+    },
+    "lvls a2c": {
+      "count": 1,
+      "min": 6.07,
+      "max": 6.07,
+      "mean": 6.07
+    },
+    "lvesv mod a2c": {
+      "count": 1,
+      "min": 35.48,
+      "max": 35.48,
+      "mean": 35.48
+    },
+    "ivc": {
+      "count": 1,
+      "min": 2.2,
+      "max": 2.2,
+      "mean": 2.2
+    },
+    "ao desc diam": {
+      "count": 1,
+      "min": 2.6,
+      "max": 2.6,
+      "mean": 2.6
+    },
+    "ao arch diam": {
+      "count": 1,
+      "min": 2.8,
+      "max": 2.8,
+      "mean": 2.8
+    },
+    "l": {
+      "count": 1,
+      "min": 2.37,
+      "max": 2.37,
+      "mean": 2.37
+    }
+  },
+  "token_frequencies": {
+    "ivsd": 2,
+    "lvidd": 2,
+    "lvpwd": 2,
+    "la": 4,
+    "diam": 8,
+    "lvids": 2,
+    "ef": 2,
+    "(teich)": 2,
+    "%fs": 2,
+    "lvot": 5,
+    "ao": 6,
+    "asc": 2,
+    "tr": 12,
+    "vmax": 13,
+    "maxpg": 11,
+    "ra": 2,
+    "length": 4,
+    "e'": 4,
+    "lat": 2,
+    "sept": 2,
+    "mv": 10,
+    "e": 2,
+    "vel": 4,
+    "dect": 2,
+    "dec": 2,
+    "slope": 2,
+    "3": 1,
+    "m/s": 2,
+    "a": 3,
+    "e/a": 2,
+    "ratio": 3,
+    "pv": 4,
+    "4": 1,
+    "p": 4,
+    "vein": 4,
+    "d": 1,
+    "s/d": 1,
+    "s": 1,
+    "lals": 2,
+    "a4c": 9,
+    "laas": 2,
+    "19.5": 1,
+    "cm": 4,
+    "laesv": 4,
+    "a-l": 2,
+    "lvld": 2,
+    "lvedv": 3,
+    "mod": 10,
+    "lvef": 3,
+    "sv": 2,
+    "lvls": 2,
+    "lvesv": 3,
+    "vti": 3,
+    "ava": 2,
+    "2.8": 1,
+    "2.3": 1,
+    "av": 10,
+    "vmean": 2,
+    "meanpg": 2,
+    "rvidd": 1,
+    "(a-l)": 2,
+    "index": 1,
+    "31.99": 1,
+    "ml/m": 1,
+    "a2c": 9,
+    "24": 1,
+    "biplane": 1,
+    "bp": 2,
+    "ivc": 1,
+    "desc": 1,
+    "arch": 1,
+    "l": 1
+  },
+  "unit_frequencies": {
+    "cm": 34,
+    "%": 7,
+    "m/s": 25,
+    "mmHg": 13,
+    "ms": 1,
+    "ml": 11
+  },
+  "prefix_frequencies": {
+    "1": 43,
+    "2": 4,
+    "3": 1
+  },
+  "line_pattern_frequencies": {
+    "<PREFIX> ivsd <VALUE> <UNIT:cm>": 2,
+    "lvidd <VALUE> <UNIT:cm>": 2,
+    "lvpwd <VALUE> <UNIT:cm>": 2,
+    "<PREFIX> la diam <VALUE> <UNIT:cm>": 2,
+    "<PREFIX> lvids <VALUE> <UNIT:cm>": 2,
+    "ef (teich) <VALUE> <UNIT:%>": 2,
+    "%fs <VALUE> <UNIT:%>": 2,
+    "<PREFIX> lvot diam <VALUE> <UNIT:cm>": 2,
+    "<PREFIX> ao asc <VALUE> <UNIT:cm>": 2,
+    "<PREFIX> ao diam <VALUE> <UNIT:cm>": 2,
+    "<PREFIX> tr vmax <VALUE> <UNIT:m/s>": 6,
+    "tr maxpg <VALUE> <UNIT:mmhg>": 6,
+    "<PREFIX> ra length <VALUE> <UNIT:cm>": 2,
+    "<PREFIX> la length <VALUE> <UNIT:cm>": 2,
+    "<PREFIX> e' lat <VALUE> <UNIT:m/s>": 2,
+    "<PREFIX> e' sept <VALUE> <UNIT:m/s>": 2,
+    "<PREFIX> mv e vel <VALUE> <UNIT:m/s>": 2,
+    "mv dect <VALUE> <UNIT:m/s>": 1,
+    "mv dec slope 3 m/s <VALUE>": 1,
+    "mv a vel <VALUE> <UNIT:m/s>": 2,
+    "mv e/a ratio <VALUE>": 2,
+    "<PREFIX> pv vmax <VALUE> <UNIT:m/s>": 2,
+    "pv maxpg <VALUE> <UNIT:mmhg>": 2,
+    "mv dect <VALUE> <UNIT:ms>": 1,
+    "mv dec slope 4 m/s <VALUE>": 1,
+    "<PREFIX> p vein a <VALUE> <UNIT:m/s>": 1,
+    "<PREFIX> p vein d <VALUE> <UNIT:m/s>": 1,
+    "p vein s/d ratio <VALUE>": 1,
+    "<PREFIX> p vein s <VALUE> <UNIT:m/s>": 1,
+    "<PREFIX> lals a4c <VALUE> <UNIT:cm>": 1,
+    "laas a4c 19.5 cm <VALUE>": 1,
+    "laesv a-l a4c <VALUE> <UNIT:ml>": 1,
+    "<PREFIX> lvld a4c <VALUE> <UNIT:cm>": 1,
+    "lvedv mod a4c <VALUE> <UNIT:ml>": 1,
+    "lvef mod a4c <VALUE> <UNIT:%>": 1,
+    "sv mod a4c <VALUE> <UNIT:ml>": 1,
+    "<PREFIX> lvls a4c <VALUE> <UNIT:cm>": 1,
+    "lvesv mod a4c <VALUE> <UNIT:ml>": 1,
+    "<PREFIX> lvot vmax <VALUE> <UNIT:m/s>": 1,
+    "lvot maxpg <VALUE> <UNIT:mmhg>": 1,
+    "lvot vti <VALUE> <UNIT:cm>": 1,
+    "ava vmax 2.8 cm <VALUE>": 1,
+    "ava vmax 2.3 cm <VALUE>": 1,
+    "<PREFIX> av vmax <VALUE> <UNIT:m/s>": 2,
+    "av vmean <VALUE> <UNIT:m/s>": 1,
+    "av maxpg <VALUE> <UNIT:mmhg>": 2,
+    "av meanpg <VALUE> <UNIT:mmhg>": 2,
+    "av vti <VALUE> <UNIT:cm>": 2,
+    "<PREFIX> av vmean <VALUE> <UNIT:m/s>": 1,
+    "<PREFIX> rvidd <VALUE> <UNIT:cm>": 1,
+    "laesv (a-l) <VALUE> <UNIT:ml>": 1,
+    "laesv index (a-l) 31.99 ml/m <VALUE>": 1,
+    "<PREFIX> lals a2c <VALUE> <UNIT:cm>": 1,
+    "laas a2c 24 cm <VALUE>": 1,
+    "laesv a-l a2c <VALUE> <UNIT:ml>": 1,
+    "<PREFIX> lvld a2c <VALUE> <UNIT:cm>": 1,
+    "lvedv mod a2c <VALUE> <UNIT:ml>": 1,
+    "lvef biplane <VALUE> <UNIT:%>": 1,
+    "lvedv mod bp <VALUE> <UNIT:ml>": 1,
+    "lvesv mod bp <VALUE> <UNIT:ml>": 1,
+    "lvef mod a2c <VALUE> <UNIT:%>": 1,
+    "sv mod a2c <VALUE> <UNIT:ml>": 1,
+    "<PREFIX> lvls a2c <VALUE> <UNIT:cm>": 1,
+    "lvesv mod a2c <VALUE> <UNIT:ml>": 1,
+    "<PREFIX> ivc <VALUE> <UNIT:cm>": 1,
+    "<PREFIX> ao desc diam <VALUE> <UNIT:cm>": 1,
+    "<PREFIX> ao arch diam <VALUE> <UNIT:cm>": 1,
+    "<PREFIX> l <VALUE> <UNIT:cm>": 1
+  },
+  "source_lines": [
+    {
+      "file_name": "92290733_0003.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002430/s92290733/92290733_0003.dcm",
+      "split": "validation",
+      "order": 1,
+      "text": "1 IVSd 1.1 cm"
+    },
+    {
+      "file_name": "92290733_0003.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002430/s92290733/92290733_0003.dcm",
+      "split": "validation",
+      "order": 2,
+      "text": "LVIDd 5.0 cm"
+    },
+    {
+      "file_name": "92290733_0003.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002430/s92290733/92290733_0003.dcm",
+      "split": "validation",
+      "order": 3,
+      "text": "LVPWd 1.1 cm"
+    },
+    {
+      "file_name": "92290733_0004.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002430/s92290733/92290733_0004.dcm",
+      "split": "validation",
+      "order": 1,
+      "text": "2 LA Diam 5.5 cm"
+    },
+    {
+      "file_name": "92290733_0004.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002430/s92290733/92290733_0004.dcm",
+      "split": "validation",
+      "order": 2,
+      "text": "1 LVIDs 4.2 cm"
+    },
+    {
+      "file_name": "92290733_0004.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002430/s92290733/92290733_0004.dcm",
+      "split": "validation",
+      "order": 3,
+      "text": "EF (Teich) 34 %"
+    },
+    {
+      "file_name": "92290733_0004.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002430/s92290733/92290733_0004.dcm",
+      "split": "validation",
+      "order": 4,
+      "text": "%FS 16 %"
+    },
+    {
+      "file_name": "92290733_0007.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002430/s92290733/92290733_0007.dcm",
+      "split": "validation",
+      "order": 1,
+      "text": "1 LVOT Diam 2.0 cm"
+    },
+    {
+      "file_name": "92290733_0008.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002430/s92290733/92290733_0008.dcm",
+      "split": "validation",
+      "order": 1,
+      "text": "1 Ao asc 3.0 cm"
+    },
+    {
+      "file_name": "92290733_0010.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002430/s92290733/92290733_0010.dcm",
+      "split": "validation",
+      "order": 1,
+      "text": "1 Ao Diam 3.1 cm"
+    },
+    {
+      "file_name": "92290733_0014.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002430/s92290733/92290733_0014.dcm",
+      "split": "validation",
+      "order": 1,
+      "text": "1 TR Vmax 3.4 m/s"
+    },
+    {
+      "file_name": "92290733_0014.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002430/s92290733/92290733_0014.dcm",
+      "split": "validation",
+      "order": 2,
+      "text": "TR maxPG 47 mmHg"
+    },
+    {
+      "file_name": "92290733_0019.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002430/s92290733/92290733_0019.dcm",
+      "split": "validation",
+      "order": 1,
+      "text": "1 TR Vmax 2.7 m/s"
+    },
+    {
+      "file_name": "92290733_0019.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002430/s92290733/92290733_0019.dcm",
+      "split": "validation",
+      "order": 2,
+      "text": "TR maxPG 29 mmHg"
+    },
+    {
+      "file_name": "92290733_0030.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002430/s92290733/92290733_0030.dcm",
+      "split": "validation",
+      "order": 1,
+      "text": "2 RA LENGTH 6.1 cm"
+    },
+    {
+      "file_name": "92290733_0030.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002430/s92290733/92290733_0030.dcm",
+      "split": "validation",
+      "order": 2,
+      "text": "1 LA LENGTH 6.0 cm"
+    },
+    {
+      "file_name": "92290733_0032.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002430/s92290733/92290733_0032.dcm",
+      "split": "validation",
+      "order": 1,
+      "text": "1 E' Lat 0.06 m/s"
+    },
+    {
+      "file_name": "92290733_0033.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002430/s92290733/92290733_0033.dcm",
+      "split": "validation",
+      "order": 1,
+      "text": "1 E' Sept 0.06 m/s"
+    },
+    {
+      "file_name": "92290733_0035.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002430/s92290733/92290733_0035.dcm",
+      "split": "validation",
+      "order": 1,
+      "text": "1 MV E Vel 0.8 m/s"
+    },
+    {
+      "file_name": "92290733_0035.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002430/s92290733/92290733_0035.dcm",
+      "split": "validation",
+      "order": 2,
+      "text": "MV DecT 287 m/s"
+    },
+    {
+      "file_name": "92290733_0035.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002430/s92290733/92290733_0035.dcm",
+      "split": "validation",
+      "order": 3,
+      "text": "MV Dec Slope 3 m/s2"
+    },
+    {
+      "file_name": "92290733_0035.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002430/s92290733/92290733_0035.dcm",
+      "split": "validation",
+      "order": 4,
+      "text": "MV A Vel 1.2 m/s"
+    },
+    {
+      "file_name": "92290733_0035.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002430/s92290733/92290733_0035.dcm",
+      "split": "validation",
+      "order": 5,
+      "text": "MV E/A Ratio 0.7"
+    },
+    {
+      "file_name": "94106955_0011.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0011.dcm",
+      "split": "validation",
+      "order": 1,
+      "text": "1 Ao Diam 3.2 cm"
+    },
+    {
+      "file_name": "94106955_0012.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0012.dcm",
+      "split": "validation",
+      "order": 1,
+      "text": "1 LVOT Diam 2.0 cm"
+    },
+    {
+      "file_name": "94106955_0013.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0013.dcm",
+      "split": "validation",
+      "order": 1,
+      "text": "1 LA Diam 4.0 cm"
+    },
+    {
+      "file_name": "94106955_0014.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0014.dcm",
+      "split": "validation",
+      "order": 1,
+      "text": "1 Ao asc 3.2 cm"
+    },
+    {
+      "file_name": "94106955_0016.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0016.dcm",
+      "split": "validation",
+      "order": 1,
+      "text": "1 IVSd 0.9 cm"
+    },
+    {
+      "file_name": "94106955_0016.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0016.dcm",
+      "split": "validation",
+      "order": 2,
+      "text": "LVIDd 5.4 cm"
+    },
+    {
+      "file_name": "94106955_0016.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0016.dcm",
+      "split": "validation",
+      "order": 3,
+      "text": "LVPWd 1.0 cm"
+    },
+    {
+      "file_name": "94106955_0017.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0017.dcm",
+      "split": "validation",
+      "order": 1,
+      "text": "1 LVIDs 3.6 cm"
+    },
+    {
+      "file_name": "94106955_0017.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0017.dcm",
+      "split": "validation",
+      "order": 2,
+      "text": "EF (Teich) 62 %"
+    },
+    {
+      "file_name": "94106955_0017.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0017.dcm",
+      "split": "validation",
+      "order": 3,
+      "text": "%FS 34 %"
+    },
+    {
+      "file_name": "94106955_0021.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0021.dcm",
+      "split": "validation",
+      "order": 1,
+      "text": "1 TR Vmax 1.9 m/s"
+    },
+    {
+      "file_name": "94106955_0021.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0021.dcm",
+      "split": "validation",
+      "order": 2,
+      "text": "TR maxPG 14 mmHg"
+    },
+    {
+      "file_name": "94106955_0024.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0024.dcm",
+      "split": "validation",
+      "order": 1,
+      "text": "1 PV Vmax 0.87 m/s"
+    },
+    {
+      "file_name": "94106955_0024.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0024.dcm",
+      "split": "validation",
+      "order": 2,
+      "text": "PV maxPG 3 mmHg"
+    },
+    {
+      "file_name": "94106955_0028.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0028.dcm",
+      "split": "validation",
+      "order": 1,
+      "text": "1 PV Vmax 0.96 m/s"
+    },
+    {
+      "file_name": "94106955_0028.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0028.dcm",
+      "split": "validation",
+      "order": 2,
+      "text": "PV maxPG 4 mmHg"
+    },
+    {
+      "file_name": "94106955_0034.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0034.dcm",
+      "split": "validation",
+      "order": 1,
+      "text": "1 TR Vmax 2.3 m/s"
+    },
+    {
+      "file_name": "94106955_0034.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0034.dcm",
+      "split": "validation",
+      "order": 2,
+      "text": "TR maxPG 21 mmHg"
+    },
+    {
+      "file_name": "94106955_0035.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0035.dcm",
+      "split": "validation",
+      "order": 1,
+      "text": "1 TR Vmax 1.9 m/s"
+    },
+    {
+      "file_name": "94106955_0035.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0035.dcm",
+      "split": "validation",
+      "order": 2,
+      "text": "TR maxPG 14 mmHg"
+    },
+    {
+      "file_name": "94106955_0044.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0044.dcm",
+      "split": "validation",
+      "order": 1,
+      "text": "2 RA LENGTH 5.9 cm"
+    },
+    {
+      "file_name": "94106955_0044.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0044.dcm",
+      "split": "validation",
+      "order": 2,
+      "text": "1 LA LENGTH 6.6 cm"
+    },
+    {
+      "file_name": "94106955_0046.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0046.dcm",
+      "split": "validation",
+      "order": 1,
+      "text": "1 MV E Vel 0.7 m/s"
+    },
+    {
+      "file_name": "94106955_0046.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0046.dcm",
+      "split": "validation",
+      "order": 2,
+      "text": "MV DecT 183 ms"
+    },
+    {
+      "file_name": "94106955_0046.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0046.dcm",
+      "split": "validation",
+      "order": 3,
+      "text": "MV Dec Slope 4 m/s2"
+    },
+    {
+      "file_name": "94106955_0046.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0046.dcm",
+      "split": "validation",
+      "order": 4,
+      "text": "MV A Vel 0.6 m/s"
+    },
+    {
+      "file_name": "94106955_0046.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0046.dcm",
+      "split": "validation",
+      "order": 5,
+      "text": "MV E/A Ratio 1.2"
+    },
+    {
+      "file_name": "94106955_0050.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0050.dcm",
+      "split": "validation",
+      "order": 1,
+      "text": "3 P Vein A 0.3 m/s"
+    },
+    {
+      "file_name": "94106955_0050.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0050.dcm",
+      "split": "validation",
+      "order": 2,
+      "text": "2 P Vein D 0.4 m/s"
+    },
+    {
+      "file_name": "94106955_0050.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0050.dcm",
+      "split": "validation",
+      "order": 3,
+      "text": "P Vein S/D Ratio 1.2"
+    },
+    {
+      "file_name": "94106955_0050.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0050.dcm",
+      "split": "validation",
+      "order": 4,
+      "text": "1 P Vein S 0.5 m/s"
+    },
+    {
+      "file_name": "94106955_0051.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0051.dcm",
+      "split": "validation",
+      "order": 1,
+      "text": "1 LALs A4C 5.8 cm"
+    },
+    {
+      "file_name": "94106955_0051.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0051.dcm",
+      "split": "validation",
+      "order": 2,
+      "text": "LAAs A4C 19.5 cm2"
+    },
+    {
+      "file_name": "94106955_0051.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0051.dcm",
+      "split": "validation",
+      "order": 3,
+      "text": "LAESV A-L A4C 56 ml"
+    },
+    {
+      "file_name": "94106955_0053.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0053.dcm",
+      "split": "validation",
+      "order": 1,
+      "text": "1 LVLd A4C 7.18 cm"
+    },
+    {
+      "file_name": "94106955_0053.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0053.dcm",
+      "split": "validation",
+      "order": 2,
+      "text": "LVEDV MOD A4C 105.47 ml"
+    },
+    {
+      "file_name": "94106955_0054.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0054.dcm",
+      "split": "validation",
+      "order": 1,
+      "text": "LVEF MOD A4C 63.66 %"
+    },
+    {
+      "file_name": "94106955_0054.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0054.dcm",
+      "split": "validation",
+      "order": 2,
+      "text": "SV MOD A4C 67.14 ml"
+    },
+    {
+      "file_name": "94106955_0054.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0054.dcm",
+      "split": "validation",
+      "order": 3,
+      "text": "1 LVLs A4C 5.93 cm"
+    },
+    {
+      "file_name": "94106955_0054.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0054.dcm",
+      "split": "validation",
+      "order": 4,
+      "text": "LVESV MOD A4C 38.32 ml"
+    },
+    {
+      "file_name": "94106955_0055.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0055.dcm",
+      "split": "validation",
+      "order": 1,
+      "text": "1 E' Lat 0.09 m/s"
+    },
+    {
+      "file_name": "94106955_0056.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0056.dcm",
+      "split": "validation",
+      "order": 1,
+      "text": "1 E' Sept 0.08 m/s"
+    },
+    {
+      "file_name": "94106955_0061.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0061.dcm",
+      "split": "validation",
+      "order": 1,
+      "text": "1 LVOT Vmax 1.1 m/s"
+    },
+    {
+      "file_name": "94106955_0061.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0061.dcm",
+      "split": "validation",
+      "order": 2,
+      "text": "LVOT maxPG 5 mmHg"
+    },
+    {
+      "file_name": "94106955_0061.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0061.dcm",
+      "split": "validation",
+      "order": 3,
+      "text": "LVOT VTI 19.9 cm"
+    },
+    {
+      "file_name": "94106955_0062.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0062.dcm",
+      "split": "validation",
+      "order": 1,
+      "text": "AVA Vmax 2.8 cm2"
+    },
+    {
+      "file_name": "94106955_0062.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0062.dcm",
+      "split": "validation",
+      "order": 2,
+      "text": "AVA Vmax 2.3 cm2"
+    },
+    {
+      "file_name": "94106955_0062.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0062.dcm",
+      "split": "validation",
+      "order": 3,
+      "text": "1 AV Vmax 1.3 m/s"
+    },
+    {
+      "file_name": "94106955_0062.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0062.dcm",
+      "split": "validation",
+      "order": 4,
+      "text": "AV Vmean 1.0 m/s"
+    },
+    {
+      "file_name": "94106955_0062.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0062.dcm",
+      "split": "validation",
+      "order": 5,
+      "text": "AV maxPG 6 mmHg"
+    },
+    {
+      "file_name": "94106955_0062.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0062.dcm",
+      "split": "validation",
+      "order": 6,
+      "text": "AV meanPG 4 mmHg"
+    },
+    {
+      "file_name": "94106955_0062.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0062.dcm",
+      "split": "validation",
+      "order": 7,
+      "text": "AV VTI 28 cm"
+    },
+    {
+      "file_name": "94106955_0064.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0064.dcm",
+      "split": "validation",
+      "order": 1,
+      "text": "1 AV Vmax 1.1 m/s"
+    },
+    {
+      "file_name": "94106955_0064.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0064.dcm",
+      "split": "validation",
+      "order": 2,
+      "text": "1 AV Vmean 0.9 m/s"
+    },
+    {
+      "file_name": "94106955_0064.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0064.dcm",
+      "split": "validation",
+      "order": 3,
+      "text": "AV maxPG 5 mmHg"
+    },
+    {
+      "file_name": "94106955_0064.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0064.dcm",
+      "split": "validation",
+      "order": 4,
+      "text": "AV meanPG 3 mmHg"
+    },
+    {
+      "file_name": "94106955_0064.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0064.dcm",
+      "split": "validation",
+      "order": 5,
+      "text": "AV VTI 2.8 cm"
+    },
+    {
+      "file_name": "94106955_0066.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0066.dcm",
+      "split": "validation",
+      "order": 1,
+      "text": "1 RVIDd 3.2 cm"
+    },
+    {
+      "file_name": "94106955_0069.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0069.dcm",
+      "split": "validation",
+      "order": 1,
+      "text": "1 TR Vmax 2.1 m/s"
+    },
+    {
+      "file_name": "94106955_0069.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0069.dcm",
+      "split": "validation",
+      "order": 2,
+      "text": "TR maxPG 17 mmHg"
+    },
+    {
+      "file_name": "94106955_0071.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0071.dcm",
+      "split": "validation",
+      "order": 1,
+      "text": "LAESV (A-L) 70.05 ml"
+    },
+    {
+      "file_name": "94106955_0071.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0071.dcm",
+      "split": "validation",
+      "order": 2,
+      "text": "LAESV Index (A-L) 31.99 ml/m2"
+    },
+    {
+      "file_name": "94106955_0071.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0071.dcm",
+      "split": "validation",
+      "order": 3,
+      "text": "1 LALs A2C 6.0 cm"
+    },
+    {
+      "file_name": "94106955_0071.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0071.dcm",
+      "split": "validation",
+      "order": 4,
+      "text": "LAAs A2C 24 cm2"
+    },
+    {
+      "file_name": "94106955_0071.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0071.dcm",
+      "split": "validation",
+      "order": 5,
+      "text": "LAESV A-L A2C 84.0 ml"
+    },
+    {
+      "file_name": "94106955_0074.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0074.dcm",
+      "split": "validation",
+      "order": 1,
+      "text": "1 LVLd A2C 7.76 cm"
+    },
+    {
+      "file_name": "94106955_0074.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0074.dcm",
+      "split": "validation",
+      "order": 2,
+      "text": "LVEDV MOD A2C 93.58 ml"
+    },
+    {
+      "file_name": "94106955_0075.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0075.dcm",
+      "split": "validation",
+      "order": 1,
+      "text": "LVEF Biplane 64 %"
+    },
+    {
+      "file_name": "94106955_0075.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0075.dcm",
+      "split": "validation",
+      "order": 2,
+      "text": "LVEDV MOD BP 102 ml"
+    },
+    {
+      "file_name": "94106955_0075.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0075.dcm",
+      "split": "validation",
+      "order": 3,
+      "text": "LVESV MOD BP 37 ml"
+    },
+    {
+      "file_name": "94106955_0075.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0075.dcm",
+      "split": "validation",
+      "order": 4,
+      "text": "LVEF MOD A2C 62.09 %"
+    },
+    {
+      "file_name": "94106955_0075.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0075.dcm",
+      "split": "validation",
+      "order": 5,
+      "text": "SV MOD A2C 58.10 ml"
+    },
+    {
+      "file_name": "94106955_0075.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0075.dcm",
+      "split": "validation",
+      "order": 6,
+      "text": "1 LVLs A2C 6.07 cm"
+    },
+    {
+      "file_name": "94106955_0075.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0075.dcm",
+      "split": "validation",
+      "order": 7,
+      "text": "LVESV MOD A2C 35.48 ml"
+    },
+    {
+      "file_name": "94106955_0090.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0090.dcm",
+      "split": "validation",
+      "order": 1,
+      "text": "1 IVC 2.2 cm"
+    },
+    {
+      "file_name": "94106955_0092.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0092.dcm",
+      "split": "validation",
+      "order": 1,
+      "text": "1 Ao Desc Diam 2.6 cm"
+    },
+    {
+      "file_name": "94106955_0096.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0096.dcm",
+      "split": "validation",
+      "order": 1,
+      "text": "1 Ao Arch Diam 2.8 cm"
+    },
+    {
+      "file_name": "94106955_0099.dcm",
+      "file_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/database_stage/files/p10/p10002221/s94106955/94106955_0099.dcm",
+      "split": "validation",
+      "order": 1,
+      "text": "1 L 2.37 cm"
+    }
+  ]
+}

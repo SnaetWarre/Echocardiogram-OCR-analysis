@@ -1,0 +1,279 @@
+{
+  "manifest": {
+    "run_type": "preprocess_sweep_headless",
+    "config_name": "invert_gray_x3_lanczos",
+    "config": {
+      "name": "invert_gray_x3_lanczos",
+      "description": "Inverted grayscale with x3 Lanczos upscale.",
+      "default_view": {
+        "contrast_mode": "none",
+        "scale_factor": 3,
+        "scale_algo": "lanczos",
+        "unsharp": false,
+        "unsharp_amount": 0.5,
+        "threshold_mode": "none",
+        "morph_close": false,
+        "smooth": false,
+        "denoise_mode": "none",
+        "invert": true,
+        "adaptive_block_size": 11,
+        "adaptive_c": 2.0,
+        "input_mode": "gray",
+        "preprocess_order": "scale_then_threshold",
+        "binary_scale_algo": "nearest"
+      },
+      "multiview_mode": "none"
+    },
+    "engine": "tesseract",
+    "started_at": "2026-04-10T12:12:37.869959+00:00",
+    "elapsed_s": 2.148,
+    "input_path": "C:\\Users\\G513\\Documents\\howest\\Semester_5\\Stage\\StageOpdracht",
+    "summary": {
+      "processed_files": 3,
+      "ok_files": 3,
+      "error_files": 0
+    }
+  },
+  "items": [
+    {
+      "dicom_path": "C:\\Users\\G513\\Documents\\howest\\Semester_5\\Stage\\StageOpdracht\\database_stage\\files\\p10\\p10002430\\s92290733\\92290733_0004.dcm",
+      "status": "ok",
+      "measurements": [
+        {
+          "name": "2 LA Diam",
+          "value": "5.5",
+          "unit": "cm",
+          "source": "exact_line:2 LA Diam 5.5 cm:0.753"
+        },
+        {
+          "name": "1 LVIDs",
+          "value": "4.2",
+          "unit": null,
+          "source": "exact_line:1 LVIDs 4.2:0.812"
+        },
+        {
+          "name": "EF (Teich)",
+          "value": "34",
+          "unit": "%",
+          "source": "exact_line:EF (Teich) 34 %:0.925"
+        },
+        {
+          "name": "%FS",
+          "value": "16",
+          "unit": null,
+          "source": "exact_line:%FS 16:0.597"
+        }
+      ],
+      "line_predictions": [
+        {
+          "order": 1,
+          "text": "2 LA Diam 5.5 cm",
+          "confidence": 0.7533333333333333,
+          "parser_source": "primary_family_repair"
+        },
+        {
+          "order": 2,
+          "text": "1 LVIDs 4.2",
+          "confidence": 0.8125,
+          "parser_source": "primary"
+        },
+        {
+          "order": 3,
+          "text": "EF (Teich) 34 %",
+          "confidence": 0.925,
+          "parser_source": "primary"
+        },
+        {
+          "order": 4,
+          "text": "%FS 16",
+          "confidence": 0.5966666666666667,
+          "parser_source": "primary"
+        }
+      ],
+      "metadata": {
+        "config_name": "invert_gray_x3_lanczos",
+        "model_name": "echo-ocr:tesseract",
+        "record_count": 4,
+        "line_prediction_count": 4,
+        "parser_sources": [
+          "primary",
+          "primary_family_repair"
+        ],
+        "source_kinds": [
+          "pixel_ocr"
+        ]
+      },
+      "error": null
+    },
+    {
+      "dicom_path": "C:\\Users\\G513\\Documents\\howest\\Semester_5\\Stage\\StageOpdracht\\database_stage\\files\\p10\\p10003731\\s91243943\\91243943_0052.dcm",
+      "status": "ok",
+      "measurements": [
+        {
+          "name": "LVOT maxPG",
+          "value": "12",
+          "unit": null,
+          "source": "exact_line:LVOT maxPG 12:0.790"
+        },
+        {
+          "name": "LVOT VTI",
+          "value": "37.3",
+          "unit": "cm",
+          "source": "exact_line:LVOT VTI 37.3 cm:0.737"
+        }
+      ],
+      "line_predictions": [
+        {
+          "order": 0,
+          "text": "So bag",
+          "confidence": 0.175,
+          "parser_source": "primary"
+        },
+        {
+          "order": 1,
+          "text": "1 LVOT Vmax",
+          "confidence": 0.8480000000000001,
+          "parser_source": "primary"
+        },
+        {
+          "order": 2,
+          "text": "LVOT maxPG 12",
+          "confidence": 0.79,
+          "parser_source": "primary"
+        },
+        {
+          "order": 3,
+          "text": "LVOT VTI 37.3 cm",
+          "confidence": 0.7366666666666667,
+          "parser_source": "primary"
+        }
+      ],
+      "metadata": {
+        "config_name": "invert_gray_x3_lanczos",
+        "model_name": "echo-ocr:tesseract",
+        "record_count": 2,
+        "line_prediction_count": 4,
+        "parser_sources": [
+          "primary"
+        ],
+        "source_kinds": [
+          "pixel_ocr"
+        ]
+      },
+      "error": null
+    },
+    {
+      "dicom_path": "C:\\Users\\G513\\Documents\\howest\\Semester_5\\Stage\\StageOpdracht\\database_stage\\files\\p10\\p10003731\\s91243943\\91243943_0053.dcm",
+      "status": "ok",
+      "measurements": [
+        {
+          "name": "o",
+          "value": "4",
+          "unit": null,
+          "source": "exact_line:o 4:0.195"
+        },
+        {
+          "name": "AVA Vmax",
+          "value": "2.9",
+          "unit": null,
+          "source": "exact_line:AVA Vmax 2.9:0.897"
+        },
+        {
+          "name": "AVA (VTI)",
+          "value": "3.3",
+          "unit": "cm2",
+          "source": "exact_line:AVA (VTI) 3.3 cm2:0.130"
+        },
+        {
+          "name": "1 AV Vmean",
+          "value": "1.2",
+          "unit": null,
+          "source": "exact_line:1 AV Vmean 1.2:0.857"
+        },
+        {
+          "name": "AV maxPG",
+          "value": "16",
+          "unit": null,
+          "source": "exact_line:AV maxPG 16:0.675"
+        },
+        {
+          "name": "AV meanPG",
+          "value": "7",
+          "unit": null,
+          "source": "exact_line:AV meanPG 7:0.695"
+        },
+        {
+          "name": "AV VTl",
+          "value": "39",
+          "unit": null,
+          "source": "exact_line:AV VTl 39:0.612"
+        }
+      ],
+      "line_predictions": [
+        {
+          "order": 0,
+          "text": "o 4",
+          "confidence": 0.195,
+          "parser_source": "primary"
+        },
+        {
+          "order": 1,
+          "text": "AVA Vmax 2.9",
+          "confidence": 0.8975,
+          "parser_source": "primary"
+        },
+        {
+          "order": 2,
+          "text": "AVA (VTI) 3.3 cm2",
+          "confidence": 0.13,
+          "parser_source": "primary_lexicon_repair"
+        },
+        {
+          "order": 3,
+          "text": "1 AV Vmax",
+          "confidence": 0.85,
+          "parser_source": "primary"
+        },
+        {
+          "order": 4,
+          "text": "1 AV Vmean 1.2",
+          "confidence": 0.8574999999999999,
+          "parser_source": "primary_family_repair"
+        },
+        {
+          "order": 5,
+          "text": "AV maxPG 16",
+          "confidence": 0.6749999999999999,
+          "parser_source": "primary"
+        },
+        {
+          "order": 6,
+          "text": "AV meanPG 7",
+          "confidence": 0.695,
+          "parser_source": "primary"
+        },
+        {
+          "order": 7,
+          "text": "AV VTl 39",
+          "confidence": 0.6124999999999999,
+          "parser_source": "primary"
+        }
+      ],
+      "metadata": {
+        "config_name": "invert_gray_x3_lanczos",
+        "model_name": "echo-ocr:tesseract",
+        "record_count": 7,
+        "line_prediction_count": 8,
+        "parser_sources": [
+          "primary",
+          "primary_family_repair",
+          "primary_lexicon_repair"
+        ],
+        "source_kinds": [
+          "pixel_ocr"
+        ]
+      },
+      "error": null
+    }
+  ]
+}

@@ -1,0 +1,85 @@
+{
+  "manifest": {
+    "run_type": "preprocess_sweep_headless",
+    "config_name": "ocrbest_blackhat_otsu_x4",
+    "config": {
+      "name": "ocrbest_blackhat_otsu_x4",
+      "description": "Black-hat emphasis + x4 + Otsu threshold.",
+      "default_view": {
+        "contrast_mode": "none",
+        "gamma": 1.0,
+        "scale_factor": 4,
+        "scale_algo": "lanczos",
+        "unsharp": false,
+        "unsharp_amount": 0.5,
+        "threshold_mode": "otsu",
+        "threshold_invert": false,
+        "morph_close": false,
+        "morph_open": false,
+        "morph_kernel": 3,
+        "smooth": false,
+        "denoise_mode": "none",
+        "blur_mode": "none",
+        "blur_ksize": 3,
+        "top_hat": false,
+        "black_hat": true,
+        "invert": false,
+        "adaptive_block_size": 11,
+        "adaptive_c": 2.0,
+        "input_mode": "gray",
+        "preprocess_order": "scale_then_threshold",
+        "binary_scale_algo": "nearest"
+      },
+      "multiview_mode": "none"
+    },
+    "engine": "glm-ocr",
+    "started_at": "2026-04-10T13:21:11.907900+00:00",
+    "elapsed_s": 12.931,
+    "input_path": "C:\\Users\\G513\\Documents\\howest\\Semester_5\\Stage\\StageOpdracht\\Master",
+    "summary": {
+      "processed_files": 1,
+      "ok_files": 1,
+      "error_files": 0
+    }
+  },
+  "items": [
+    {
+      "dicom_path": "C:\\Users\\G513\\Documents\\howest\\Semester_5\\Stage\\StageOpdracht\\Master\\91243943_0007.dcm",
+      "status": "ok",
+      "measurements": [],
+      "line_predictions": [
+        {
+          "order": 1,
+          "text": "'''markdown",
+          "confidence": 0.99,
+          "parser_source": "primary"
+        },
+        {
+          "order": 2,
+          "text": "'''markdown",
+          "confidence": 0.99,
+          "parser_source": "primary"
+        },
+        {
+          "order": 3,
+          "text": "'''markdown",
+          "confidence": 0.99,
+          "parser_source": "primary"
+        }
+      ],
+      "metadata": {
+        "config_name": "ocrbest_blackhat_otsu_x4",
+        "model_name": "echo-ocr:glm-ocr",
+        "record_count": 0,
+        "line_prediction_count": 3,
+        "parser_sources": [
+          "primary"
+        ],
+        "source_kinds": [
+          "pixel_ocr"
+        ]
+      },
+      "error": null
+    }
+  ]
+}

@@ -1,0 +1,273 @@
+{
+  "manifest": {
+    "run_type": "preprocess_sweep_headless",
+    "config_name": "gray_x4_lanczos",
+    "config": {
+      "name": "gray_x4_lanczos",
+      "description": "Grayscale only with x4 Lanczos upscale.",
+      "default_view": {
+        "contrast_mode": "none",
+        "scale_factor": 4,
+        "scale_algo": "lanczos",
+        "unsharp": false,
+        "unsharp_amount": 0.5,
+        "threshold_mode": "none",
+        "morph_close": false,
+        "smooth": false,
+        "denoise_mode": "none",
+        "invert": false,
+        "adaptive_block_size": 11,
+        "adaptive_c": 2.0,
+        "input_mode": "gray",
+        "preprocess_order": "scale_then_threshold",
+        "binary_scale_algo": "nearest"
+      },
+      "multiview_mode": "none"
+    },
+    "engine": "glm-ocr",
+    "started_at": "2026-04-10T10:51:23.708729+00:00",
+    "elapsed_s": 25.829,
+    "input_path": "C:\\Users\\G513\\Documents\\howest\\Semester_5\\Stage\\StageOpdracht",
+    "summary": {
+      "processed_files": 3,
+      "ok_files": 3,
+      "error_files": 0
+    }
+  },
+  "items": [
+    {
+      "dicom_path": "C:\\Users\\G513\\Documents\\howest\\Semester_5\\Stage\\StageOpdracht\\database_stage\\files\\p10\\p10002430\\s92290733\\92290733_0004.dcm",
+      "status": "ok",
+      "measurements": [
+        {
+          "name": "2 LA Diam",
+          "value": "5.5",
+          "unit": "cm",
+          "source": "exact_line:2 LA Diam 5.5 cm:0.990"
+        },
+        {
+          "name": "1 LVIDs",
+          "value": "4.2",
+          "unit": "cm",
+          "source": "exact_line:1 LVIDs 4.2 cm:0.990"
+        },
+        {
+          "name": "EF (Teich)",
+          "value": "34",
+          "unit": "%",
+          "source": "exact_line:EF (Teich) 34 %:0.990"
+        },
+        {
+          "name": "%FS",
+          "value": "6",
+          "unit": "%",
+          "source": "exact_line:%FS 6 %:0.990"
+        }
+      ],
+      "line_predictions": [
+        {
+          "order": 1,
+          "text": "2 LA Diam 5.5 cm",
+          "confidence": 0.99,
+          "parser_source": "primary"
+        },
+        {
+          "order": 2,
+          "text": "1 LVIDs 4.2 cm",
+          "confidence": 0.99,
+          "parser_source": "primary"
+        },
+        {
+          "order": 3,
+          "text": "EF (Teich) 34 %",
+          "confidence": 0.99,
+          "parser_source": "primary"
+        },
+        {
+          "order": 4,
+          "text": "%FS 6 %",
+          "confidence": 0.99,
+          "parser_source": "primary_family_repair"
+        }
+      ],
+      "metadata": {
+        "config_name": "gray_x4_lanczos",
+        "model_name": "echo-ocr:glm-ocr",
+        "record_count": 4,
+        "line_prediction_count": 4,
+        "parser_sources": [
+          "primary",
+          "primary_family_repair"
+        ],
+        "source_kinds": [
+          "pixel_ocr"
+        ]
+      },
+      "error": null
+    },
+    {
+      "dicom_path": "C:\\Users\\G513\\Documents\\howest\\Semester_5\\Stage\\StageOpdracht\\database_stage\\files\\p10\\p10003731\\s91243943\\91243943_0052.dcm",
+      "status": "ok",
+      "measurements": [
+        {
+          "name": "1 LVOT Vmax",
+          "value": "1.7",
+          "unit": "m/s",
+          "source": "exact_line:1 LVOT Vmax 1.7 m/s:0.990"
+        },
+        {
+          "name": "LVOT maxPG",
+          "value": "2",
+          "unit": "mmHg",
+          "source": "exact_line:LVOT maxPG 2 mmHg:0.990"
+        },
+        {
+          "name": "LVOT VTI",
+          "value": "37.3",
+          "unit": "cm",
+          "source": "exact_line:LVOT VTI 37.3 cm:0.990"
+        }
+      ],
+      "line_predictions": [
+        {
+          "order": 1,
+          "text": "1 LVOT Vmax 1.7 m/s",
+          "confidence": 0.99,
+          "parser_source": "primary"
+        },
+        {
+          "order": 2,
+          "text": "LVOT maxPG 2 mmHg",
+          "confidence": 0.99,
+          "parser_source": "primary_family_repair"
+        },
+        {
+          "order": 3,
+          "text": "LVOT VTI 37.3 cm",
+          "confidence": 0.99,
+          "parser_source": "primary"
+        }
+      ],
+      "metadata": {
+        "config_name": "gray_x4_lanczos",
+        "model_name": "echo-ocr:glm-ocr",
+        "record_count": 3,
+        "line_prediction_count": 3,
+        "parser_sources": [
+          "primary",
+          "primary_family_repair"
+        ],
+        "source_kinds": [
+          "pixel_ocr"
+        ]
+      },
+      "error": null
+    },
+    {
+      "dicom_path": "C:\\Users\\G513\\Documents\\howest\\Semester_5\\Stage\\StageOpdracht\\database_stage\\files\\p10\\p10003731\\s91243943\\91243943_0053.dcm",
+      "status": "ok",
+      "measurements": [
+        {
+          "name": "AVA Vmax",
+          "value": "2.9",
+          "unit": "cm2",
+          "source": "exact_line:AVA Vmax 2.9 cm2:0.990"
+        },
+        {
+          "name": "AVA (VTI)",
+          "value": "3.3",
+          "unit": "cm2",
+          "source": "exact_line:AVA (VTI) 3.3 cm2:0.990"
+        },
+        {
+          "name": "1 AV Vmax",
+          "value": "2.0",
+          "unit": "m/s",
+          "source": "exact_line:1 AV Vmax 2.0 m/s:0.990"
+        },
+        {
+          "name": "1 AV Vmean",
+          "value": "1.2",
+          "unit": "m/s",
+          "source": "exact_line:1 AV Vmean 1.2 m/s:0.990"
+        },
+        {
+          "name": "AV maxPG",
+          "value": "6",
+          "unit": "mmHg",
+          "source": "exact_line:AV maxPG 6 mmHg:0.990"
+        },
+        {
+          "name": "AV meanPG",
+          "value": "7",
+          "unit": "mmHg",
+          "source": "exact_line:AV meanPG 7 mmHg:0.990"
+        },
+        {
+          "name": "AV VTI",
+          "value": "39",
+          "unit": "cm",
+          "source": "exact_line:AV VTI 39 cm:0.990"
+        }
+      ],
+      "line_predictions": [
+        {
+          "order": 1,
+          "text": "AVA Vmax 2.9 cm2",
+          "confidence": 0.99,
+          "parser_source": "primary"
+        },
+        {
+          "order": 2,
+          "text": "AVA (VTI) 3.3 cm2",
+          "confidence": 0.99,
+          "parser_source": "primary"
+        },
+        {
+          "order": 3,
+          "text": "1 AV Vmax 2.0 m/s",
+          "confidence": 0.99,
+          "parser_source": "primary"
+        },
+        {
+          "order": 4,
+          "text": "1 AV Vmean 1.2 m/s",
+          "confidence": 0.99,
+          "parser_source": "primary_family_repair"
+        },
+        {
+          "order": 5,
+          "text": "AV maxPG 6 mmHg",
+          "confidence": 0.99,
+          "parser_source": "primary_family_repair"
+        },
+        {
+          "order": 6,
+          "text": "AV meanPG 7 mmHg",
+          "confidence": 0.99,
+          "parser_source": "primary"
+        },
+        {
+          "order": 7,
+          "text": "AV VTI 39 cm",
+          "confidence": 0.99,
+          "parser_source": "primary"
+        }
+      ],
+      "metadata": {
+        "config_name": "gray_x4_lanczos",
+        "model_name": "echo-ocr:glm-ocr",
+        "record_count": 7,
+        "line_prediction_count": 7,
+        "parser_sources": [
+          "primary",
+          "primary_family_repair"
+        ],
+        "source_kinds": [
+          "pixel_ocr"
+        ]
+      },
+      "error": null
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+config_name,engine,description,exact_match_rate,line_match_rate,value_match_rate,label_match_rate,prefix_match_rate,detection_rate,delta_exact_vs_baseline,elapsed_s,processed_files,ok_files,error_files
+ocrbest_bilateral_clahe_otsu_openclose,glm-ocr,Bilateral + CLAHE + Otsu + open/close at x4.,0.7857142857142857,0.7857142857142857,0.7857142857142857,1.0,1.0,1.0,,24.714,3,3,0
+ocrbest_clahe_gamma09_x4_nearest,glm-ocr,"CLAHE + gamma 0.9 + x4 nearest grayscale, no threshold.",0.7857142857142857,0.7857142857142857,0.7857142857142857,1.0,1.0,1.0,,25.304,3,3,0
+ocrbest_gamma12_otsu_inv_x4,glm-ocr,Gamma 1.2 + x4 + inverse Otsu.,0.7857142857142857,0.7857142857142857,0.7857142857142857,1.0,1.0,1.0,,25.556,3,3,0
+ocrbest_gamma08_adaptive_x4,glm-ocr,"Gamma 0.8 + x4 + adaptive threshold (block 21, C=6).",0.7857142857142857,0.7857142857142857,0.7857142857142857,1.0,1.0,1.0,,25.749,3,3,0
+ocrbest_bgr_unsharp_bilateral_x4,glm-ocr,BGR input + mild unsharp + bilateral + x4.,0.7857142857142857,0.7857142857142857,0.7857142857142857,1.0,1.0,1.0,,26.238,3,3,0
+ocrbest_clahe_multiview_extreme,glm-ocr,CLAHE-heavy default with pipeline multiview.,0.7857142857142857,0.7857142857142857,0.7857142857142857,1.0,1.0,1.0,,42.774,3,3,0
+ocrbest_invert_clahe_adaptive_inv,glm-ocr,Invert + CLAHE + inverse adaptive threshold.,0.7142857142857143,0.7142857142857143,0.7857142857142857,0.9285714285714286,0.9285714285714286,1.0,,24.884,3,3,0
+ocrbest_median_gaussian_stack_otsu,glm-ocr,Median denoise + Gaussian blur + x5 + Otsu.,0.6428571428571429,0.6428571428571429,0.7857142857142857,0.9285714285714286,0.9285714285714286,1.0,,25.473,3,3,0
+ocrbest_tophat_otsu_ts_x4,glm-ocr,Top-hat emphasis + Otsu then nearest x4 upscale.,0.5714285714285714,0.5714285714285714,0.7142857142857143,0.7142857142857143,0.8571428571428571,1.0,,25.231,3,3,0
+ocrbest_blackhat_otsu_x4,glm-ocr,Black-hat emphasis + x4 + Otsu threshold.,0.0,0.0,0.0,0.0,0.0,1.0,,23.141,3,3,0

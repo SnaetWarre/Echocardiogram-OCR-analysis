@@ -1,0 +1,172 @@
+{
+  "manifest": {
+    "run_type": "preprocess_sweep_headless",
+    "config_name": "adaptive_weak_single",
+    "config": {
+      "name": "adaptive_weak_single",
+      "description": "Weaker adaptive threshold (block 21, C=6), x3 Lanczos, no morph close.",
+      "default_view": {
+        "contrast_mode": "none",
+        "scale_factor": 3,
+        "scale_algo": "lanczos",
+        "unsharp": false,
+        "unsharp_amount": 0.5,
+        "threshold_mode": "adaptive",
+        "morph_close": false,
+        "smooth": false,
+        "denoise_mode": "none",
+        "invert": false,
+        "adaptive_block_size": 21,
+        "adaptive_c": 6.0,
+        "input_mode": "gray",
+        "preprocess_order": "scale_then_threshold",
+        "binary_scale_algo": "nearest"
+      },
+      "multiview_mode": "none"
+    },
+    "engine": "tesseract",
+    "started_at": "2026-04-10T12:12:31.420187+00:00",
+    "elapsed_s": 2.147,
+    "input_path": "C:\\Users\\G513\\Documents\\howest\\Semester_5\\Stage\\StageOpdracht",
+    "summary": {
+      "processed_files": 3,
+      "ok_files": 3,
+      "error_files": 0
+    }
+  },
+  "items": [
+    {
+      "dicom_path": "C:\\Users\\G513\\Documents\\howest\\Semester_5\\Stage\\StageOpdracht\\database_stage\\files\\p10\\p10002430\\s92290733\\92290733_0004.dcm",
+      "status": "ok",
+      "measurements": [],
+      "line_predictions": [
+        {
+          "order": 1,
+          "text": "SLALEMD S35 cm",
+          "confidence": 0.0,
+          "parser_source": "primary"
+        },
+        {
+          "order": 2,
+          "text": "a eVIDS AS2ICIM",
+          "confidence": 0.04666666666666667,
+          "parser_source": "primary"
+        },
+        {
+          "order": 3,
+          "text": "EF EF (Teich) )imeo4avo",
+          "confidence": 0.04,
+          "parser_source": "primary"
+        },
+        {
+          "order": 4,
+          "text": "GS we",
+          "confidence": 0.395,
+          "parser_source": "primary"
+        }
+      ],
+      "metadata": {
+        "config_name": "adaptive_weak_single",
+        "model_name": "echo-ocr:tesseract",
+        "record_count": 0,
+        "line_prediction_count": 4,
+        "parser_sources": [
+          "primary"
+        ],
+        "source_kinds": [
+          "pixel_ocr"
+        ]
+      },
+      "error": null
+    },
+    {
+      "dicom_path": "C:\\Users\\G513\\Documents\\howest\\Semester_5\\Stage\\StageOpdracht\\database_stage\\files\\p10\\p10003731\\s91243943\\91243943_0052.dcm",
+      "status": "ok",
+      "measurements": [],
+      "line_predictions": [
+        {
+          "order": 1,
+          "text": "elVOTeVimaxi otf OS",
+          "confidence": 0.25333333333333335,
+          "parser_source": "primary"
+        },
+        {
+          "order": 3,
+          "text": "EVOTAVTI WS CH",
+          "confidence": 0.3433333333333333,
+          "parser_source": "primary"
+        }
+      ],
+      "metadata": {
+        "config_name": "adaptive_weak_single",
+        "model_name": "echo-ocr:tesseract",
+        "record_count": 0,
+        "line_prediction_count": 2,
+        "parser_sources": [
+          "primary"
+        ],
+        "source_kinds": [
+          "pixel_ocr"
+        ]
+      },
+      "error": null
+    },
+    {
+      "dicom_path": "C:\\Users\\G513\\Documents\\howest\\Semester_5\\Stage\\StageOpdracht\\database_stage\\files\\p10\\p10003731\\s91243943\\91243943_0053.dcm",
+      "status": "ok",
+      "measurements": [
+        {
+          "name": "SIPAVAVINIAXt",
+          "value": "2",
+          "unit": ") GS",
+          "source": "exact_line:SIPAVAVINIAXt 2) GS:0.337"
+        }
+      ],
+      "line_predictions": [
+        {
+          "order": 3,
+          "text": "SIPAVAVINIAXt 2) GS",
+          "confidence": 0.33666666666666667,
+          "parser_source": "primary"
+        },
+        {
+          "order": 4,
+          "text": "AUTEN Lens",
+          "confidence": 0.49,
+          "parser_source": "primary"
+        },
+        {
+          "order": 5,
+          "text": "FAVimax PGR GImmerg)",
+          "confidence": 0.06666666666666667,
+          "parser_source": "primary"
+        },
+        {
+          "order": 6,
+          "text": "AVImeaneGmeammrig",
+          "confidence": 0.0,
+          "parser_source": "primary"
+        },
+        {
+          "order": 7,
+          "text": "AVANT CD",
+          "confidence": 0.3333333333333333,
+          "parser_source": "primary"
+        }
+      ],
+      "metadata": {
+        "config_name": "adaptive_weak_single",
+        "model_name": "echo-ocr:tesseract",
+        "record_count": 1,
+        "line_prediction_count": 5,
+        "parser_sources": [
+          "primary"
+        ],
+        "source_kinds": [
+          "pixel_ocr"
+        ]
+      },
+      "error": null
+    }
+  ]
+}

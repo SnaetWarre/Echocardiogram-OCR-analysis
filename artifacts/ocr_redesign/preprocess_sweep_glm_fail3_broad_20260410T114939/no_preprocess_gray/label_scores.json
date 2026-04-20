@@ -1,0 +1,518 @@
+{
+  "manifest": {
+    "run_type": "preprocess_sweep_label_scores",
+    "config_name": "no_preprocess_gray",
+    "config": {
+      "name": "no_preprocess_gray",
+      "description": "Grayscale only, no upscale, no sharpening, no binarization, no multiview.",
+      "default_view": {
+        "contrast_mode": "none",
+        "scale_factor": 1,
+        "scale_algo": "linear",
+        "unsharp": false,
+        "unsharp_amount": 0.5,
+        "threshold_mode": "none",
+        "morph_close": false,
+        "smooth": false,
+        "denoise_mode": "none",
+        "invert": false,
+        "adaptive_block_size": 11,
+        "adaptive_c": 2.0,
+        "input_mode": "gray",
+        "preprocess_order": "scale_then_threshold",
+        "binary_scale_algo": "nearest"
+      },
+      "multiview_mode": "none"
+    },
+    "engine": "glm-ocr",
+    "labels_path": "C:\\Users\\G513\\Documents\\howest\\Semester_5\\Stage\\StageOpdracht\\Master\\labels\\labels.json",
+    "split_filter": [
+      "validation"
+    ]
+  },
+  "summary": {
+    "labeled_files": 3,
+    "files_with_predictions": 3,
+    "total_labels": 14,
+    "exact_matches": 11,
+    "line_matches": 11,
+    "value_matches": 11,
+    "label_matches": 14,
+    "prefix_matches": 14,
+    "exact_match_rate": 0.7857142857142857,
+    "line_match_rate": 0.7857142857142857,
+    "value_match_rate": 0.7857142857142857,
+    "label_match_rate": 1.0,
+    "prefix_match_rate": 1.0,
+    "detection_rate": 1.0,
+    "elapsed_s": 26.473,
+    "processed_files": 3,
+    "ok_files": 3,
+    "error_files": 0
+  },
+  "file_details": [
+    {
+      "file_path": "C:\\Users\\G513\\Documents\\howest\\Semester_5\\Stage\\StageOpdracht\\database_stage\\files\\p10\\p10002430\\s92290733\\92290733_0004.dcm",
+      "file_name": "92290733_0004.dcm",
+      "split": "validation",
+      "status": "ok",
+      "error": null,
+      "expected_lines": [
+        "2 LA Diam 5.5 cm",
+        "1 LVIDs 4.2 cm",
+        "EF (Teich) 34 %",
+        "%FS 16 %"
+      ],
+      "predicted_measurements": [
+        {
+          "name": "2 LA Diam",
+          "value": "5.5",
+          "unit": "cm"
+        },
+        {
+          "name": "1 LVIDs",
+          "value": "4.2",
+          "unit": "cm"
+        },
+        {
+          "name": "EF (Teich)",
+          "value": "34",
+          "unit": "%"
+        },
+        {
+          "name": "%FS",
+          "value": "6",
+          "unit": "%"
+        },
+        {
+          "name": "2 LA Diam 5.5 cm",
+          "value": null,
+          "unit": null
+        },
+        {
+          "name": "1 LVIDs 4.2 cm",
+          "value": null,
+          "unit": null
+        },
+        {
+          "name": "EF (Teich) 34 %",
+          "value": null,
+          "unit": null
+        },
+        {
+          "name": "%FS 6 %",
+          "value": null,
+          "unit": null
+        }
+      ],
+      "exact_matches": 3,
+      "line_matches": 3,
+      "value_matches": 3,
+      "label_matches": 4,
+      "prefix_matches": 4,
+      "total_labels": 4,
+      "matches": [
+        {
+          "expected_text": "2 LA Diam 5.5 cm",
+          "predicted_text": "2 LA Diam 5.5 cm",
+          "expected_prefix": "2",
+          "predicted_prefix": "2",
+          "expected_label": "LA Diam",
+          "predicted_label": "LA Diam",
+          "expected_value": "5.5",
+          "predicted_value": "5.5",
+          "expected_unit": "cm",
+          "predicted_unit": "cm",
+          "line_match": true,
+          "prefix_match": true,
+          "label_match": true,
+          "value_match": true,
+          "unit_match": true,
+          "full_match": true
+        },
+        {
+          "expected_text": "1 LVIDs 4.2 cm",
+          "predicted_text": "1 LVIDs 4.2 cm",
+          "expected_prefix": "1",
+          "predicted_prefix": "1",
+          "expected_label": "LVIDs",
+          "predicted_label": "LVIDs",
+          "expected_value": "4.2",
+          "predicted_value": "4.2",
+          "expected_unit": "cm",
+          "predicted_unit": "cm",
+          "line_match": true,
+          "prefix_match": true,
+          "label_match": true,
+          "value_match": true,
+          "unit_match": true,
+          "full_match": true
+        },
+        {
+          "expected_text": "EF (Teich) 34 %",
+          "predicted_text": "EF (Teich) 34 %",
+          "expected_prefix": null,
+          "predicted_prefix": null,
+          "expected_label": "EF (Teich)",
+          "predicted_label": "EF (Teich)",
+          "expected_value": "34",
+          "predicted_value": "34",
+          "expected_unit": "%",
+          "predicted_unit": "%",
+          "line_match": true,
+          "prefix_match": true,
+          "label_match": true,
+          "value_match": true,
+          "unit_match": true,
+          "full_match": true
+        },
+        {
+          "expected_text": "%FS 16 %",
+          "predicted_text": "%FS 6 %",
+          "expected_prefix": null,
+          "predicted_prefix": null,
+          "expected_label": "%FS",
+          "predicted_label": "%FS",
+          "expected_value": "16",
+          "predicted_value": "6",
+          "expected_unit": "%",
+          "predicted_unit": "%",
+          "line_match": false,
+          "prefix_match": true,
+          "label_match": true,
+          "value_match": false,
+          "unit_match": true,
+          "full_match": false
+        }
+      ]
+    },
+    {
+      "file_path": "C:\\Users\\G513\\Documents\\howest\\Semester_5\\Stage\\StageOpdracht\\database_stage\\files\\p10\\p10003731\\s91243943\\91243943_0052.dcm",
+      "file_name": "91243943_0052.dcm",
+      "split": "validation",
+      "status": "ok",
+      "error": null,
+      "expected_lines": [
+        "1 LVOT Vmax 1.7 m/s",
+        "LVOT maxPG 12 mmHg",
+        "LVOT VTI 37.3 cm"
+      ],
+      "predicted_measurements": [
+        {
+          "name": "1 LVOT Vmax",
+          "value": "1.7",
+          "unit": "m/s"
+        },
+        {
+          "name": "LVOT maxPG",
+          "value": "2",
+          "unit": "mmHg"
+        },
+        {
+          "name": "LVOT VTI",
+          "value": "37.3",
+          "unit": "cm"
+        },
+        {
+          "name": "1 LVOT Vmax 1.7 m/s",
+          "value": null,
+          "unit": null
+        },
+        {
+          "name": "LVOT maxPG 2 mmHg",
+          "value": null,
+          "unit": null
+        },
+        {
+          "name": "LVOT VTI 37.3 cm",
+          "value": null,
+          "unit": null
+        }
+      ],
+      "exact_matches": 2,
+      "line_matches": 2,
+      "value_matches": 2,
+      "label_matches": 3,
+      "prefix_matches": 3,
+      "total_labels": 3,
+      "matches": [
+        {
+          "expected_text": "1 LVOT Vmax 1.7 m/s",
+          "predicted_text": "1 LVOT Vmax 1.7 m/s",
+          "expected_prefix": "1",
+          "predicted_prefix": "1",
+          "expected_label": "LVOT Vmax",
+          "predicted_label": "LVOT Vmax",
+          "expected_value": "1.7",
+          "predicted_value": "1.7",
+          "expected_unit": "m/s",
+          "predicted_unit": "m/s",
+          "line_match": true,
+          "prefix_match": true,
+          "label_match": true,
+          "value_match": true,
+          "unit_match": true,
+          "full_match": true
+        },
+        {
+          "expected_text": "LVOT maxPG 12 mmHg",
+          "predicted_text": "LVOT maxPG 2 mmHg",
+          "expected_prefix": null,
+          "predicted_prefix": null,
+          "expected_label": "LVOT maxPG",
+          "predicted_label": "LVOT maxPG",
+          "expected_value": "12",
+          "predicted_value": "2",
+          "expected_unit": "mmHg",
+          "predicted_unit": "mmHg",
+          "line_match": false,
+          "prefix_match": true,
+          "label_match": true,
+          "value_match": false,
+          "unit_match": true,
+          "full_match": false
+        },
+        {
+          "expected_text": "LVOT VTI 37.3 cm",
+          "predicted_text": "LVOT VTI 37.3 cm",
+          "expected_prefix": null,
+          "predicted_prefix": null,
+          "expected_label": "LVOT VTI",
+          "predicted_label": "LVOT VTI",
+          "expected_value": "37.3",
+          "predicted_value": "37.3",
+          "expected_unit": "cm",
+          "predicted_unit": "cm",
+          "line_match": true,
+          "prefix_match": true,
+          "label_match": true,
+          "value_match": true,
+          "unit_match": true,
+          "full_match": true
+        }
+      ]
+    },
+    {
+      "file_path": "C:\\Users\\G513\\Documents\\howest\\Semester_5\\Stage\\StageOpdracht\\database_stage\\files\\p10\\p10003731\\s91243943\\91243943_0053.dcm",
+      "file_name": "91243943_0053.dcm",
+      "split": "validation",
+      "status": "ok",
+      "error": null,
+      "expected_lines": [
+        "AVA Vmax 2.9 cm2",
+        "AVA (VTI) 3.3 cm2",
+        "1 AV Vmax 2.0 m/s",
+        "1 AV Vmean 1.2 m/s",
+        "AV maxPG 16 mmHg",
+        "AV meanPG 7 mmHg",
+        "AV VTI 39 cm"
+      ],
+      "predicted_measurements": [
+        {
+          "name": "AVA Vmax",
+          "value": "2.9",
+          "unit": "cm2"
+        },
+        {
+          "name": "AVA (VTI)",
+          "value": "3.3",
+          "unit": "cm2"
+        },
+        {
+          "name": "1 AV Vmax",
+          "value": "2.0",
+          "unit": "m/s"
+        },
+        {
+          "name": "1 AV Vmean",
+          "value": "1.2",
+          "unit": "m/s"
+        },
+        {
+          "name": "AV maxPG",
+          "value": "6",
+          "unit": "mmHg"
+        },
+        {
+          "name": "AV meanPG",
+          "value": "7",
+          "unit": "mmHg"
+        },
+        {
+          "name": "AV VTI",
+          "value": "39",
+          "unit": "cm"
+        },
+        {
+          "name": "AVA Vmax 2.9 cm2",
+          "value": null,
+          "unit": null
+        },
+        {
+          "name": "AVA (VTI) 3.3 cm2",
+          "value": null,
+          "unit": null
+        },
+        {
+          "name": "1 AV Vmax 2.0 m/s",
+          "value": null,
+          "unit": null
+        },
+        {
+          "name": "1 AV Vmean 1.2 m/s",
+          "value": null,
+          "unit": null
+        },
+        {
+          "name": "AV maxPG 6 mmHg",
+          "value": null,
+          "unit": null
+        },
+        {
+          "name": "AV meanPG 7 mmHg",
+          "value": null,
+          "unit": null
+        },
+        {
+          "name": "AV VTI 39 cm",
+          "value": null,
+          "unit": null
+        }
+      ],
+      "exact_matches": 6,
+      "line_matches": 6,
+      "value_matches": 6,
+      "label_matches": 7,
+      "prefix_matches": 7,
+      "total_labels": 7,
+      "matches": [
+        {
+          "expected_text": "AVA Vmax 2.9 cm2",
+          "predicted_text": "AVA Vmax 2.9 cm2",
+          "expected_prefix": null,
+          "predicted_prefix": null,
+          "expected_label": "AVA Vmax",
+          "predicted_label": "AVA Vmax",
+          "expected_value": "2.9",
+          "predicted_value": "2.9",
+          "expected_unit": "cm2",
+          "predicted_unit": "cm2",
+          "line_match": true,
+          "prefix_match": true,
+          "label_match": true,
+          "value_match": true,
+          "unit_match": true,
+          "full_match": true
+        },
+        {
+          "expected_text": "AVA (VTI) 3.3 cm2",
+          "predicted_text": "AVA (VTI) 3.3 cm2",
+          "expected_prefix": null,
+          "predicted_prefix": null,
+          "expected_label": "AVA (VTI)",
+          "predicted_label": "AVA (VTI)",
+          "expected_value": "3.3",
+          "predicted_value": "3.3",
+          "expected_unit": "cm2",
+          "predicted_unit": "cm2",
+          "line_match": true,
+          "prefix_match": true,
+          "label_match": true,
+          "value_match": true,
+          "unit_match": true,
+          "full_match": true
+        },
+        {
+          "expected_text": "1 AV Vmax 2.0 m/s",
+          "predicted_text": "1 AV Vmax 2.0 m/s",
+          "expected_prefix": "1",
+          "predicted_prefix": "1",
+          "expected_label": "AV Vmax",
+          "predicted_label": "AV Vmax",
+          "expected_value": "2.0",
+          "predicted_value": "2.0",
+          "expected_unit": "m/s",
+          "predicted_unit": "m/s",
+          "line_match": true,
+          "prefix_match": true,
+          "label_match": true,
+          "value_match": true,
+          "unit_match": true,
+          "full_match": true
+        },
+        {
+          "expected_text": "1 AV Vmean 1.2 m/s",
+          "predicted_text": "1 AV Vmean 1.2 m/s",
+          "expected_prefix": "1",
+          "predicted_prefix": "1",
+          "expected_label": "AV Vmean",
+          "predicted_label": "AV Vmean",
+          "expected_value": "1.2",
+          "predicted_value": "1.2",
+          "expected_unit": "m/s",
+          "predicted_unit": "m/s",
+          "line_match": true,
+          "prefix_match": true,
+          "label_match": true,
+          "value_match": true,
+          "unit_match": true,
+          "full_match": true
+        },
+        {
+          "expected_text": "AV maxPG 16 mmHg",
+          "predicted_text": "AV maxPG 6 mmHg",
+          "expected_prefix": null,
+          "predicted_prefix": null,
+          "expected_label": "AV maxPG",
+          "predicted_label": "AV maxPG",
+          "expected_value": "16",
+          "predicted_value": "6",
+          "expected_unit": "mmHg",
+          "predicted_unit": "mmHg",
+          "line_match": false,
+          "prefix_match": true,
+          "label_match": true,
+          "value_match": false,
+          "unit_match": true,
+          "full_match": false
+        },
+        {
+          "expected_text": "AV meanPG 7 mmHg",
+          "predicted_text": "AV meanPG 7 mmHg",
+          "expected_prefix": null,
+          "predicted_prefix": null,
+          "expected_label": "AV meanPG",
+          "predicted_label": "AV meanPG",
+          "expected_value": "7",
+          "predicted_value": "7",
+          "expected_unit": "mmHg",
+          "predicted_unit": "mmHg",
+          "line_match": true,
+          "prefix_match": true,
+          "label_match": true,
+          "value_match": true,
+          "unit_match": true,
+          "full_match": true
+        },
+        {
+          "expected_text": "AV VTI 39 cm",
+          "predicted_text": "AV VTI 39 cm",
+          "expected_prefix": null,
+          "predicted_prefix": null,
+          "expected_label": "AV VTI",
+          "predicted_label": "AV VTI",
+          "expected_value": "39",
+          "predicted_value": "39",
+          "expected_unit": "cm",
+          "predicted_unit": "cm",
+          "line_match": true,
+          "prefix_match": true,
+          "label_match": true,
+          "value_match": true,
+          "unit_match": true,
+          "full_match": true
+        }
+      ]
+    }
+  ]
+}

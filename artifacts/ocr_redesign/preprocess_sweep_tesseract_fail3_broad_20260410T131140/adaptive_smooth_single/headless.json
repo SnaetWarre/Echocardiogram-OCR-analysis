@@ -1,0 +1,165 @@
+{
+  "manifest": {
+    "run_type": "preprocess_sweep_headless",
+    "config_name": "adaptive_smooth_single",
+    "config": {
+      "name": "adaptive_smooth_single",
+      "description": "Adaptive-threshold pipeline with extra post-binary smoothing.",
+      "default_view": {
+        "contrast_mode": "adaptive_threshold",
+        "scale_factor": 3,
+        "scale_algo": "lanczos",
+        "unsharp": true,
+        "unsharp_amount": 0.5,
+        "threshold_mode": "adaptive",
+        "morph_close": true,
+        "smooth": true,
+        "denoise_mode": "none",
+        "invert": false,
+        "adaptive_block_size": 11,
+        "adaptive_c": 2.0,
+        "input_mode": "gray",
+        "preprocess_order": "scale_then_threshold",
+        "binary_scale_algo": "nearest"
+      },
+      "multiview_mode": "none"
+    },
+    "engine": "tesseract",
+    "started_at": "2026-04-10T12:12:28.661557+00:00",
+    "elapsed_s": 2.749,
+    "input_path": "C:\\Users\\G513\\Documents\\howest\\Semester_5\\Stage\\StageOpdracht",
+    "summary": {
+      "processed_files": 3,
+      "ok_files": 3,
+      "error_files": 0
+    }
+  },
+  "items": [
+    {
+      "dicom_path": "C:\\Users\\G513\\Documents\\howest\\Semester_5\\Stage\\StageOpdracht\\database_stage\\files\\p10\\p10002430\\s92290733\\92290733_0004.dcm",
+      "status": "ok",
+      "measurements": [],
+      "line_predictions": [
+        {
+          "order": 2,
+          "text": "Nr WARE Sit",
+          "confidence": 0.19857142857142857,
+          "parser_source": "primary"
+        },
+        {
+          "order": 3,
+          "text": "IRSE Caleta soc",
+          "confidence": 0.06666666666666667,
+          "parser_source": "primary"
+        },
+        {
+          "order": 4,
+          "text": "a ne T=",
+          "confidence": 0.22999999999999998,
+          "parser_source": "primary"
+        }
+      ],
+      "metadata": {
+        "config_name": "adaptive_smooth_single",
+        "model_name": "echo-ocr:tesseract",
+        "record_count": 0,
+        "line_prediction_count": 3,
+        "parser_sources": [
+          "primary"
+        ],
+        "source_kinds": [
+          "pixel_ocr"
+        ]
+      },
+      "error": null
+    },
+    {
+      "dicom_path": "C:\\Users\\G513\\Documents\\howest\\Semester_5\\Stage\\StageOpdracht\\database_stage\\files\\p10\\p10003731\\s91243943\\91243943_0052.dcm",
+      "status": "ok",
+      "measurements": [],
+      "line_predictions": [
+        {
+          "order": 1,
+          "text": "iS TUG ma",
+          "confidence": 0.32,
+          "parser_source": "primary"
+        },
+        {
+          "order": 2,
+          "text": "le Ngamantatg a",
+          "confidence": 0.20548387096774187,
+          "parser_source": "primary"
+        }
+      ],
+      "metadata": {
+        "config_name": "adaptive_smooth_single",
+        "model_name": "echo-ocr:tesseract",
+        "record_count": 0,
+        "line_prediction_count": 2,
+        "parser_sources": [
+          "primary"
+        ],
+        "source_kinds": [
+          "pixel_ocr"
+        ]
+      },
+      "error": null
+    },
+    {
+      "dicom_path": "C:\\Users\\G513\\Documents\\howest\\Semester_5\\Stage\\StageOpdracht\\database_stage\\files\\p10\\p10003731\\s91243943\\91243943_0053.dcm",
+      "status": "ok",
+      "measurements": [],
+      "line_predictions": [
+        {
+          "order": 1,
+          "text": "IS KT ee",
+          "confidence": 0.29857142857142854,
+          "parser_source": "primary"
+        },
+        {
+          "order": 2,
+          "text": "PALAWAN DN esr,",
+          "confidence": 0.1775,
+          "parser_source": "primary"
+        },
+        {
+          "order": 3,
+          "text": "He OG cL",
+          "confidence": 0.19000000000000003,
+          "parser_source": "primary"
+        },
+        {
+          "order": 4,
+          "text": "VALAMIC CIA eS)",
+          "confidence": 0.05333333333333334,
+          "parser_source": "primary"
+        },
+        {
+          "order": 5,
+          "text": "Mistier den lea",
+          "confidence": 0.22761904761904764,
+          "parser_source": "primary"
+        },
+        {
+          "order": 6,
+          "text": "ZEEE' Cetra",
+          "confidence": 0.34,
+          "parser_source": "primary"
+        }
+      ],
+      "metadata": {
+        "config_name": "adaptive_smooth_single",
+        "model_name": "echo-ocr:tesseract",
+        "record_count": 0,
+        "line_prediction_count": 6,
+        "parser_sources": [
+          "primary"
+        ],
+        "source_kinds": [
+          "pixel_ocr"
+        ]
+      },
+      "error": null
+    }
+  ]
+}

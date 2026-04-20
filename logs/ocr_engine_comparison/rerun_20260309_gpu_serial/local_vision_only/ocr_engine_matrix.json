@@ -1,0 +1,32 @@
+{
+  "rows": [
+    {
+      "label_set": "labels",
+      "labels_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/Master/labels.md",
+      "engine": "granite3.2-vision:2b",
+      "mode": "local_vision_llm_only",
+      "status": "ok",
+      "files": 31,
+      "labels": 78,
+      "files_with_box": "",
+      "files_with_text": 19,
+      "box_detect_rate": "",
+      "text_detect_rate": 0.6129032258064516,
+      "value_match_rate": 0.32051282051282054,
+      "name_match_rate": 0.2692307692307692,
+      "full_match_rate": 0.23076923076923078,
+      "predictions": 41,
+      "elapsed_s": 108.6979356280035,
+      "error": ""
+    },
+    {
+      "label_set": "validation_labels",
+      "labels_path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/Master/validation_labels.md",
+      "engine": "granite3.2-vision:2b",
+      "mode": "local_vision_llm_only",
+      "status": "failed",
+      "error": "timed out"
+    }
+  ],
+  "elapsed_s": 319.1916692349996
+}

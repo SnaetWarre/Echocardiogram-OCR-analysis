@@ -1,0 +1,25 @@
+config_name,engine,description,exact_match_rate,line_match_rate,value_match_rate,label_match_rate,prefix_match_rate,detection_rate,delta_exact_vs_baseline,elapsed_s,processed_files,ok_files,error_files
+no_preprocess_gray,tesseract,"Grayscale only, no upscale, no sharpening, no binarization, no multiview.",0.5,0.5,0.7142857142857143,0.7857142857142857,0.8571428571428571,1.0,0.214286,2.643,3,3,0
+invert_gray_x3_lanczos,tesseract,Inverted grayscale with x3 Lanczos upscale.,0.2857142857142857,0.2857142857142857,0.8571428571428571,0.9285714285714286,1.0,1.0,0.0,2.148,3,3,0
+otsu_close_x3_lanczos_no_unsharp,tesseract,"Grayscale + x3 Lanczos + Otsu + morph close, no unsharp.",0.2857142857142857,0.2857142857142857,0.7857142857142857,0.8571428571428571,0.9285714285714286,1.0,0.0,2.223,3,3,0
+default_x3_cubic_single,tesseract,Current default pipeline but x3 cubic instead of Lanczos.,0.2857142857142857,0.2857142857142857,0.7857142857142857,0.8571428571428571,0.9285714285714286,1.0,0.0,2.34,3,3,0
+default_multiview,tesseract,Current step-6 plus step-7 multiview retries (adaptive + clahe).,0.2857142857142857,0.2857142857142857,0.7857142857142857,0.8571428571428571,0.9285714285714286,1.0,0.0,5.089,3,3,0
+default_x3_linear_single,tesseract,Current default pipeline but x3 linear instead of Lanczos.,0.21428571428571427,0.21428571428571427,0.8571428571428571,0.7857142857142857,1.0,1.0,-0.071429,2.064,3,3,0
+default_x2_lanczos_single,tesseract,Current default pipeline but x2 Lanczos instead of x3.,0.21428571428571427,0.21428571428571427,0.8571428571428571,1.0,1.0,1.0,-0.071429,2.262,3,3,0
+unsharp_x3_lanczos,tesseract,"Grayscale + unsharp mask + x3 Lanczos, no binarization.",0.21428571428571427,0.21428571428571427,0.8571428571428571,0.8571428571428571,0.9285714285714286,1.0,-0.071429,2.286,3,3,0
+clahe_single,tesseract,"CLAHE + unsharp + x3 Lanczos + Otsu + morph close, no multiview.",0.21428571428571427,0.21428571428571427,0.7857142857142857,0.8571428571428571,0.9285714285714286,1.0,-0.071429,2.072,3,3,0
+gray_x3_lanczos,tesseract,Grayscale only with x3 Lanczos upscale.,0.21428571428571427,0.21428571428571427,0.7857142857142857,0.8571428571428571,0.9285714285714286,1.0,-0.071429,2.228,3,3,0
+unsharp_mild_x3_lanczos,tesseract,"Grayscale + mild unsharp + x3 Lanczos, no binarization.",0.21428571428571427,0.21428571428571427,0.7857142857142857,0.7857142857142857,0.8571428571428571,1.0,-0.071429,2.269,3,3,0
+default_smooth_single,tesseract,Current step-6 default with extra post-binary smoothing.,0.21428571428571427,0.21428571428571427,0.7857142857142857,0.8571428571428571,0.9285714285714286,1.0,-0.071429,2.303,3,3,0
+default_single,tesseract,"Current step-6 style default only: unsharp, x3 Lanczos, Otsu, morph close.",0.21428571428571427,0.21428571428571427,0.7857142857142857,0.8571428571428571,0.9285714285714286,1.0,-0.071429,2.467,3,3,0
+clahe_gray_x3_no_bin,tesseract,"CLAHE + x3 Lanczos grayscale, no thresholding.",0.21428571428571427,0.21428571428571427,0.7857142857142857,0.8571428571428571,0.9285714285714286,1.0,-0.071429,2.544,3,3,0
+otsu_x3_lanczos_no_unsharp,tesseract,"Grayscale + x3 Lanczos + Otsu threshold, no unsharp, no morph close.",0.21428571428571427,0.21428571428571427,0.7142857142857143,0.8571428571428571,0.9285714285714286,1.0,-0.071429,2.213,3,3,0
+gray_x4_nearest,tesseract,Grayscale only with x4 nearest upscale (stroke-preserving).,0.21428571428571427,0.21428571428571427,0.7142857142857143,0.7857142857142857,0.8571428571428571,1.0,-0.071429,2.478,3,3,0
+median3_gray_x3_lanczos,tesseract,"Median denoise (3x3) + grayscale x3 Lanczos, no binarization.",0.14285714285714285,0.14285714285714285,0.7857142857142857,0.8571428571428571,0.9285714285714286,1.0,-0.142857,2.12,3,3,0
+gray_x2_cubic,tesseract,Grayscale only with x2 cubic upscale.,0.14285714285714285,0.14285714285714285,0.7857142857142857,0.8571428571428571,0.9285714285714286,1.0,-0.142857,2.136,3,3,0
+otsu_then_scale_x3_nearest_no_close,tesseract,Otsu at 1x then nearest upscale to 3x (no morph close).,0.14285714285714285,0.14285714285714285,0.6428571428571429,0.6428571428571429,0.8571428571428571,1.0,-0.142857,2.116,3,3,0
+otsu_then_scale_x4_nearest_no_close,tesseract,Otsu at 1x then nearest upscale to 4x (no morph close).,0.14285714285714285,0.14285714285714285,0.5,0.5,0.5714285714285714,1.0,-0.142857,2.155,3,3,0
+gray_x4_lanczos,tesseract,Grayscale only with x4 Lanczos upscale.,0.07142857142857142,0.07142857142857142,0.7142857142857143,0.7857142857142857,0.9285714285714286,1.0,-0.214286,2.271,3,3,0
+adaptive_weak_single,tesseract,"Weaker adaptive threshold (block 21, C=6), x3 Lanczos, no morph close.",0.0,0.0,0.0,0.0,0.0,1.0,-0.285714,2.147,3,3,0
+adaptive_single,tesseract,Equalize hist + unsharp + x3 Lanczos + adaptive threshold + morph close.,0.0,0.0,0.0,0.0,0.0,1.0,-0.285714,2.357,3,3,0
+adaptive_smooth_single,tesseract,Adaptive-threshold pipeline with extra post-binary smoothing.,0.0,0.0,0.0,0.0,0.0,1.0,-0.285714,2.749,3,3,0

@@ -1,0 +1,7 @@
+label_set,labels_path,engine,mode,status,files,labels,files_with_box,files_with_text,box_detect_rate,text_detect_rate,value_match_rate,name_match_rate,full_match_rate,predictions,elapsed_s,error
+labels,/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/Master/labels.md,paddleocr,raw_no_parser,ok,31,78,31,31,1.0,1.0,1.0,0.01282051282051282,0.0,,9.869583878999947,
+labels,/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/Master/labels.md,paddleocr,regex_parser,ok,31,78,,29,,0.9354838709677419,0.9102564102564102,0.8076923076923077,0.7307692307692307,71,9.107466383999963,
+labels,/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/Master/labels.md,paddleocr,local_llm_parser,ok,31,78,,31,,1.0,0.9615384615384616,0.8205128205128205,0.8076923076923077,79,143.1219090980012,
+validation_labels,/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/Master/validation_labels.md,paddleocr,raw_no_parser,ok,77,213,77,77,1.0,1.0,0.9765258215962441,0.009389671361502348,0.0,,28.683742768999764,
+validation_labels,/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/Master/validation_labels.md,paddleocr,regex_parser,ok,77,213,,66,,0.8571428571428571,0.8215962441314554,0.6525821596244131,0.568075117370892,179,28.654172111999287,
+validation_labels,/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/Master/validation_labels.md,paddleocr,local_llm_parser,ok,77,213,,76,,0.987012987012987,0.9577464788732394,0.7089201877934272,0.6901408450704225,262,468.429847906998,

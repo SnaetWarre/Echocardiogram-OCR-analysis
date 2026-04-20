@@ -1,0 +1,6 @@
+config_name,engine,description,exact_match_rate,line_match_rate,value_match_rate,label_match_rate,prefix_match_rate,detection_rate,delta_exact_vs_baseline,elapsed_s,processed_files,ok_files,error_files
+weird_inv_otsu_mc_smooth_x4,glm-ocr,Invert + Otsu + morph + smooth + 4x nearest.,0.7857142857142857,0.7857142857142857,0.7857142857142857,1.0,1.0,1.0,,23.676,3,3,0
+weird_clahe_otsu_ts_x5,glm-ocr,CLAHE + Otsu then 5x nearest upscale.,0.7857142857142857,0.7857142857142857,0.7857142857142857,1.0,1.0,1.0,,23.81,3,3,0
+weird_gray_x5_cubic_median_unsharp,glm-ocr,"5x cubic + median denoise + mild unsharp, no threshold.",0.7857142857142857,0.7857142857142857,0.7857142857142857,1.0,1.0,1.0,,24.097,3,3,0
+weird_bgr_median_inv_x4,glm-ocr,BGR + median denoise + invert + 4x nearest.,0.7857142857142857,0.7857142857142857,0.7857142857142857,1.0,1.0,1.0,,25.174,3,3,0
+weird_bgr_x4_unsharp_high,glm-ocr,BGR input + high unsharp + 4x cubic.,0.7857142857142857,0.7857142857142857,0.7857142857142857,1.0,1.0,1.0,,25.575,3,3,0

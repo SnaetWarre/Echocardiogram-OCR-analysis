@@ -1,0 +1,2 @@
+config_name,engine,description,exact_match_rate,line_match_rate,value_match_rate,label_match_rate,prefix_match_rate,detection_rate,delta_exact_vs_baseline,elapsed_s,processed_files,ok_files,error_files
+gray_x3_lanczos,glm-ocr,Grayscale only with x3 Lanczos upscale.,0.9988901220865705,0.9988901220865705,0.9988901220865705,1.0,1.0,1.0,,1026.56,353,353,0

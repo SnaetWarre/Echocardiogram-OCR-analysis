@@ -1,0 +1,14 @@
+{
+  "framework": "trocr",
+  "base_model": "microsoft/trocr-base-stage1",
+  "manifest": "docs/ocr_redesign/line_recognizer_manifest_validation_bootstrap.jsonl",
+  "example_count": 101,
+  "split_counts": {
+    "validation": 101
+  },
+  "epochs": 12,
+  "batch_size": 8,
+  "learning_rate": 3e-05,
+  "missing_image_count": 0,
+  "sample_launch_command": "python -m app.tools.train_line_recognizer --manifest docs/ocr_redesign/line_recognizer_manifest_validation_bootstrap.jsonl --output-dir docs/ocr_redesign/line_recognizer_training_dry_run --framework trocr --base-model microsoft/trocr-base-stage1"
+}

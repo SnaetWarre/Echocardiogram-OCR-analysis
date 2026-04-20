@@ -1,0 +1,4 @@
+﻿"record_type","file_name","file_path","name","raw_ocr_text","predicted_value","corrected_value","flags"
+"implausible_unchanged","98667422_0075.dcm","C:\Users\G513\Documents\howest\Semester_5\Stage\StageOpdracht\database_stage\files\p10\p10002430\s98667422\98667422_0075.dcm","LVOT maxPG","LVOT maxPG 6.8 mmHg","6.8","6.8","implausible_value"
+"implausible_unchanged","99663585_0068.dcm","C:\Users\G513\Documents\howest\Semester_5\Stage\StageOpdracht\database_stage\files\p10\p10005858\s99663585\99663585_0068.dcm","LVOT maxPG","LVOT maxPG 6.4 mmHg","6.4","6.4","implausible_value"
+"implausible_unchanged","97555635_0110.dcm","D:\MIMIC-IV-ECHO\files\p10\p10012438\s97555635\97555635_0110.dcm","LVOT maxPG","LVOT maxPG 6.4 mmHg","6.4","6.4","implausible_value"

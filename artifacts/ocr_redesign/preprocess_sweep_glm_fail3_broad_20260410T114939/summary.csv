@@ -1,0 +1,25 @@
+config_name,engine,description,exact_match_rate,line_match_rate,value_match_rate,label_match_rate,prefix_match_rate,detection_rate,delta_exact_vs_baseline,elapsed_s,processed_files,ok_files,error_files
+unsharp_x3_lanczos,glm-ocr,"Grayscale + unsharp mask + x3 Lanczos, no binarization.",0.7857142857142857,0.7857142857142857,0.7857142857142857,1.0,1.0,1.0,0.0,25.195,3,3,0
+gray_x3_lanczos,glm-ocr,Grayscale only with x3 Lanczos upscale.,0.7857142857142857,0.7857142857142857,0.7857142857142857,1.0,1.0,1.0,0.0,25.226,3,3,0
+unsharp_mild_x3_lanczos,glm-ocr,"Grayscale + mild unsharp + x3 Lanczos, no binarization.",0.7857142857142857,0.7857142857142857,0.7857142857142857,1.0,1.0,1.0,0.0,25.295,3,3,0
+median3_gray_x3_lanczos,glm-ocr,"Median denoise (3x3) + grayscale x3 Lanczos, no binarization.",0.7857142857142857,0.7857142857142857,0.7857142857142857,1.0,1.0,1.0,0.0,25.36,3,3,0
+gray_x4_nearest,glm-ocr,Grayscale only with x4 nearest upscale (stroke-preserving).,0.7857142857142857,0.7857142857142857,0.7857142857142857,1.0,1.0,1.0,0.0,25.384,3,3,0
+gray_x2_cubic,glm-ocr,Grayscale only with x2 cubic upscale.,0.7857142857142857,0.7857142857142857,0.7857142857142857,1.0,1.0,1.0,0.0,25.537,3,3,0
+gray_x4_lanczos,glm-ocr,Grayscale only with x4 Lanczos upscale.,0.7857142857142857,0.7857142857142857,0.7857142857142857,1.0,1.0,1.0,0.0,25.829,3,3,0
+default_single,glm-ocr,"Current step-6 style default only: unsharp, x3 Lanczos, Otsu, morph close.",0.7857142857142857,0.7857142857142857,0.7857142857142857,1.0,1.0,1.0,0.0,26.114,3,3,0
+default_x3_linear_single,glm-ocr,Current default pipeline but x3 linear instead of Lanczos.,0.7857142857142857,0.7857142857142857,0.7857142857142857,1.0,1.0,1.0,0.0,26.372,3,3,0
+default_x2_lanczos_single,glm-ocr,Current default pipeline but x2 Lanczos instead of x3.,0.7857142857142857,0.7857142857142857,0.7857142857142857,1.0,1.0,1.0,0.0,26.45,3,3,0
+no_preprocess_gray,glm-ocr,"Grayscale only, no upscale, no sharpening, no binarization, no multiview.",0.7857142857142857,0.7857142857142857,0.7857142857142857,1.0,1.0,1.0,0.0,26.473,3,3,0
+default_smooth_single,glm-ocr,Current step-6 default with extra post-binary smoothing.,0.7857142857142857,0.7857142857142857,0.7857142857142857,1.0,1.0,1.0,0.0,26.503,3,3,0
+default_x3_cubic_single,glm-ocr,Current default pipeline but x3 cubic instead of Lanczos.,0.7857142857142857,0.7857142857142857,0.7857142857142857,1.0,1.0,1.0,0.0,26.841,3,3,0
+clahe_single,glm-ocr,"CLAHE + unsharp + x3 Lanczos + Otsu + morph close, no multiview.",0.7857142857142857,0.7857142857142857,0.7857142857142857,1.0,1.0,1.0,0.0,26.846,3,3,0
+otsu_then_scale_x3_nearest_no_close,glm-ocr,Otsu at 1x then nearest upscale to 3x (no morph close).,0.7857142857142857,0.7857142857142857,0.7857142857142857,1.0,1.0,1.0,0.0,27.322,3,3,0
+otsu_then_scale_x4_nearest_no_close,glm-ocr,Otsu at 1x then nearest upscale to 4x (no morph close).,0.7857142857142857,0.7857142857142857,0.7857142857142857,1.0,1.0,1.0,0.0,27.852,3,3,0
+otsu_x3_lanczos_no_unsharp,glm-ocr,"Grayscale + x3 Lanczos + Otsu threshold, no unsharp, no morph close.",0.7857142857142857,0.7857142857142857,0.7857142857142857,1.0,1.0,1.0,0.0,27.973,3,3,0
+clahe_gray_x3_no_bin,glm-ocr,"CLAHE + x3 Lanczos grayscale, no thresholding.",0.7857142857142857,0.7857142857142857,0.7857142857142857,1.0,1.0,1.0,0.0,28.261,3,3,0
+invert_gray_x3_lanczos,glm-ocr,Inverted grayscale with x3 Lanczos upscale.,0.7857142857142857,0.7857142857142857,0.7857142857142857,1.0,1.0,1.0,0.0,28.303,3,3,0
+otsu_close_x3_lanczos_no_unsharp,glm-ocr,"Grayscale + x3 Lanczos + Otsu + morph close, no unsharp.",0.7857142857142857,0.7857142857142857,0.7857142857142857,1.0,1.0,1.0,0.0,29.542,3,3,0
+default_multiview,glm-ocr,Current step-6 plus step-7 multiview retries (adaptive + clahe).,0.7857142857142857,0.7857142857142857,0.7857142857142857,1.0,1.0,1.0,0.0,43.447,3,3,0
+adaptive_weak_single,glm-ocr,"Weaker adaptive threshold (block 21, C=6), x3 Lanczos, no morph close.",0.7142857142857143,0.7142857142857143,0.7857142857142857,0.9285714285714286,1.0,1.0,-0.071429,26.958,3,3,0
+adaptive_smooth_single,glm-ocr,Adaptive-threshold pipeline with extra post-binary smoothing.,0.5714285714285714,0.5714285714285714,0.8571428571428571,0.7857142857142857,0.8571428571428571,1.0,-0.214286,27.82,3,3,0
+adaptive_single,glm-ocr,Equalize hist + unsharp + x3 Lanczos + adaptive threshold + morph close.,0.5,0.5,0.7857142857142857,0.7857142857142857,0.8571428571428571,1.0,-0.285714,29.633,3,3,0

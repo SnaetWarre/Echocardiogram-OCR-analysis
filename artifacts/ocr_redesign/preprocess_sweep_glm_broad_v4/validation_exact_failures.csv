@@ -1,0 +1,4 @@
+file_name,line_index_in_matches,expected_text,predicted_text,line_match,value_match,label_match
+92290733_0004.dcm,3,%FS 16 %,%FS 6 %,False,False,True
+91243943_0052.dcm,1,LVOT maxPG 12 mmHg,LVOT maxPG 2 mmHg,False,False,True
+91243943_0053.dcm,4,AV maxPG 16 mmHg,AV maxPG 6 mmHg,False,False,True

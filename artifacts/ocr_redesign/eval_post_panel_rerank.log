@@ -1,0 +1,31 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+The image processor of type `Glm46VImageProcessor` is now loaded as a fast processor by default, even if the model checkpoint was saved with a slow processor. This is a breaking change and may produce slightly different outputs. To continue using the slow processor, instantiate this class with `use_fast=False`. 
+{
+  "total_files": 191,
+  "total_labels": 490,
+  "ocr_predictions": 490,
+  "exact_line_matches": 473,
+  "label_matches": 479,
+  "value_matches": 476,
+  "unit_matches": 485,
+  "prefix_matches": 487,
+  "uncertainty_count": 0,
+  "fallback_invocations": 0,
+  "vision_invocations": 0,
+  "engine_disagreements": 79,
+  "roi_detection_failures": 0,
+  "line_segmentation_failures": 0,
+  "exact_line_match_rate": 0.9653061224489796,
+  "label_match_rate": 0.9775510204081632,
+  "value_match_rate": 0.9714285714285714,
+  "unit_match_rate": 0.9897959183673469,
+  "prefix_match_rate": 0.9938775510204082,
+  "uncertainty_rate": 0.0,
+  "fallback_invocation_rate": 0.0,
+  "vision_invocation_rate": 0.0,
+  "roi_detection_failure_rate": 0.0,
+  "line_segmentation_failure_rate": 0.0,
+  "engine_disagreement_rate": 0.16122448979591836
+}
+Interrupted system call ; error code 4
+EXIT:0

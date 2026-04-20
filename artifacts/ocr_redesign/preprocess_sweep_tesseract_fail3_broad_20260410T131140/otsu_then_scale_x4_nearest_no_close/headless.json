@@ -1,0 +1,260 @@
+{
+  "manifest": {
+    "run_type": "preprocess_sweep_headless",
+    "config_name": "otsu_then_scale_x4_nearest_no_close",
+    "config": {
+      "name": "otsu_then_scale_x4_nearest_no_close",
+      "description": "Otsu at 1x then nearest upscale to 4x (no morph close).",
+      "default_view": {
+        "contrast_mode": "none",
+        "scale_factor": 4,
+        "scale_algo": "lanczos",
+        "unsharp": false,
+        "unsharp_amount": 0.5,
+        "threshold_mode": "otsu",
+        "morph_close": false,
+        "smooth": false,
+        "denoise_mode": "none",
+        "invert": false,
+        "adaptive_block_size": 11,
+        "adaptive_c": 2.0,
+        "input_mode": "gray",
+        "preprocess_order": "threshold_then_scale",
+        "binary_scale_algo": "nearest"
+      },
+      "multiview_mode": "none"
+    },
+    "engine": "tesseract",
+    "started_at": "2026-04-10T12:12:35.703698+00:00",
+    "elapsed_s": 2.155,
+    "input_path": "C:\\Users\\G513\\Documents\\howest\\Semester_5\\Stage\\StageOpdracht",
+    "summary": {
+      "processed_files": 3,
+      "ok_files": 3,
+      "error_files": 0
+    }
+  },
+  "items": [
+    {
+      "dicom_path": "C:\\Users\\G513\\Documents\\howest\\Semester_5\\Stage\\StageOpdracht\\database_stage\\files\\p10\\p10002430\\s92290733\\92290733_0004.dcm",
+      "status": "ok",
+      "measurements": [
+        {
+          "name": "1 LA Diam",
+          "value": "4.4",
+          "unit": "cm",
+          "source": "exact_line:1 LA Diam 4.4 cm:0.547"
+        },
+        {
+          "name": "EF (Teich)",
+          "value": "34",
+          "unit": "%",
+          "source": "exact_line:EF (Teich) 34 %:0.890"
+        },
+        {
+          "name": "%FS",
+          "value": "16",
+          "unit": null,
+          "source": "exact_line:%FS 16:0.643"
+        }
+      ],
+      "line_predictions": [
+        {
+          "order": 1,
+          "text": "1 LA Diam 4.4 cm",
+          "confidence": 0.5466666666666667,
+          "parser_source": "primary_lexicon_repair"
+        },
+        {
+          "order": 2,
+          "text": "1 LVIDs cm",
+          "confidence": 0.675,
+          "parser_source": "primary"
+        },
+        {
+          "order": 3,
+          "text": "EF (Teich) 34 %",
+          "confidence": 0.8899999999999999,
+          "parser_source": "primary"
+        },
+        {
+          "order": 4,
+          "text": "%FS 16",
+          "confidence": 0.6433333333333333,
+          "parser_source": "primary"
+        }
+      ],
+      "metadata": {
+        "config_name": "otsu_then_scale_x4_nearest_no_close",
+        "model_name": "echo-ocr:tesseract",
+        "record_count": 3,
+        "line_prediction_count": 4,
+        "parser_sources": [
+          "primary",
+          "primary_lexicon_repair"
+        ],
+        "source_kinds": [
+          "pixel_ocr"
+        ]
+      },
+      "error": null
+    },
+    {
+      "dicom_path": "C:\\Users\\G513\\Documents\\howest\\Semester_5\\Stage\\StageOpdracht\\database_stage\\files\\p10\\p10003731\\s91243943\\91243943_0052.dcm",
+      "status": "ok",
+      "measurements": [
+        {
+          "name": "LVVOT maxPG",
+          "value": "12",
+          "unit": null,
+          "source": "exact_line:LVVOT maxPG 12:0.742"
+        },
+        {
+          "name": "LYVOT VTI",
+          "value": "37.3",
+          "unit": null,
+          "source": "exact_line:LYVOT VTI 37.3:0.660"
+        }
+      ],
+      "line_predictions": [
+        {
+          "order": 0,
+          "text": "sca",
+          "confidence": 0.52,
+          "parser_source": "primary"
+        },
+        {
+          "order": 1,
+          "text": "1 LVOT Vmax",
+          "confidence": 0.7340000000000001,
+          "parser_source": "primary"
+        },
+        {
+          "order": 2,
+          "text": "LVVOT maxPG 12",
+          "confidence": 0.7424999999999999,
+          "parser_source": "primary"
+        },
+        {
+          "order": 3,
+          "text": "LYVOT VTI 37.3",
+          "confidence": 0.66,
+          "parser_source": "primary"
+        }
+      ],
+      "metadata": {
+        "config_name": "otsu_then_scale_x4_nearest_no_close",
+        "model_name": "echo-ocr:tesseract",
+        "record_count": 2,
+        "line_prediction_count": 4,
+        "parser_sources": [
+          "primary"
+        ],
+        "source_kinds": [
+          "pixel_ocr"
+        ]
+      },
+      "error": null
+    },
+    {
+      "dicom_path": "C:\\Users\\G513\\Documents\\howest\\Semester_5\\Stage\\StageOpdracht\\database_stage\\files\\p10\\p10003731\\s91243943\\91243943_0053.dcm",
+      "status": "ok",
+      "measurements": [
+        {
+          "name": "AVA Vmax",
+          "value": "2.9",
+          "unit": null,
+          "source": "exact_line:AVA Vmax 2.9:0.945"
+        },
+        {
+          "name": "AVA (VTI)",
+          "value": "3.3",
+          "unit": "cm2",
+          "source": "exact_line:AVA (VTI) 3.3 cm2:0.383"
+        },
+        {
+          "name": "AV Vimean",
+          "value": "1.7",
+          "unit": null,
+          "source": "exact_line:AV Vimean 1.7:0.810"
+        },
+        {
+          "name": "AV maxPt",
+          "value": "165",
+          "unit": null,
+          "source": "exact_line:AV maxPt 165:0.643"
+        },
+        {
+          "name": "AY meanPG",
+          "value": "7",
+          "unit": "?",
+          "source": "exact_line:AY meanPG 7?:0.737"
+        },
+        {
+          "name": "AV VTI",
+          "value": "39",
+          "unit": null,
+          "source": "exact_line:AV VTI 39:0.728"
+        }
+      ],
+      "line_predictions": [
+        {
+          "order": 1,
+          "text": "AVA Vmax 2.9",
+          "confidence": 0.945,
+          "parser_source": "primary"
+        },
+        {
+          "order": 2,
+          "text": "AVA (VTI) 3.3 cm2",
+          "confidence": 0.38333333333333336,
+          "parser_source": "primary_lexicon_repair"
+        },
+        {
+          "order": 3,
+          "text": "1 4V Vmax",
+          "confidence": 0.8039999999999999,
+          "parser_source": "primary"
+        },
+        {
+          "order": 4,
+          "text": "AV Vimean 1.7",
+          "confidence": 0.81,
+          "parser_source": "primary"
+        },
+        {
+          "order": 5,
+          "text": "AV maxPt 165",
+          "confidence": 0.6425000000000001,
+          "parser_source": "primary"
+        },
+        {
+          "order": 6,
+          "text": "AY meanPG 7?",
+          "confidence": 0.7374999999999999,
+          "parser_source": "primary"
+        },
+        {
+          "order": 7,
+          "text": "AV VTI 39",
+          "confidence": 0.7275,
+          "parser_source": "primary"
+        }
+      ],
+      "metadata": {
+        "config_name": "otsu_then_scale_x4_nearest_no_close",
+        "model_name": "echo-ocr:tesseract",
+        "record_count": 6,
+        "line_prediction_count": 7,
+        "parser_sources": [
+          "primary",
+          "primary_lexicon_repair"
+        ],
+        "source_kinds": [
+          "pixel_ocr"
+        ]
+      },
+      "error": null
+    }
+  ]
+}

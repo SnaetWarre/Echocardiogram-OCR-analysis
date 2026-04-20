@@ -1,0 +1,1 @@
+config_name,file_name,file_path,split,line_index,expected_text,predicted_text,full_match,line_match,label_match,value_match,unit_match,prefix_match,expected_label,predicted_label,expected_value,predicted_value,expected_unit,predicted_unit,status,error

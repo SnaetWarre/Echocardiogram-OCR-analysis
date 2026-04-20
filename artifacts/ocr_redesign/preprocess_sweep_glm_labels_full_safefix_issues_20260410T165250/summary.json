@@ -1,0 +1,32 @@
+{
+  "manifest": {
+    "run_type": "preprocess_sweep_summary",
+    "input_path": "C:\\Users\\G513\\Documents\\howest\\Semester_5\\Stage\\StageOpdracht",
+    "labels_path": "C:\\Users\\G513\\Documents\\howest\\Semester_5\\Stage\\StageOpdracht\\Master\\labels\\labels.json",
+    "engine": "glm-ocr",
+    "config_set": "broad",
+    "baseline_config": "",
+    "config_count": 1,
+    "file_count": 353,
+    "labeled_file_count": 353,
+    "only_labeled": true
+  },
+  "results": [
+    {
+      "config_name": "gray_x3_lanczos",
+      "engine": "glm-ocr",
+      "description": "Grayscale only with x3 Lanczos upscale.",
+      "exact_match_rate": 0.5427302996670367,
+      "line_match_rate": 0.5427302996670367,
+      "value_match_rate": 0.5427302996670367,
+      "label_match_rate": 0.5438401775804661,
+      "prefix_match_rate": 0.5438401775804661,
+      "detection_rate": 0.5410764872521246,
+      "elapsed_s": 15102.925,
+      "processed_files": 353,
+      "ok_files": 191,
+      "error_files": 162,
+      "delta_exact_vs_baseline": ""
+    }
+  ]
+}
