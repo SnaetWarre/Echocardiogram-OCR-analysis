@@ -5,14 +5,13 @@ __pycache__/
 .pytest_cache/
 .cache/
 .venv-ty/
-logs/
-artifacts/
-docs/ocr_redesign/
-docs/ocr_redesign_run_log.jsonl
-findings
-session
-.cursor/commands/
+# logs/
+# artifacts/
+# docs/ocr_redesign/
+# docs/ocr_redesign_run_log.jsonl
+# findings
+# session
+# .cursor/commands/
 .mypy_cache/
 .ruff_cache/
 *.pyc
-
