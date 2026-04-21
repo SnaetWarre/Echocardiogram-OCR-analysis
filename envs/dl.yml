@@ -1,3 +1,4 @@
+# After create: GPU training — `mamba run -n DL pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124`
 name: DL
 channels:
   - conda-forge

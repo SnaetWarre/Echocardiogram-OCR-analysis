@@ -40,6 +40,10 @@ This repository contains a PySide6 DICOM viewer, an OCR pipeline for echo measur
 - `app/tools/prepare_line_training_data.py`: JSONL export for exact-line training rows.
 - `app/tools/prepare_line_recognizer_dataset.py`: crop + manifest export for recognizer experiments.
 - `app/tools/train_line_recognizer.py`: recognizer training run skeleton.
+- `app/tools/char_fallback_dataset_bootstrap.py`: build char-level train/val manifests from mismatch artifacts.
+- `app/tools/char_fallback_labeled_roi_bootstrap.py`: same manifests, but crops come from **real DICOM line ROIs** (mismatches in `label_scores.json` + `labels/labels.json` paths), not `putText` renders.
+- `app/tools/train_char_fallback_model.py`: compact CNN training/export for char fallback artifacts.
+- `app/tools/eval/eval_char_fallback_rollout.py`: compare baseline vs fallback label score outputs.
 - `app/tools/eval/eval_segmentation.py`: segmentation benchmark entrypoint.
 
 CLI entrypoints live under `app/tools/`; run them with `python -m app.tools.<module>`.
@@ -59,6 +63,7 @@ Use these defaults when adding or updating scripts:
 - recognizer manifest: `artifacts/ocr_redesign/line_recognizer_manifest.jsonl`
 - recognizer crops: `artifacts/ocr_redesign/line_recognizer_crops/`
 - recognizer training output: `artifacts/ocr_redesign/line_recognizer_training/`
+- char fallback model output: `artifacts/ocr_redesign/char_model/`
 - OCR redesign run log: `artifacts/ocr_redesign/run_log.jsonl`
 
 ## Common Commands
@@ -71,6 +76,9 @@ mamba run -n DL python -m app.main
 mamba run -n DL python -m pytest
 mamba run -n DL python -m app.tools.eval.echo_ocr_eval_labels --split validation --engine surya
 mamba run -n DL python -m app.tools.eval.eval_line_transcription --split validation
+mamba run -n DL python -m app.tools.char_fallback_dataset_bootstrap --label-scores artifacts/ocr_redesign/my_sweep/gray_x3_lanczos/label_scores.json --validation-exact-failures-csv artifacts/ocr_redesign/my_sweep/validation_exact_failures.csv --output-dir artifacts/ocr_redesign/char_bootstrap --merge-scan-dir artifacts/ocr_redesign --merge-scan-limit 64 --real-augment-copies 8 --synthetic-rounds 2
+mamba run -n DL pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
+mamba run -n DL python -m app.tools.train_char_fallback_model --dataset-dir artifacts/ocr_redesign/char_bootstrap --output-root artifacts/ocr_redesign/char_model --device auto --cnn-variant large --no-early-stop --epochs 200
 mamba run -n DL python -m app.tools.artifacts.build_ocr_lexicon
 mamba run -n DL python -m app.tools.batch.headless_batch_label /path/to/dicoms --recursive --output artifacts/ocr_redesign/headless_run --output-format json
 mamba run -n DL python -m app.tools.batch.headless_batch_label /path/to/dicoms --recursive --output artifacts/ocr_redesign/headless_run --output-format both --resume

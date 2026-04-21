@@ -1,0 +1,1 @@
+artifacts/ocr_redesign/char_model/20260421T103421Z

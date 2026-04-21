@@ -1,0 +1,48 @@
+{
+  "kind": "labeled_roi_char_bootstrap",
+  "labels_json": "C:\\Users\\G513\\Documents\\howest\\Semester_5\\Stage\\StageOpdracht\\Master\\labels\\labels.json",
+  "label_scores": "C:\\Users\\G513\\Documents\\howest\\Semester_5\\Stage\\StageOpdracht\\Master\\artifacts\\ocr_redesign\\preprocess_sweep_glm_broad_v4_charfb\\gray_x3_lanczos\\label_scores.json",
+  "split_filter": "validation",
+  "sweep_config_name": "gray_x3_lanczos",
+  "charset": "0123456789./-%cmLAoEVIDT",
+  "accepted_samples": 0,
+  "rejected": [
+    {
+      "file_path": "C:\\Users\\G513\\Documents\\howest\\Semester_5\\Stage\\StageOpdracht\\database_stage\\files\\p10\\p10002430\\s92290733\\92290733_0004.dcm",
+      "match_ix": 3,
+      "expected_text": "%FS 16 %",
+      "split_expected": 1,
+      "label_chars": 6,
+      "slices": 1,
+      "split_confidence": 0.7,
+      "reason": "split_mismatch_or_low_confidence"
+    }
+  ],
+  "class_balance": {
+    "0": 0,
+    "1": 0,
+    "2": 0,
+    "3": 0,
+    "4": 0,
+    "5": 0,
+    "6": 0,
+    "7": 0,
+    "8": 0,
+    "9": 0,
+    ".": 0,
+    "/": 0,
+    "-": 0,
+    "%": 0,
+    "c": 0,
+    "m": 0,
+    "L": 0,
+    "A": 0,
+    "o": 0,
+    "E": 0,
+    "V": 0,
+    "I": 0,
+    "D": 0,
+    "T": 0
+  },
+  "rows": []
+}

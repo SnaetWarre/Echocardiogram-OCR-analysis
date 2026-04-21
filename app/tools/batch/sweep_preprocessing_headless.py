@@ -1321,15 +1321,22 @@ def _filter_configs(
     return selected
 
 
-def _build_pipeline(engine_name: str, config: SweepConfig) -> EchoOcrPipeline:
+def _build_pipeline(
+    engine_name: str,
+    config: SweepConfig,
+    pipeline_parameters: dict[str, Any] | None = None,
+) -> EchoOcrPipeline:
     engine = build_engine(engine_name)
+    parameters = {
+        "ocr_engine": engine_name,
+        "requested_ocr_engine": engine_name,
+    }
+    if pipeline_parameters:
+        parameters.update(pipeline_parameters)
     pipeline = EchoOcrPipeline(
         ocr_engine=engine,
         config=PipelineConfig(
-            parameters={
-                "ocr_engine": engine_name,
-                "requested_ocr_engine": engine_name,
-            }
+            parameters=parameters
         ),
     )
     pipeline._line_transcriber.preprocess_views = _build_preprocess_views(config)
@@ -1375,6 +1382,18 @@ def _result_to_item(path: Path, result: Any, config: SweepConfig) -> dict[str, A
                 "text": text,
                 "confidence": entry.get("confidence"),
                 "parser_source": entry.get("parser_source"),
+                "manual_verify_required": bool(entry.get("manual_verify_required", False)),
+                "fallback_trigger_reason": entry.get("fallback_trigger_reason"),
+                "primary_text": entry.get("primary_text"),
+                "char_retry_text": entry.get("char_retry_text"),
+                "primary_quality": entry.get("primary_quality"),
+                "char_retry_confidence": entry.get("char_retry_confidence"),
+                "char_retry_min_char_confidence": entry.get("char_retry_min_char_confidence"),
+                "char_count_expected": entry.get("char_count_expected"),
+                "char_count_predicted": entry.get("char_count_predicted"),
+                "frame_index": entry.get("frame_index"),
+                "line_bbox": entry.get("line_bbox"),
+                "roi_bbox": entry.get("roi_bbox"),
             }
         )
     return {
@@ -1389,6 +1408,7 @@ def _result_to_item(path: Path, result: Any, config: SweepConfig) -> dict[str, A
             "line_prediction_count": len(raw.get("line_predictions", []))
             if isinstance(raw.get("line_predictions", []), list)
             else 0,
+            "fallback_summary": raw.get("fallback_summary", {}),
             "parser_sources": raw.get("parser_sources", []),
             "source_kinds": raw.get("source_kinds", []),
         },
@@ -1525,6 +1545,7 @@ def _run_sweep_file_through_pipeline(
     *,
     engine: str,
     config: SweepConfig,
+    pipeline_parameters: dict[str, Any],
     max_frames: int,
     per_file_timeout_s: int,
 ) -> tuple[dict[str, Any], EchoOcrPipeline]:
@@ -1543,11 +1564,11 @@ def _run_sweep_file_through_pipeline(
     except PerFileTimeoutError as exc:
         item = _result_error_item(path, config, "Timeout", str(exc))
         _dispose_pipeline(pipeline)
-        return item, _build_pipeline(engine, config)
+        return item, _build_pipeline(engine, config, pipeline_parameters)
     except Exception as exc:
         item = _result_error_item(path, config, type(exc).__name__, str(exc))
         _dispose_pipeline(pipeline)
-        return item, _build_pipeline(engine, config)
+        return item, _build_pipeline(engine, config, pipeline_parameters)
 
 
 def _write_sweep_checkpoint_if_due(
@@ -1602,6 +1623,10 @@ def _print_sweep_file_progress_if_due(
 def _build_headless_issues_only(items: list[dict[str, Any]]) -> dict[str, Any]:
     error_items: list[dict[str, Any]] = []
     flagged_measurements: list[dict[str, Any]] = []
+    manual_verify_rows: list[dict[str, Any]] = []
+    fallback_invocations = 0
+    fallback_accepts = 0
+    fallback_rejects = 0
 
     for item in items:
         if not isinstance(item, dict):
@@ -1618,6 +1643,39 @@ def _build_headless_issues_only(items: list[dict[str, Any]]) -> dict[str, Any]:
             )
 
         measurements = item.get("measurements", [])
+        line_predictions = item.get("line_predictions", [])
+        if isinstance(line_predictions, list):
+            for line in line_predictions:
+                if not isinstance(line, dict):
+                    continue
+                trigger_reason = str(line.get("fallback_trigger_reason") or "").strip()
+                retry_text = str(line.get("char_retry_text") or "").strip()
+                final_text = str(line.get("text") or "").strip()
+                manual_verify = bool(line.get("manual_verify_required", False))
+                if trigger_reason and trigger_reason != "none":
+                    fallback_invocations += 1
+                if retry_text:
+                    if final_text == retry_text:
+                        fallback_accepts += 1
+                    else:
+                        fallback_rejects += 1
+                if manual_verify:
+                    manual_verify_rows.append(
+                        {
+                            "dicom_path": dicom_path,
+                            "line_order": line.get("order"),
+                            "line_text": final_text,
+                            "confidence": line.get("confidence"),
+                            "fallback_trigger_reason": trigger_reason,
+                            "primary_text": str(line.get("primary_text") or ""),
+                            "char_retry_text": retry_text,
+                            "char_retry_confidence": line.get("char_retry_confidence"),
+                            "char_retry_min_char_confidence": line.get("char_retry_min_char_confidence"),
+                            "char_count_expected": line.get("char_count_expected"),
+                            "char_count_predicted": line.get("char_count_predicted"),
+                        }
+                    )
+
         if not isinstance(measurements, list):
             continue
         for measurement in measurements:
@@ -1641,9 +1699,14 @@ def _build_headless_issues_only(items: list[dict[str, Any]]) -> dict[str, Any]:
         "summary": {
             "error_item_count": len(error_items),
             "flagged_measurement_count": len(flagged_measurements),
+            "fallback_invocations": fallback_invocations,
+            "fallback_accepted_retries": fallback_accepts,
+            "fallback_rejected_retries": fallback_rejects,
+            "manual_verify_line_count": len(manual_verify_rows),
         },
         "error_items": error_items,
         "flagged_measurements": flagged_measurements,
+        "manual_verify_rows": manual_verify_rows,
     }
 
 
@@ -2239,6 +2302,40 @@ def build_parser() -> argparse.ArgumentParser:
         default="",
         help="Optional comma-separated config names to skip.",
     )
+    parser.add_argument(
+        "--char-fallback-enabled",
+        action="store_true",
+        help="Enable char-level fallback retry policy during sweep.",
+    )
+    parser.add_argument(
+        "--char-fallback-artifact-dir",
+        type=Path,
+        default=Path("artifacts/ocr_redesign/char_model"),
+        help="Directory containing char fallback model/template artifacts.",
+    )
+    parser.add_argument(
+        "--char-fallback-min-split-confidence",
+        type=float,
+        default=0.55,
+        help="Minimum dead-space split confidence to allow char retry.",
+    )
+    parser.add_argument(
+        "--char-fallback-retry-confidence",
+        type=float,
+        default=0.70,
+        help="Minimum aggregate char-retry confidence to accept retry.",
+    )
+    parser.add_argument(
+        "--char-fallback-retry-min-char-confidence",
+        type=float,
+        default=0.55,
+        help="Minimum per-character confidence required to accept retry.",
+    )
+    parser.add_argument(
+        "--char-fallback-device",
+        default="cpu",
+        help="Torch device for char CNN fallback (e.g. cpu, cuda:0).",
+    )
     return parser
 
 
@@ -2358,6 +2455,14 @@ def main() -> int:
     summary_rows: list[dict[str, Any]] = []
     summary_payload: list[dict[str, Any]] = []
     all_line_match_rows: list[dict[str, Any]] = []
+    pipeline_parameters: dict[str, Any] = {
+        "char_fallback_enabled": bool(args.char_fallback_enabled),
+        "char_fallback_artifact_dir": str(args.char_fallback_artifact_dir.expanduser()),
+        "char_fallback_min_split_confidence": float(args.char_fallback_min_split_confidence),
+        "char_fallback_retry_confidence": float(args.char_fallback_retry_confidence),
+        "char_fallback_retry_min_char_confidence": float(args.char_fallback_retry_min_char_confidence),
+        "char_fallback_device": str(args.char_fallback_device),
+    }
 
     for index, config in enumerate(configs, start=1):
         config_dir = output_dir / config.name
@@ -2425,7 +2530,7 @@ def main() -> int:
         error_files = sum(1 for item in items if item.get("status") == "error")
         pending = [path for path in discovered if _canonical_path(path) not in processed_keys]
         started = time.perf_counter()
-        pipeline: EchoOcrPipeline | None = _build_pipeline(args.engine, config)
+        pipeline: EchoOcrPipeline | None = _build_pipeline(args.engine, config, pipeline_parameters)
 
         try:
             for path in pending:
@@ -2435,6 +2540,7 @@ def main() -> int:
                         pipeline,
                         engine=args.engine,
                         config=config,
+                        pipeline_parameters=pipeline_parameters,
                         max_frames=args.max_frames,
                         per_file_timeout_s=args.per_file_timeout_s,
                     )
@@ -2500,6 +2606,30 @@ def main() -> int:
             discovered_count=len(discovered),
         )
         _write_json(headless_path, headless_payload)
+        manual_rows = (
+            headless_payload.get("issues_only", {}).get("manual_verify_rows", [])
+            if isinstance(headless_payload.get("issues_only", {}), dict)
+            else []
+        )
+        if isinstance(manual_rows, list):
+            _write_json(config_dir / "manual_verify_rows.json", {"rows": manual_rows})
+            _write_csv(
+                config_dir / "manual_verify_rows.csv",
+                [row for row in manual_rows if isinstance(row, dict)],
+                [
+                    "dicom_path",
+                    "line_order",
+                    "line_text",
+                    "confidence",
+                    "fallback_trigger_reason",
+                    "primary_text",
+                    "char_retry_text",
+                    "char_retry_confidence",
+                    "char_retry_min_char_confidence",
+                    "char_count_expected",
+                    "char_count_predicted",
+                ],
+            )
         _clean_checkpoint(checkpoint_path)
 
         label_scores = _score_labeled_subset(items, labeled_files)

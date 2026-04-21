@@ -263,6 +263,19 @@ def test_headless_payload_contains_issues_only_section() -> None:
                         "flags": ["implausible_value", "rule_recovered_leading_digit"],
                     }
                 ],
+                "line_predictions": [
+                    {
+                        "order": 0,
+                        "text": "1 LA Diam 4.0 cm",
+                        "manual_verify_required": True,
+                        "fallback_trigger_reason": "char_count_mismatch",
+                        "primary_text": "LA Diam 40 cm",
+                        "char_retry_text": "1 LA Diam 4.0 cm",
+                        "char_retry_confidence": 0.88,
+                        "char_count_expected": 14,
+                        "char_count_predicted": 14,
+                    }
+                ],
             },
             {
                 "dicom_path": "C:/b.dcm",
@@ -282,6 +295,10 @@ def test_headless_payload_contains_issues_only_section() -> None:
 
     assert payload["issues_only"]["summary"]["error_item_count"] == 1
     assert payload["issues_only"]["summary"]["flagged_measurement_count"] == 1
+    assert payload["issues_only"]["summary"]["manual_verify_line_count"] == 1
+    assert payload["issues_only"]["summary"]["fallback_invocations"] == 1
+    assert payload["issues_only"]["summary"]["fallback_accepted_retries"] == 1
+    assert payload["issues_only"]["summary"]["fallback_rejected_retries"] == 0
 
 
 def test_label_scores_payload_contains_mismatched_lines_issues_only() -> None:

@@ -35,6 +35,7 @@ from app.pipeline.measurements.measurement_decoder import (
 )
 from app.pipeline.output.echo_ocr_schema import MeasurementRecord
 from app.pipeline.output.echo_sidecar_writer import SidecarWriter
+from app.pipeline.ocr.char_cnn_inference import build_char_fallback_classifier
 from app.pipeline.ocr.ocr_engines import OcrEngine, OcrResult, OcrToken, build_engine
 from app.pipeline.llm.panel_validator import LocalLlmPanelValidator, PanelValidatorConfig
 from app.pipeline.measurements.study_companion_discovery import StudyCompanionDiscovery
@@ -47,6 +48,7 @@ DEFAULT_SEGMENTATION_MODE = "adaptive"
 DEFAULT_TARGET_LINE_HEIGHT_PX = 20.0
 DEFAULT_SEGMENTATION_EXTRA_LEFT_PAD_PX = 16
 DEFAULT_PREPROCESS_PROFILE = "sweep_gray_x3_lanczos"
+DEFAULT_CHAR_FALLBACK_ARTIFACT_DIR = "artifacts/ocr_redesign/char_model"
 
 DEFAULT_LEXICON_PATH = DEFAULT_OCR_REDESIGN_LEXICON_PATH
 MEASUREMENT_BOX_RGB = (0x1A, 0x21, 0x29)
@@ -172,6 +174,36 @@ class EchoOcrPipeline(BasePipeline):
             "panel_validation_timeout_s",
             default=30.0,
         )
+        self._char_fallback_enabled = self._read_bool_parameter(
+            parameters,
+            "char_fallback_enabled",
+            default=str(os.getenv("ECHO_CHAR_FALLBACK_ENABLED", "0")).strip().lower()
+            in {"1", "true", "yes", "on"},
+        )
+        self._char_fallback_min_split_confidence = self._read_float_parameter(
+            parameters,
+            "char_fallback_min_split_confidence",
+            default=0.55,
+        )
+        self._char_fallback_retry_confidence = self._read_float_parameter(
+            parameters,
+            "char_fallback_retry_confidence",
+            default=0.7,
+        )
+        self._char_fallback_retry_min_char_confidence = self._read_float_parameter(
+            parameters,
+            "char_fallback_retry_min_char_confidence",
+            default=0.55,
+        )
+        self._char_fallback_prefer_cnn = self._read_bool_parameter(
+            parameters,
+            "char_fallback_prefer_cnn",
+            default=True,
+        )
+        self._char_fallback_device = str(parameters.get("char_fallback_device", "cpu")).strip() or "cpu"
+        self._char_fallback_artifact_dir = Path(
+            str(parameters.get("char_fallback_artifact_dir", DEFAULT_CHAR_FALLBACK_ARTIFACT_DIR))
+        ).expanduser()
         self.ocr_engine: OcrEngine = NoopOcrEngine()
         self._components_ready = False
         self.box_detector = box_detector or TopLeftBlueGrayBoxDetector()
@@ -360,6 +392,21 @@ class EchoOcrPipeline(BasePipeline):
     def _ensure_components(self) -> None:
         if self._components_ready:
             return
+        char_classifier = None
+        if self._char_fallback_enabled:
+            try:
+                char_classifier = build_char_fallback_classifier(
+                    self._char_fallback_artifact_dir,
+                    prefer_cnn=bool(self._char_fallback_prefer_cnn),
+                    device=self._char_fallback_device,
+                )
+            except Exception:
+                char_classifier = None
+        self._line_transcriber.char_fallback_enabled = bool(self._char_fallback_enabled)
+        self._line_transcriber.char_fallback_classifier = char_classifier
+        self._line_transcriber.char_fallback_min_split_confidence = float(self._char_fallback_min_split_confidence)
+        self._line_transcriber.char_retry_confidence_threshold = float(self._char_fallback_retry_confidence)
+        self._line_transcriber.char_retry_min_char_confidence = float(self._char_fallback_retry_min_char_confidence)
         self.ocr_engine = (
             self._provided_ocr_engine
             if self._provided_ocr_engine is not None
@@ -516,6 +563,9 @@ class EchoOcrPipeline(BasePipeline):
                 "uncertain_line_count": panel.uncertain_line_count,
                 "fallback_invocations": panel.fallback_invocations,
                 "engine_disagreement_count": panel.engine_disagreement_count,
+                "fallback_accept_count": panel.fallback_accept_count,
+                "fallback_reject_count": panel.fallback_reject_count,
+                "manual_verify_line_count": panel.manual_verify_line_count,
                 "used_detection": bool(bbox is not None),
             }
         )
@@ -559,10 +609,18 @@ class EchoOcrPipeline(BasePipeline):
                             "text": line.text,
                             "confidence": line.confidence,
                             "uncertain": line.uncertain,
+                            "manual_verify_required": line.manual_verify_required,
                             "line_bbox": [bbox[0] + line.bbox[0], bbox[1] + line.bbox[1], line.bbox[2], line.bbox[3]],
                             "roi_bbox": list(bbox),
                             "ocr_engine": line.engine_name,
                             "parser_source": line.source,
+                            "fallback_trigger_reason": line.metadata.get("fallback_trigger_reason"),
+                            "primary_text": line.metadata.get("primary_text"),
+                            "char_retry_text": line.metadata.get("char_retry_text"),
+                            "primary_quality": line.metadata.get("primary_quality"),
+                            "char_retry_confidence": line.metadata.get("char_retry_confidence"),
+                            "char_count_expected": line.metadata.get("char_count_expected"),
+                            "char_count_predicted": line.metadata.get("char_count_predicted"),
                             "source_kind": "pixel_ocr",
                             "source_path": str(path),
                             "source_modality": getattr(md, "modality", None) or "",
@@ -716,10 +774,18 @@ class EchoOcrPipeline(BasePipeline):
                     "text": record.exact_line_text,
                     "confidence": record.line_confidence,
                     "uncertain": record.line_uncertain,
+                    "manual_verify_required": False,
                     "line_bbox": list(record.line_bbox) if record.line_bbox is not None else None,
                     "roi_bbox": list(record.roi_bbox),
                     "ocr_engine": record.ocr_engine,
                     "parser_source": record.parser_source,
+                    "fallback_trigger_reason": None,
+                    "primary_text": record.exact_line_text,
+                    "char_retry_text": "",
+                    "primary_quality": record.line_confidence,
+                    "char_retry_confidence": 0.0,
+                    "char_count_expected": None,
+                    "char_count_predicted": None,
                     "source_kind": record.source_kind,
                     "source_path": record.source_path,
                     "source_modality": record.source_modality,
@@ -823,6 +889,14 @@ class EchoOcrPipeline(BasePipeline):
                 "uncertain_line_count": sum(
                     1 for entry in line_predictions_payload if bool(entry.get("uncertain"))
                 ),
+                "manual_verify_line_count": sum(
+                    1 for entry in line_predictions_payload if bool(entry.get("manual_verify_required"))
+                ),
+                "fallback_summary": {
+                    "invocations": sum(1 for entry in line_predictions_payload if str(entry.get("fallback_trigger_reason") or "").strip() not in {"", "none"}),
+                    "accepted_retries": sum(1 for entry in line_predictions_payload if bool(str(entry.get("char_retry_text") or "").strip()) and str(entry.get("text") or "").strip() == str(entry.get("char_retry_text") or "").strip()),
+                    "rejected_retries": sum(1 for entry in line_predictions_payload if bool(str(entry.get("char_retry_text") or "").strip()) and str(entry.get("text") or "").strip() != str(entry.get("char_retry_text") or "").strip()),
+                },
                 "study_companion_used": any(record.source_kind != "pixel_ocr" for _, record in ordered),
                 "ocr_engine_config": {
                     "requested": self._requested_engine,

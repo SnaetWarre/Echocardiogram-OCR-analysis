@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import cv2
 import numpy as np
 
 from app.pipeline.layout.line_segmenter import SegmentationResult, SegmentedLine
+from app.pipeline.ocr.char_fallback import CharFallbackPrediction
 from app.pipeline.transcription.line_transcriber import LineTranscriber
 from app.pipeline.ocr.ocr_engines import OcrResult, OcrToken
 
@@ -39,6 +41,18 @@ class _RecordingEngine:
             tokens=[OcrToken(text=text, confidence=confidence)],
             engine_name=self.name,
         )
+
+
+class _CharFallbackStub:
+    def __init__(self, prediction: CharFallbackPrediction) -> None:
+        self.prediction = prediction
+        self.calls = 0
+
+    def predict(self, line_image: np.ndarray, slices: tuple[object, ...]) -> CharFallbackPrediction:
+        _ = line_image
+        _ = slices
+        self.calls += 1
+        return self.prediction
 
 
 def test_line_transcriber_routes_uncertain_lines_to_fallback_engine() -> None:
@@ -255,3 +269,156 @@ def test_line_transcriber_triggers_fallback_for_unknown_unit_sparse_junk() -> No
 
     assert result.fallback_invocations == 1
     assert result.lines[0].text == "1 LA Diam 4.0 cm"
+
+
+def test_line_transcriber_accepts_char_fallback_when_guardrails_pass() -> None:
+    roi = np.ones((24, 72), dtype=np.uint8) * 255
+    cv2.putText(roi, "123456", (2, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, 0, 1, cv2.LINE_AA)
+    segmentation = SegmentationResult(
+        header_trim_px=0,
+        content_bbox=(0, 0, 48, 20),
+        lines=(
+            SegmentedLine(order=0, bbox=(0, 0, 72, 24), metadata={"token_count": 1}),
+        ),
+    )
+    primary = _RecordingEngine([("bad", 0.1)], name="primary")
+    fallback = _RecordingEngine([("still bad", 0.1)], name="fallback")
+    char_stub = _CharFallbackStub(
+        CharFallbackPrediction(
+            text="12.5cm",
+            confidence=0.9,
+            per_char_confidence=(0.9, 0.9, 0.9, 0.9, 0.9, 0.9),
+            predicted_count=6,
+        )
+    )
+
+    result = LineTranscriber(
+        uncertain_threshold=0.7,
+        fallback_quality_threshold=0.72,
+        char_fallback_enabled=True,
+        char_fallback_classifier=char_stub,
+        char_fallback_min_split_confidence=0.0,
+        char_retry_confidence_threshold=0.2,
+        preprocess_views={"default": lambda image: image},
+    ).transcribe(
+        roi,
+        segmentation,
+        primary_engine=primary,
+        fallback_engine=fallback,
+    )
+
+    assert char_stub.calls == 1
+    assert result.fallback_accept_count == 1
+    assert result.lines[0].source == "char_fallback"
+    assert result.lines[0].manual_verify_required is True
+
+
+def test_line_transcriber_rejects_char_fallback_when_guardrails_fail() -> None:
+    roi = np.ones((24, 72), dtype=np.uint8) * 255
+    cv2.putText(roi, "123456", (2, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, 0, 1, cv2.LINE_AA)
+    segmentation = SegmentationResult(
+        header_trim_px=0,
+        content_bbox=(0, 0, 48, 20),
+        lines=(
+            SegmentedLine(order=0, bbox=(0, 0, 72, 24), metadata={"token_count": 1}),
+        ),
+    )
+    primary = _RecordingEngine([("bad", 0.1)], name="primary")
+    fallback = _RecordingEngine([("still bad", 0.1)], name="fallback")
+    char_stub = _CharFallbackStub(
+        CharFallbackPrediction(
+            text="999",
+            confidence=0.1,
+            per_char_confidence=(0.1, 0.1, 0.1),
+            predicted_count=3,
+        )
+    )
+
+    result = LineTranscriber(
+        uncertain_threshold=0.7,
+        fallback_quality_threshold=0.72,
+        char_fallback_enabled=True,
+        char_fallback_classifier=char_stub,
+        char_fallback_min_split_confidence=0.0,
+        char_retry_confidence_threshold=0.95,
+        preprocess_views={"default": lambda image: image},
+    ).transcribe(
+        roi,
+        segmentation,
+        primary_engine=primary,
+        fallback_engine=fallback,
+    )
+
+    assert char_stub.calls == 1
+    assert result.fallback_reject_count == 1
+    assert result.lines[0].source != "char_fallback"
+    assert result.lines[0].manual_verify_required is True
+
+
+def test_line_transcriber_rejects_char_retry_on_low_min_char_confidence() -> None:
+    roi = np.ones((24, 72), dtype=np.uint8) * 255
+    cv2.putText(roi, "123456", (2, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, 0, 1, cv2.LINE_AA)
+    segmentation = SegmentationResult(
+        header_trim_px=0,
+        content_bbox=(0, 0, 48, 20),
+        lines=(
+            SegmentedLine(order=0, bbox=(0, 0, 72, 24), metadata={"token_count": 1}),
+        ),
+    )
+    primary = _RecordingEngine([("bad", 0.1)], name="primary")
+    fallback = _RecordingEngine([("still bad", 0.1)], name="fallback")
+    char_stub = _CharFallbackStub(
+        CharFallbackPrediction(
+            text="12.5cm",
+            confidence=0.95,
+            per_char_confidence=(0.95, 0.9, 0.2, 0.93, 0.96, 0.94),
+            predicted_count=6,
+        )
+    )
+
+    result = LineTranscriber(
+        uncertain_threshold=0.7,
+        fallback_quality_threshold=0.72,
+        char_fallback_enabled=True,
+        char_fallback_classifier=char_stub,
+        char_fallback_min_split_confidence=0.0,
+        char_retry_confidence_threshold=0.5,
+        char_retry_min_char_confidence=0.4,
+        preprocess_views={"default": lambda image: image},
+    ).transcribe(
+        roi,
+        segmentation,
+        primary_engine=primary,
+        fallback_engine=fallback,
+    )
+
+    assert char_stub.calls == 1
+    assert result.fallback_reject_count == 1
+    assert result.lines[0].source != "char_fallback"
+
+
+def test_line_transcriber_marks_fallback_disagreement_trigger_reason() -> None:
+    roi = np.zeros((20, 40), dtype=np.uint8)
+    segmentation = SegmentationResult(
+        header_trim_px=0,
+        content_bbox=(0, 0, 40, 20),
+        lines=(
+            SegmentedLine(order=0, bbox=(0, 0, 40, 20), metadata={"token_count": 1}),
+        ),
+    )
+    primary = _RecordingEngine([("bad sparse", 0.3), ("bad sparse", 0.3)], name="primary")
+    fallback = _RecordingEngine([("1 E' Lat 0.09 m/s", 0.85), ("1 E' Lat 0.09 m/s", 0.85)], name="fallback")
+
+    result = LineTranscriber(
+        uncertain_threshold=0.7,
+        fallback_quality_threshold=0.72,
+        preprocess_views={"default": lambda image: image, "clahe": lambda image: image},
+    ).transcribe(
+        roi,
+        segmentation,
+        primary_engine=primary,
+        fallback_engine=fallback,
+    )
+
+    assert result.fallback_invocations == 1
+    assert result.lines[0].metadata["fallback_trigger_reason"] == "fallback_disagreement"

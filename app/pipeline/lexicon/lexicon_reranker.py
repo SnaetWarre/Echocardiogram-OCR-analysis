@@ -89,6 +89,7 @@ class LexiconReranker:
                     engine_name=best.engine_name,
                     source=best.source,
                     uncertain=ranked_item.score < self.low_confidence_threshold,
+                    manual_verify_required=line.manual_verify_required,
                     candidates=line.candidates or (best,),
                     metadata={
                         **line.metadata,
@@ -106,6 +107,9 @@ class LexiconReranker:
             uncertain_line_count=uncertain_count,
             fallback_invocations=panel.fallback_invocations,
             engine_disagreement_count=max(panel.engine_disagreement_count, disagreement_count),
+            fallback_accept_count=panel.fallback_accept_count,
+            fallback_reject_count=panel.fallback_reject_count,
+            manual_verify_line_count=panel.manual_verify_line_count,
         )
 
     def _score_candidate(

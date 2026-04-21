@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from difflib import SequenceMatcher
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
@@ -8,7 +9,9 @@ import numpy as np
 
 from app.pipeline.layout.line_segmenter import SegmentationResult, SegmentedLine
 from app.pipeline.measurements.measurement_decoder import KNOWN_UNITS, canonicalize_exact_line, normalize_unit, parse_measurement_line
+from app.pipeline.ocr.char_fallback import CharFallbackClassifier
 from app.pipeline.ocr.ocr_engines import OcrEngine, OcrResult, OcrToken
+from app.pipeline.transcription.dead_space_char_splitter import split_dead_space_char_slices
 
 
 def _empty_metadata() -> dict[str, Any]:
@@ -35,6 +38,7 @@ class LinePrediction:
     engine_name: str
     source: str
     uncertain: bool
+    manual_verify_required: bool = False
     candidates: tuple[LineOcrCandidate, ...] = field(default_factory=tuple)
     metadata: dict[str, Any] = field(default_factory=_empty_metadata)
 
@@ -46,6 +50,9 @@ class PanelTranscription:
     uncertain_line_count: int = 0
     fallback_invocations: int = 0
     engine_disagreement_count: int = 0
+    fallback_accept_count: int = 0
+    fallback_reject_count: int = 0
+    manual_verify_line_count: int = 0
 
 
 def crop_segment(image: np.ndarray, segment: SegmentedLine) -> np.ndarray:
@@ -105,11 +112,21 @@ class LineTranscriber:
         uncertain_threshold: float = 0.72,
         disagreement_similarity_threshold: float = 0.8,
         fallback_quality_threshold: float = 0.72,
+        char_fallback_enabled: bool = False,
+        char_fallback_classifier: CharFallbackClassifier | None = None,
+        char_fallback_min_split_confidence: float = 0.55,
+        char_retry_confidence_threshold: float = 0.7,
+        char_retry_min_char_confidence: float = 0.55,
         preprocess_views: dict[str, Callable[[np.ndarray], np.ndarray]] | None = None,
     ) -> None:
         self.uncertain_threshold = float(uncertain_threshold)
         self.disagreement_similarity_threshold = float(disagreement_similarity_threshold)
         self.fallback_quality_threshold = float(fallback_quality_threshold)
+        self.char_fallback_enabled = bool(char_fallback_enabled)
+        self.char_fallback_classifier = char_fallback_classifier
+        self.char_fallback_min_split_confidence = float(char_fallback_min_split_confidence)
+        self.char_retry_confidence_threshold = float(char_retry_confidence_threshold)
+        self.char_retry_min_char_confidence = float(char_retry_min_char_confidence)
         self.preprocess_views = preprocess_views or {}
 
     def transcribe(
@@ -123,6 +140,9 @@ class LineTranscriber:
         predictions: list[LinePrediction] = []
         fallback_invocations = 0
         disagreement_count = 0
+        fallback_accept_count = 0
+        fallback_reject_count = 0
+        manual_verify_line_count = 0
         view_items = list(self.preprocess_views.items()) or [("default", lambda image: image)]
         default_view_name, default_preprocessor = view_items[0]
         alternate_views = view_items[1:]
@@ -131,6 +151,10 @@ class LineTranscriber:
             raw_crop = crop_segment(roi_image, segment)
             if raw_crop.size == 0:
                 continue
+
+            split_result = split_dead_space_char_slices(raw_crop)
+            expected_char_count = int(split_result.expected_char_count)
+            split_confidence = float(split_result.confidence)
 
             primary_crop = default_preprocessor(raw_crop)
             primary_result = primary_engine.extract(primary_crop)
@@ -159,12 +183,16 @@ class LineTranscriber:
 
             best_primary_candidate = max(candidates, key=self._candidate_rank_key)
             best_primary_quality = self._candidate_quality(best_primary_candidate)
+            primary_char_count = self._predicted_char_count(best_primary_candidate.text)
+            primary_char_count_ok = expected_char_count <= 0 or primary_char_count == expected_char_count
+            fallback_disagreement = False
             needs_fallback = (
                 best_primary_quality < self.fallback_quality_threshold
                 or not best_primary_candidate.text
                 or self._looks_like_junk(best_primary_candidate)
                 or self._looks_like_value_only_measurement(segment, best_primary_candidate)
                 or self._looks_like_malformed_measurement_layout(segment, best_primary_candidate)
+                or not primary_char_count_ok
             )
             if fallback_engine is not None and needs_fallback:
                 fallback_crop = default_preprocessor(raw_crop)
@@ -194,12 +222,66 @@ class LineTranscriber:
 
                 candidates = self._filter_candidates(candidates)
                 best_candidate = max(candidates, key=self._candidate_rank_key)
-                if _normalize_for_similarity(best_primary_candidate.text) != _normalize_for_similarity(best_candidate.text):
+                similarity = _text_similarity(best_primary_candidate.text, best_candidate.text)
+                if similarity < self.disagreement_similarity_threshold:
                     disagreement_count += 1
+                    fallback_disagreement = True
+
+            needs_char_retry_policy = needs_fallback or fallback_disagreement
+            fallback_trigger_reason = self._fallback_trigger_reason(
+                segment,
+                best_primary_candidate,
+                best_primary_quality=best_primary_quality,
+                primary_char_count_ok=primary_char_count_ok,
+                fallback_disagreement=fallback_disagreement,
+            )
 
             chosen = max(candidates, key=self._candidate_rank_key)
+            char_retry_text = ""
+            char_retry_confidence = 0.0
+            char_retry_min_confidence = 0.0
+            char_count_predicted = self._predicted_char_count(chosen.text)
+            manual_verify_required = False
+            char_retry_applied = False
+            can_use_char_fallback = (
+                self.char_fallback_enabled
+                and self.char_fallback_classifier is not None
+                and needs_char_retry_policy
+                and expected_char_count > 0
+                and split_confidence >= self.char_fallback_min_split_confidence
+            )
+            if can_use_char_fallback:
+                retry = self.char_fallback_classifier.predict(raw_crop, split_result.slices)
+                char_retry_text = canonicalize_exact_line(retry.text)
+                char_retry_confidence = float(retry.confidence)
+                char_retry_min_confidence = float(retry.min_char_confidence)
+                char_count_predicted = int(retry.predicted_count)
+                retry_count_ok = char_count_predicted == expected_char_count
+                retry_quality_ok = char_retry_confidence >= self.char_retry_confidence_threshold
+                retry_char_conf_ok = char_retry_min_confidence >= self.char_retry_min_char_confidence
+                if char_retry_text and retry_count_ok and retry_quality_ok and retry_char_conf_ok:
+                    chosen = LineOcrCandidate(
+                        text=char_retry_text,
+                        confidence=char_retry_confidence,
+                        engine_name="char-fallback",
+                        view_name="dead_space_split",
+                        source="char_fallback",
+                        metadata={
+                            "expected_char_count": expected_char_count,
+                            "predicted_char_count": char_count_predicted,
+                            "split_confidence": split_confidence,
+                        },
+                    )
+                    char_retry_applied = True
+                    fallback_accept_count += 1
+                else:
+                    fallback_reject_count += 1
+                manual_verify_required = True
+
             chosen_text = canonicalize_exact_line(chosen.text)
             uncertain = self._candidate_quality(chosen) < self.uncertain_threshold or not chosen_text.strip()
+            if manual_verify_required:
+                manual_verify_line_count += 1
             predictions.append(
                 LinePrediction(
                     order=segment.order,
@@ -209,6 +291,7 @@ class LineTranscriber:
                     engine_name=chosen.engine_name,
                     source=chosen.source,
                     uncertain=uncertain,
+                    manual_verify_required=manual_verify_required,
                     candidates=tuple(candidates),
                     metadata={
                         "segmentation_source": segment.metadata.get("source"),
@@ -216,6 +299,17 @@ class LineTranscriber:
                         "candidate_count": len(candidates),
                         "candidate_quality": self._candidate_quality(chosen),
                         "best_primary_quality": best_primary_quality,
+                        "fallback_trigger_reason": fallback_trigger_reason,
+                        "primary_text": canonicalize_exact_line(best_primary_candidate.text),
+                        "char_retry_text": char_retry_text,
+                        "primary_quality": best_primary_quality,
+                        "char_retry_confidence": char_retry_confidence,
+                        "char_retry_min_char_confidence": char_retry_min_confidence,
+                        "char_count_expected": expected_char_count,
+                        "char_count_predicted": char_count_predicted,
+                        "split_confidence": split_confidence,
+                        "manual_verify_required": manual_verify_required,
+                        "char_retry_applied": char_retry_applied,
                     },
                 )
             )
@@ -229,7 +323,40 @@ class LineTranscriber:
             uncertain_line_count=uncertain_count,
             fallback_invocations=fallback_invocations,
             engine_disagreement_count=disagreement_count,
+            fallback_accept_count=fallback_accept_count,
+            fallback_reject_count=fallback_reject_count,
+            manual_verify_line_count=manual_verify_line_count,
         )
+
+    def _fallback_trigger_reason(
+        self,
+        segment: SegmentedLine,
+        candidate: LineOcrCandidate,
+        *,
+        best_primary_quality: float,
+        primary_char_count_ok: bool,
+        fallback_disagreement: bool,
+    ) -> str:
+        if fallback_disagreement:
+            return "fallback_disagreement"
+        if best_primary_quality < self.fallback_quality_threshold:
+            return "low_quality"
+        if not candidate.text.strip():
+            return "empty_text"
+        if self._looks_like_junk(candidate):
+            return "junk_text"
+        if self._looks_like_value_only_measurement(segment, candidate):
+            return "value_only"
+        if self._looks_like_malformed_measurement_layout(segment, candidate):
+            return "malformed_layout"
+        if not primary_char_count_ok:
+            return "char_count_mismatch"
+        return "none"
+
+    @staticmethod
+    def _predicted_char_count(text: str) -> int:
+        canonical = canonicalize_exact_line(text)
+        return sum(1 for ch in canonical if not ch.isspace())
 
     def _should_try_additional_views(self, segment: SegmentedLine, primary_candidate: LineOcrCandidate) -> bool:
         token_count = int(segment.metadata.get("token_count", 0) or 0)
@@ -368,3 +495,11 @@ class LineTranscriber:
 
 def _normalize_for_similarity(text: str) -> str:
     return " ".join(text.lower().split())
+
+
+def _text_similarity(lhs: str, rhs: str) -> float:
+    left = _normalize_for_similarity(lhs)
+    right = _normalize_for_similarity(rhs)
+    if not left and not right:
+        return 1.0
+    return float(SequenceMatcher(a=left, b=right).ratio())

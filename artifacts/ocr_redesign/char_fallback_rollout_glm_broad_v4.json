@@ -1,0 +1,29 @@
+{
+  "baseline_path": "artifacts\\ocr_redesign\\preprocess_sweep_glm_broad_v4\\gray_x3_lanczos\\label_scores.json",
+  "fallback_path": "artifacts\\ocr_redesign\\preprocess_sweep_glm_broad_v4_charfb\\gray_x3_lanczos\\label_scores.json",
+  "exact_match_rate": {
+    "baseline": 0.0,
+    "fallback": 0.0,
+    "delta": 0.0
+  },
+  "value_match_rate": {
+    "baseline": 0.0,
+    "fallback": 0.0,
+    "delta": 0.0
+  },
+  "corrected_mismatch_count": 2,
+  "regressed_mismatch_count": 0,
+  "corrected_examples": [
+    {
+      "file_path": "C:\\Users\\G513\\Documents\\howest\\Semester_5\\Stage\\StageOpdracht\\database_stage\\files\\p10\\p10003731\\s91243943\\91243943_0052.dcm",
+      "expected_text": "LVOT maxPG 12 mmHg",
+      "baseline_predicted": "LVOT maxPG 2 mmHg"
+    },
+    {
+      "file_path": "C:\\Users\\G513\\Documents\\howest\\Semester_5\\Stage\\StageOpdracht\\database_stage\\files\\p10\\p10003731\\s91243943\\91243943_0053.dcm",
+      "expected_text": "AV maxPG 16 mmHg",
+      "baseline_predicted": "AV maxPG 6 mmHg"
+    }
+  ],
+  "regressed_examples": []
+}
