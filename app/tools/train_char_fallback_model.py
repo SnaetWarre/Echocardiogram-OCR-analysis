@@ -141,7 +141,14 @@ def _compute_loader_mean_std(loader: DataLoader) -> tuple[float, float]:
     return float(mean), float(np.sqrt(var))
 
 
-def _evaluate(model: nn.Module, loader: DataLoader, loss_fn: nn.Module, device: str) -> tuple[float, float]:
+def _evaluate(
+    model: nn.Module,
+    loader: DataLoader,
+    loss_fn: nn.Module,
+    device: str,
+    mean: float,
+    std: float,
+) -> tuple[float, float]:
     model.eval()
     total_loss = 0.0
     total = 0
@@ -149,6 +156,7 @@ def _evaluate(model: nn.Module, loader: DataLoader, loss_fn: nn.Module, device: 
     with torch.no_grad():
         for images, targets in loader:
             images = images.to(device)
+            images = (images - float(mean)) / max(float(std), 1e-6)
             targets = targets.to(device)
             logits = model(images)
             loss = loss_fn(logits, targets)
@@ -247,7 +255,7 @@ def train(config: TrainConfig) -> dict[str, Any]:
             seen += int(images.size(0))
 
         train_loss = running_loss / max(1, seen)
-        val_loss, val_cer = _evaluate(model, val_loader, loss_fn, device)
+        val_loss, val_cer = _evaluate(model, val_loader, loss_fn, device, mean, std)
         lr_now = float(optimizer.param_groups[0]["lr"])
         scheduler.step(val_loss)
         history.append(
@@ -259,12 +267,24 @@ def train(config: TrainConfig) -> dict[str, Any]:
                 "lr": lr_now,
             }
         )
+        print(
+            f"[epoch {epoch + 1:03d}/{config.epochs}] "
+            f"train_loss={train_loss:.4f} "
+            f"val_loss={val_loss:.4f} "
+            f"val_cer={val_cer:.4f} "
+            f"lr={lr_now:.3e}",
+            flush=True,
+        )
 
         if val_cer + config.min_delta < best_cer:
             best_cer = val_cer
             best_state = {key: value.detach().cpu() for key, value in model.state_dict().items()}
             best_epoch = epoch
             stale_epochs = 0
+            print(
+                f"  -> new best: val_cer={best_cer:.4f} at epoch {best_epoch + 1}",
+                flush=True,
+            )
         else:
             if epoch + 1 < min_epochs:
                 stale_epochs = 0
@@ -275,6 +295,10 @@ def train(config: TrainConfig) -> dict[str, Any]:
                 and epoch + 1 >= min_epochs
                 and stale_epochs >= int(config.patience)
             ):
+                print(
+                    f"Early stopping at epoch {epoch + 1} (no val_cer improvement for {stale_epochs} epochs).",
+                    flush=True,
+                )
                 break
 
     if best_state is None:

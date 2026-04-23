@@ -11,6 +11,7 @@ from app.pipeline.layout.line_segmenter import SegmentationResult, SegmentedLine
 from app.pipeline.measurements.measurement_decoder import KNOWN_UNITS, canonicalize_exact_line, normalize_unit, parse_measurement_line
 from app.pipeline.ocr.char_fallback import CharFallbackClassifier
 from app.pipeline.ocr.ocr_engines import OcrEngine, OcrResult, OcrToken
+from app.pipeline.transcription.char_slice_ocr_experimental import per_char_slice_ocr_line
 from app.pipeline.transcription.dead_space_char_splitter import split_dead_space_char_slices
 
 
@@ -237,6 +238,13 @@ class LineTranscriber:
             )
 
             chosen = max(candidates, key=self._candidate_rank_key)
+            pre_char_chosen = chosen
+            pre_char_chosen_text = canonicalize_exact_line(pre_char_chosen.text)
+            line_ocr_char_count = self._predicted_char_count(pre_char_chosen_text)
+            line_ocr_count_matches = bool(
+                expected_char_count <= 0 or line_ocr_char_count == expected_char_count
+            )
+
             char_retry_text = ""
             char_retry_confidence = 0.0
             char_retry_min_confidence = 0.0
@@ -279,6 +287,105 @@ class LineTranscriber:
                 manual_verify_required = True
 
             chosen_text = canonicalize_exact_line(chosen.text)
+            vertical_slice_retry_attempted = False
+            vertical_slice_retry_text = ""
+            vertical_slice_retry_status = "first_pass_ok" if line_ocr_count_matches else "not_attempted"
+            vertical_slice_retry_char_count = 0
+            vertical_slice_retry_count_matches = False
+            vertical_slice_mean_conf = 0.0
+            vertical_slice_min_conf = 0.0
+            if (
+                not line_ocr_count_matches
+                and expected_char_count > 0
+                and split_result.slices
+            ):
+                vertical_slice_retry_attempted = True
+                try:
+                    v_text, vertical_slice_mean_conf, vertical_slice_min_conf, _ = per_char_slice_ocr_line(
+                        raw_crop,
+                        split_result.slices,
+                        primary_engine=primary_engine,
+                        fallback_engine=None,
+                        preprocessor=default_preprocessor,
+                    )
+                    vertical_slice_retry_text = canonicalize_exact_line(v_text)
+                except Exception:
+                    vertical_slice_retry_text = ""
+                    vertical_slice_retry_status = "error"
+                else:
+                    vertical_slice_retry_char_count = self._predicted_char_count(vertical_slice_retry_text)
+                    vertical_slice_retry_count_matches = (
+                        vertical_slice_retry_char_count == expected_char_count
+                    )
+                    vertical_slice_retry_status = (
+                        "count_match" if vertical_slice_retry_count_matches else "count_mismatch"
+                    )
+            elif not line_ocr_count_matches and expected_char_count > 0 and not split_result.slices:
+                vertical_slice_retry_status = "no_slices"
+
+            if line_ocr_count_matches:
+                best_available_text = pre_char_chosen_text
+                best_text_source = "first_line_ocr"
+            elif vertical_slice_retry_count_matches and vertical_slice_retry_text.strip():
+                best_available_text = vertical_slice_retry_text
+                best_text_source = "vertical_slice_retry"
+            else:
+                best_available_text = chosen_text
+                if char_retry_applied:
+                    best_text_source = "char_fallback"
+                else:
+                    best_text_source = "pipeline_final"
+
+            if not chosen_text.strip():
+                review_status = "error"
+            elif (
+                not line_ocr_count_matches
+                and vertical_slice_retry_attempted
+                and vertical_slice_retry_count_matches
+            ):
+                review_status = "review_retry_improved"
+            elif bool(manual_verify_required):
+                review_status = "review_required"
+            elif not line_ocr_count_matches:
+                review_status = "review_required"
+            else:
+                uncertain_line = self._candidate_quality(chosen) < self.uncertain_threshold
+                if uncertain_line:
+                    review_status = "review_required"
+                else:
+                    review_status = "accepted"
+            accept_for_training = bool(review_status == "accepted")
+            needs_manual_review = bool(review_status != "accepted")
+
+            review_note = ""
+            if review_status == "review_retry_improved":
+                review_note = (
+                    "Line OCR character count did not match dead-space band count; "
+                    "per-slice OCR count matches. Likely improved but manually verify before training."
+                )
+            elif review_status == "review_required" and not line_ocr_count_matches and not vertical_slice_retry_count_matches and vertical_slice_retry_attempted:
+                review_note = (
+                    "Line and per-slice OCR character counts still disagree with detected band count; "
+                    "needs manual check."
+                )
+
+            retry_diagnostics = {
+                "vertical_slice": {
+                    "attempted": vertical_slice_retry_attempted,
+                    "first_pass_char_count": line_ocr_char_count,
+                    "pre_char_line_text": pre_char_chosen_text,
+                    "first_pass_char_count_matches": line_ocr_count_matches,
+                    "expected_char_count": expected_char_count,
+                    "retry_text": vertical_slice_retry_text,
+                    "retry_char_count": vertical_slice_retry_char_count,
+                    "retry_char_count_matches": vertical_slice_retry_count_matches,
+                    "status": vertical_slice_retry_status,
+                    "mean_confidence": float(vertical_slice_mean_conf),
+                    "min_confidence": float(vertical_slice_min_conf),
+                    "review_note": review_note,
+                }
+            }
+
             uncertain = self._candidate_quality(chosen) < self.uncertain_threshold or not chosen_text.strip()
             if manual_verify_required:
                 manual_verify_line_count += 1
@@ -310,6 +417,20 @@ class LineTranscriber:
                         "split_confidence": split_confidence,
                         "manual_verify_required": manual_verify_required,
                         "char_retry_applied": char_retry_applied,
+                        "pre_char_line_text": pre_char_chosen_text,
+                        "line_ocr_char_count": line_ocr_char_count,
+                        "line_ocr_count_matches": line_ocr_count_matches,
+                        "vertical_slice_retry_attempted": vertical_slice_retry_attempted,
+                        "vertical_slice_retry_text": vertical_slice_retry_text,
+                        "vertical_slice_retry_status": vertical_slice_retry_status,
+                        "vertical_slice_retry_char_count": vertical_slice_retry_char_count,
+                        "vertical_slice_retry_count_matches": vertical_slice_retry_count_matches,
+                        "best_available_text": best_available_text,
+                        "best_text_source": best_text_source,
+                        "review_status": review_status,
+                        "accept_for_training": accept_for_training,
+                        "needs_manual_review": needs_manual_review,
+                        "retry_diagnostics": retry_diagnostics,
                     },
                 )
             )

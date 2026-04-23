@@ -146,6 +146,40 @@ def _resolve_labeled_dicom_under_input(
     return None
 
 
+def _dicom_basename_index(input_root: Path) -> dict[str, list[Path]]:
+    """Map ``*.dcm`` basename -> paths under ``input_root`` (for re-rooted or moved copies)."""
+    if not input_root.is_dir():
+        return {}
+    out: dict[str, list[Path]] = {}
+    for p in input_root.rglob("*.dcm"):
+        out.setdefault(p.name, []).append(p)
+    for paths in out.values():
+        paths.sort(key=lambda x: str(x))
+    return out
+
+
+def _disambiguate_same_basename(
+    want: Path,
+    candidates: list[Path],
+) -> Path:
+    """If multiple files share a name, pick the one whose path shares the longest tail with ``want``."""
+    if len(candidates) == 1:
+        return candidates[0]
+    want_parts = _non_root_path_parts(want)
+    best: tuple[int, Path] = (-1, candidates[0])
+    for c in candidates:
+        cp = _non_root_path_parts(c)
+        if not want_parts or not cp:
+            continue
+        n = 0
+        for i in range(1, min(len(want_parts), len(cp)) + 1):
+            if want_parts[-i:] == cp[-i:]:
+                n = i
+        if n > best[0]:
+            best = (n, c)
+    return best[1] if best[0] > 0 else candidates[0]
+
+
 def _discovered_from_labels_only(
     *,
     input_path: Path,
@@ -156,15 +190,25 @@ def _discovered_from_labels_only(
     Build the DICOM work list from --labels only (after split filter).
 
     Resolves each label path under ``input_path`` when ``file_path`` no longer exists
-    (e.g. Linux vs Windows or C: vs D:) by trying path suffix joins and ``input/file_name``.
+    (e.g. Linux vs Windows or C: vs D:) by trying path suffix joins and ``input/file_name``,
+    then a basename lookup under the input root when the resolved label path is missing.
     """
     raw = parse_labels(labels_path, split_filter=label_splits)
+    by_basename: dict[str, list[Path]] = {}
+    if input_path.is_dir():
+        by_basename = _dicom_basename_index(input_path)
     discovered_map: dict[str, Path] = {}
     labeled_by_key: dict[str, LabeledFile] = {}
     missing: list[str] = []
 
     for lf in raw:
         resolved = _resolve_labeled_dicom_under_input(lf.path, lf.file_name, input_path)
+        if resolved is None and lf.file_name and by_basename:
+            cands = by_basename.get(lf.file_name) or []
+            if len(cands) == 1:
+                resolved = cands[0].resolve()
+            elif len(cands) > 1:
+                resolved = _disambiguate_same_basename(lf.path, cands).resolve()
         if resolved is None:
             missing.append(f"{lf.file_name} (labels path {lf.path})")
             continue
@@ -1382,6 +1426,7 @@ def _result_to_item(path: Path, result: Any, config: SweepConfig) -> dict[str, A
                 "text": text,
                 "confidence": entry.get("confidence"),
                 "parser_source": entry.get("parser_source"),
+                "uncertain": entry.get("uncertain"),
                 "manual_verify_required": bool(entry.get("manual_verify_required", False)),
                 "fallback_trigger_reason": entry.get("fallback_trigger_reason"),
                 "primary_text": entry.get("primary_text"),
@@ -1391,6 +1436,20 @@ def _result_to_item(path: Path, result: Any, config: SweepConfig) -> dict[str, A
                 "char_retry_min_char_confidence": entry.get("char_retry_min_char_confidence"),
                 "char_count_expected": entry.get("char_count_expected"),
                 "char_count_predicted": entry.get("char_count_predicted"),
+                "pre_char_line_text": entry.get("pre_char_line_text"),
+                "line_ocr_char_count": entry.get("line_ocr_char_count"),
+                "line_ocr_count_matches": entry.get("line_ocr_count_matches"),
+                "vertical_slice_retry_attempted": entry.get("vertical_slice_retry_attempted"),
+                "vertical_slice_retry_text": entry.get("vertical_slice_retry_text"),
+                "vertical_slice_retry_status": entry.get("vertical_slice_retry_status"),
+                "vertical_slice_retry_char_count": entry.get("vertical_slice_retry_char_count"),
+                "vertical_slice_retry_count_matches": entry.get("vertical_slice_retry_count_matches"),
+                "best_available_text": entry.get("best_available_text"),
+                "best_text_source": entry.get("best_text_source"),
+                "review_status": entry.get("review_status"),
+                "accept_for_training": entry.get("accept_for_training"),
+                "needs_manual_review": entry.get("needs_manual_review"),
+                "retry_diagnostics": entry.get("retry_diagnostics"),
                 "frame_index": entry.get("frame_index"),
                 "line_bbox": entry.get("line_bbox"),
                 "roi_bbox": entry.get("roi_bbox"),

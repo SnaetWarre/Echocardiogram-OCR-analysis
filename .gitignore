@@ -6,8 +6,8 @@ __pycache__/
 .cache/
 .venv-ty/
 # logs/
-# artifacts/
-# docs/ocr_redesign/
+artifacts/
+ocr_redesign/
 # docs/ocr_redesign_run_log.jsonl
 # findings
 # session

@@ -1,7 +1,7 @@
 {
   "artifact_version": 1,
-  "created_at": "2026-04-09T14:00:54.219135+00:00",
-  "labels_path": "labels\\labels.json",
+  "created_at": "2026-04-22T12:39:55.943033+00:00",
+  "labels_path": "labels/labels.json",
   "dataset_version": 1,
   "dataset_task": "exact_roi_measurement_transcription",
   "total_files": 353,

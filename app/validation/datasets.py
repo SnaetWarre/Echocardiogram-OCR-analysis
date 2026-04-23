@@ -63,6 +63,8 @@ def _resolve_home_relative_documents_path(raw_path: str) -> Path | None:
     if not normalized:
         return None
 
+    normalized = re.sub(r"^[A-Za-z]:/", "/", normalized)
+
     if normalized.startswith("~/"):
         return Path(normalized).expanduser().resolve()
 
@@ -77,6 +79,32 @@ def _resolve_home_relative_documents_path(raw_path: str) -> Path | None:
     return (documents_root.joinpath(*[part for part in remainder.split("/") if part])).resolve()
 
 
+def _resolve_windows_drive_files_p10(raw_path: str) -> Path | None:
+    """Map ``D:/…/files/p10/<tail>`` (MIMIC-style) to the repo ``database_stage/files/p10/<tail>``.
+
+    On Linux, ``Path('D:/…')`` is not absolute, so naive ``PROJECT_ROOT / raw_path`` becomes
+    ``…/Master/D:/MIMIC-…`` and never finds files. Labels often still use Windows paths.
+    """
+    normalized = raw_path.strip().replace("\\", "/")
+    m = re.match(r"^[A-Za-z]:(/.*)$", normalized)
+    if not m:
+        return None
+    rest = m.group(1).lstrip("/")
+    lower = rest.lower()
+    marker = "files/p10/"
+    idx = lower.find(marker)
+    if idx < 0:
+        return None
+    tail = rest[idx + len(marker) :].strip("/")
+    if not tail:
+        return None
+    # ``database_stage`` usually lives next to the repo (…/StageOpdracht/database_stage), not inside Master.
+    p10_in_repo = (PROJECT_ROOT / "database_stage" / "files" / "p10").resolve()
+    p10_sibling = (PROJECT_ROOT.parent / "database_stage" / "files" / "p10").resolve()
+    base = p10_in_repo if p10_in_repo.is_dir() else p10_sibling
+    return (base / tail).resolve()
+
+
 def resolve_dataset_path(file_record: dict[str, Any], dataset_path: Path) -> Path:
     raw_path = str(file_record.get("file_path", "")).strip()
     if not raw_path:
@@ -85,6 +113,10 @@ def resolve_dataset_path(file_record: dict[str, Any], dataset_path: Path) -> Pat
     migrated_home_path = _resolve_home_relative_documents_path(raw_path)
     if migrated_home_path is not None:
         return migrated_home_path
+
+    mimic_p10 = _resolve_windows_drive_files_p10(raw_path)
+    if mimic_p10 is not None:
+        return mimic_p10
 
     path = Path(raw_path).expanduser()
     if path.is_absolute() or raw_path.startswith(("/", "\\")):
