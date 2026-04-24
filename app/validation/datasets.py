@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -105,23 +106,72 @@ def _resolve_windows_drive_files_p10(raw_path: str) -> Path | None:
     return (base / tail).resolve()
 
 
+def _non_root_path_parts(path: Path) -> tuple[str, ...]:
+    out: list[str] = []
+    for part in path.parts:
+        if part in ("/", "\\"):
+            continue
+        if len(part) >= 2 and part[0].isalpha() and part[1] == ":":
+            continue
+        out.append(part)
+    return tuple(out)
+
+
+def _resolve_dataset_path_under_external_root(
+    resolved_path: Path,
+    *,
+    file_name: str,
+) -> Path | None:
+    external_root_raw = os.getenv("ECHO_OCR_DICOM_ROOT", "").strip()
+    if not external_root_raw:
+        return None
+
+    external_root = Path(external_root_raw).expanduser()
+    try:
+        external_root = external_root.resolve()
+    except OSError:
+        pass
+    if not external_root.is_dir():
+        return None
+
+    parts = _non_root_path_parts(resolved_path)
+    for i in range(len(parts)):
+        candidate = external_root.joinpath(*parts[i:])
+        if candidate.is_file():
+            return candidate.resolve()
+
+    if file_name:
+        direct = external_root / file_name
+        if direct.is_file():
+            return direct.resolve()
+    return None
+
+
 def resolve_dataset_path(file_record: dict[str, Any], dataset_path: Path) -> Path:
     raw_path = str(file_record.get("file_path", "")).strip()
     if not raw_path:
         raise ValueError("Dataset entry is missing a non-empty 'file_path'.")
+    file_name = str(file_record.get("file_name", "")).strip()
 
     migrated_home_path = _resolve_home_relative_documents_path(raw_path)
     if migrated_home_path is not None:
-        return migrated_home_path
+        resolved = migrated_home_path
+    else:
+        mimic_p10 = _resolve_windows_drive_files_p10(raw_path)
+        if mimic_p10 is not None:
+            resolved = mimic_p10
+        else:
+            path = Path(raw_path).expanduser()
+            if path.is_absolute() or raw_path.startswith(("/", "\\")):
+                resolved = path.resolve()
+            else:
+                resolved = (PROJECT_ROOT / raw_path).resolve()
 
-    mimic_p10 = _resolve_windows_drive_files_p10(raw_path)
-    if mimic_p10 is not None:
-        return mimic_p10
+    if resolved.is_file():
+        return resolved
 
-    path = Path(raw_path).expanduser()
-    if path.is_absolute() or raw_path.startswith(("/", "\\")):
-        return path.resolve()
-    return (PROJECT_ROOT / raw_path).resolve()
+    rerooted = _resolve_dataset_path_under_external_root(resolved, file_name=file_name)
+    return rerooted if rerooted is not None else resolved
 
 
 def parse_requested_splits(raw: str) -> set[str]:
