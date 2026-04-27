@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, cast
 
+from app.io.video_source_matcher import find_source_video_for_measurement_dicom
 from app.models.types import PipelineRequest
 from app.pipeline.ai_pipeline import PipelineConfig
 from app.pipeline.echo_ocr_pipeline import EchoOcrPipeline
@@ -313,10 +314,7 @@ def _build_nested_predictions(input_root: Path, items: list[dict[str, Any]]) -> 
                 "file_path": _canonical_path(dicom_path),
                 "status": _batch_status_code(item),
                 "measurements": _line_prediction_texts(item.get("line_predictions", [])),
-                "source": {
-                    "dicomid": None,
-                    "frame": None,
-                },
+                "source": _normalized_source(item.get("source")),
                 "error": item.get("error"),
             }
         )
@@ -431,9 +429,21 @@ def _append_resume_item(normalized: list[dict[str, Any]], dicom: Any) -> None:
             "measurements": [],
             "line_predictions": _resume_line_predictions(dicom_obj.get("measurements", [])),
             "metadata": {},
+            "source": _normalized_source(dicom_obj.get("source")),
             "error": None,
         }
     )
+
+
+def _normalized_source(raw: Any) -> dict[str, Any]:
+    if isinstance(raw, dict):
+        dicomid = raw.get("dicomid")
+        frame = raw.get("frame")
+        return {
+            "dicomid": str(dicomid) if isinstance(dicomid, (str, Path)) and str(dicomid).strip() else None,
+            "frame": int(frame) if isinstance(frame, int) else None,
+        }
+    return {"dicomid": None, "frame": None}
 
 
 def _resume_line_predictions(raw: Any) -> list[dict[str, Any]]:
@@ -766,6 +776,7 @@ def _result_to_item(path: Path, result: Any) -> dict[str, Any]:
         "status": "ok",
         "measurements": measurements,
         "line_predictions": line_predictions,
+        "source": {"dicomid": None, "frame": None},
         "metadata": {
             "model_name": ai_result.model_name,
             "created_at": ai_result.created_at.isoformat(),
@@ -777,6 +788,42 @@ def _result_to_item(path: Path, result: Any) -> dict[str, Any]:
         },
         "error": None,
     }
+
+
+def _enrich_items_with_source_matches(items: list[dict[str, Any]]) -> None:
+    for item in items:
+        item["source"] = _normalized_source(item.get("source"))
+
+    pending = [
+        item
+        for item in items
+        if item.get("status") == "ok"
+        and _has_structured_measurements(item.get("measurements", []))
+    ]
+    if not pending:
+        return
+
+    print(f"Source matching: {len(pending)} measurement-positive DICOMs")
+    for index, item in enumerate(pending, start=1):
+        if item["source"].get("dicomid") is not None:
+            continue
+        dicom_path_raw = str(item.get("dicom_path", "")).strip()
+        if not dicom_path_raw:
+            continue
+        path = Path(dicom_path_raw)
+        started = time.perf_counter()
+        try:
+            match = find_source_video_for_measurement_dicom(path)
+        except Exception as exc:
+            elapsed = time.perf_counter() - started
+            print(
+                f"[source-match {index}/{len(pending)}] {path.name} failed after {elapsed:.2f}s: {exc}"
+            )
+            continue
+        item["source"] = _normalized_source(match)
+        elapsed = time.perf_counter() - started
+        status = "matched" if item["source"].get("dicomid") else str(match.get("reason", "no_match"))
+        print(f"[source-match {index}/{len(pending)}] {path.name} -> {status} in {elapsed:.2f}s")
 
 
 def _print_progress(processed: int, total: int, started_at: float, ok_count: int, error_count: int) -> None:
@@ -874,6 +921,7 @@ def run_batch(args: argparse.Namespace) -> int:
         "error": error_count,
         "skipped": skipped,
     }
+    _enrich_items_with_source_matches(items)
     payload = _build_nested_predictions(input_path, items)
 
     if output_paths.json_path is not None:

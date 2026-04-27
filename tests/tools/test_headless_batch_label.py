@@ -200,6 +200,67 @@ def test_final_json_uses_root_patient_exam_map_and_plain_measurements(tmp_path: 
     assert dicom_entry["status"] == 3
 
 
+def test_source_matcher_not_called_without_structured_measurements(tmp_path: Path, monkeypatch) -> None:
+    path = (tmp_path / "patient_1" / "exam_1" / "case1.dcm").resolve()
+    path.parent.mkdir(parents=True)
+    path.write_bytes(b"x")
+    items = [
+        {
+            "dicom_path": str(path),
+            "status": "ok",
+            "measurements": [],
+            "line_predictions": [{"order": 1, "text": "LVIDd 5.2 cm"}],
+            "metadata": {},
+            "error": None,
+        }
+    ]
+    calls: list[str] = []
+
+    def _fake_matcher(*_args: object, **_kwargs: object) -> dict[str, object]:
+        calls.append("called")
+        return {"dicomid": str(path), "frame": 0, "matched": True}
+
+    monkeypatch.setattr(headless_batch_label, "find_source_video_for_measurement_dicom", _fake_matcher)
+
+    headless_batch_label._enrich_items_with_source_matches(items)
+
+    assert calls == []
+    assert items[0]["source"] == {"dicomid": None, "frame": None}
+
+
+def test_source_matcher_called_for_measurement_positive_item(tmp_path: Path, monkeypatch) -> None:
+    path = (tmp_path / "patient_1" / "exam_1" / "case1.dcm").resolve()
+    path.parent.mkdir(parents=True)
+    path.write_bytes(b"x")
+    items = [
+        {
+            "dicom_path": str(path),
+            "status": "ok",
+            "measurements": [{"name": "LVIDd", "value": "5.2", "unit": "cm"}],
+            "line_predictions": [{"order": 1, "text": "LVIDd 5.2 cm"}],
+            "metadata": {},
+            "error": None,
+        }
+    ]
+
+    monkeypatch.setattr(
+        headless_batch_label,
+        "find_source_video_for_measurement_dicom",
+        lambda *_args, **_kwargs: {
+            "dicomid": "/tmp/video.dcm",
+            "frame": 17,
+            "matched": True,
+            "score": 0.99,
+            "mae": 0.01,
+            "reason": "",
+        },
+    )
+
+    headless_batch_label._enrich_items_with_source_matches(items)
+
+    assert items[0]["source"] == {"dicomid": "/tmp/video.dcm", "frame": 17}
+
+
 def test_try_resume_from_old_and_new_json_formats(tmp_path: Path) -> None:
     old_path = tmp_path / "old.json"
     new_path = tmp_path / "new.json"
