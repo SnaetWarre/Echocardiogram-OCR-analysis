@@ -12,7 +12,7 @@ from app.pipeline.measurements.measurement_decoder import KNOWN_UNITS, canonical
 from app.pipeline.ocr.char_fallback import CharFallbackClassifier
 from app.pipeline.ocr.ocr_engines import OcrEngine, OcrResult, OcrToken
 from app.pipeline.transcription.char_slice_ocr_experimental import per_char_slice_ocr_line
-from app.pipeline.transcription.dead_space_char_splitter import split_dead_space_char_slices
+from app.pipeline.transcription.vertical_slicer import slice_line_into_vertical_slices
 
 
 def _empty_metadata() -> dict[str, Any]:
@@ -153,7 +153,7 @@ class LineTranscriber:
             if raw_crop.size == 0:
                 continue
 
-            split_result = split_dead_space_char_slices(raw_crop)
+            split_result = slice_line_into_vertical_slices(raw_crop)
             expected_char_count = int(split_result.expected_char_count)
             split_confidence = float(split_result.confidence)
 
@@ -259,7 +259,7 @@ class LineTranscriber:
                 and split_confidence >= self.char_fallback_min_split_confidence
             )
             if can_use_char_fallback:
-                retry = self.char_fallback_classifier.predict(raw_crop, split_result.slices)
+                retry = self.char_fallback_classifier.predict(split_result.preprocessed_line, split_result.slices)
                 char_retry_text = canonicalize_exact_line(retry.text)
                 char_retry_confidence = float(retry.confidence)
                 char_retry_min_confidence = float(retry.min_char_confidence)
@@ -272,7 +272,7 @@ class LineTranscriber:
                         text=char_retry_text,
                         confidence=char_retry_confidence,
                         engine_name="char-fallback",
-                        view_name="dead_space_split",
+                        view_name="vertical_slicer",
                         source="char_fallback",
                         metadata={
                             "expected_char_count": expected_char_count,
@@ -294,6 +294,7 @@ class LineTranscriber:
             vertical_slice_retry_count_matches = False
             vertical_slice_mean_conf = 0.0
             vertical_slice_min_conf = 0.0
+            vertical_retry_selected = False
             if (
                 not line_ocr_count_matches
                 and expected_char_count > 0
@@ -302,11 +303,11 @@ class LineTranscriber:
                 vertical_slice_retry_attempted = True
                 try:
                     v_text, vertical_slice_mean_conf, vertical_slice_min_conf, _ = per_char_slice_ocr_line(
-                        raw_crop,
-                        split_result.slices,
+                        split_result.preprocessed_line,
+                        split_result,
                         primary_engine=primary_engine,
                         fallback_engine=None,
-                        preprocessor=default_preprocessor,
+                        preprocessor=lambda image: image,
                     )
                     vertical_slice_retry_text = canonicalize_exact_line(v_text)
                 except Exception:
@@ -320,10 +321,33 @@ class LineTranscriber:
                     vertical_slice_retry_status = (
                         "count_match" if vertical_slice_retry_count_matches else "count_mismatch"
                     )
+                    if vertical_slice_retry_count_matches and vertical_slice_retry_text.strip() and not char_retry_applied:
+                        vertical_retry_candidate = LineOcrCandidate(
+                            text=vertical_slice_retry_text,
+                            confidence=float(vertical_slice_mean_conf),
+                            engine_name=primary_engine.name,
+                            view_name="vertical_slicer",
+                            source="vertical_slice_retry",
+                            metadata={
+                                "expected_char_count": expected_char_count,
+                                "predicted_char_count": vertical_slice_retry_char_count,
+                                "split_confidence": split_confidence,
+                            },
+                        )
+                        if self._candidate_quality(vertical_retry_candidate) >= max(
+                            0.4, self.fallback_quality_threshold - 0.2
+                        ):
+                            chosen = vertical_retry_candidate
+                            vertical_retry_selected = True
             elif not line_ocr_count_matches and expected_char_count > 0 and not split_result.slices:
                 vertical_slice_retry_status = "no_slices"
 
-            if line_ocr_count_matches:
+            chosen_text = canonicalize_exact_line(chosen.text)
+
+            if vertical_retry_selected:
+                best_available_text = vertical_slice_retry_text
+                best_text_source = "vertical_slice_retry"
+            elif line_ocr_count_matches:
                 best_available_text = pre_char_chosen_text
                 best_text_source = "first_line_ocr"
             elif vertical_slice_retry_count_matches and vertical_slice_retry_text.strip():
@@ -338,12 +362,9 @@ class LineTranscriber:
 
             if not chosen_text.strip():
                 review_status = "error"
-            elif (
-                not line_ocr_count_matches
-                and vertical_slice_retry_attempted
-                and vertical_slice_retry_count_matches
-            ):
-                review_status = "review_retry_improved"
+            elif vertical_retry_selected:
+                uncertain_line = self._candidate_quality(chosen) < self.uncertain_threshold
+                review_status = "review_retry_improved" if uncertain_line else "accepted"
             elif bool(manual_verify_required):
                 review_status = "review_required"
             elif not line_ocr_count_matches:
@@ -360,12 +381,12 @@ class LineTranscriber:
             review_note = ""
             if review_status == "review_retry_improved":
                 review_note = (
-                    "Line OCR character count did not match dead-space band count; "
+                    "Line OCR character count did not match the reliable vertical slice count; "
                     "per-slice OCR count matches. Likely improved but manually verify before training."
                 )
             elif review_status == "review_required" and not line_ocr_count_matches and not vertical_slice_retry_count_matches and vertical_slice_retry_attempted:
                 review_note = (
-                    "Line and per-slice OCR character counts still disagree with detected band count; "
+                    "Line and per-slice OCR character counts still disagree with the reliable vertical slice count; "
                     "needs manual check."
                 )
 
@@ -383,12 +404,25 @@ class LineTranscriber:
                     "mean_confidence": float(vertical_slice_mean_conf),
                     "min_confidence": float(vertical_slice_min_conf),
                     "review_note": review_note,
+                    "reliable": bool(split_result.reliable),
+                    "unreliable_reason": str(split_result.unreliable_reason),
+                    "gap_widths": list(split_result.gap_widths),
+                    "space_after": list(split_result.space_after),
+                    "space_gap_threshold_px": int(split_result.space_gap_threshold_px),
                 }
             }
 
             uncertain = self._candidate_quality(chosen) < self.uncertain_threshold or not chosen_text.strip()
             if manual_verify_required:
                 manual_verify_line_count += 1
+            rerank_candidates = [
+                self._annotate_candidate_for_rerank(candidate, expected_char_count=expected_char_count)
+                for candidate in candidates
+            ]
+            chosen_annotated = self._annotate_candidate_for_rerank(chosen, expected_char_count=expected_char_count)
+            seen_candidate_texts = {canonicalize_exact_line(candidate.text) for candidate in rerank_candidates}
+            if canonicalize_exact_line(chosen_annotated.text) not in seen_candidate_texts:
+                rerank_candidates.append(chosen_annotated)
             predictions.append(
                 LinePrediction(
                     order=segment.order,
@@ -399,7 +433,7 @@ class LineTranscriber:
                     source=chosen.source,
                     uncertain=uncertain,
                     manual_verify_required=manual_verify_required,
-                    candidates=tuple(candidates),
+                    candidates=tuple(rerank_candidates),
                     metadata={
                         "segmentation_source": segment.metadata.get("source"),
                         "token_count": segment.metadata.get("token_count", 0),
@@ -415,6 +449,8 @@ class LineTranscriber:
                         "char_count_expected": expected_char_count,
                         "char_count_predicted": char_count_predicted,
                         "split_confidence": split_confidence,
+                        "vertical_slicer_reliable": bool(split_result.reliable),
+                        "vertical_slicer_unreliable_reason": str(split_result.unreliable_reason),
                         "manual_verify_required": manual_verify_required,
                         "char_retry_applied": char_retry_applied,
                         "pre_char_line_text": pre_char_chosen_text,
@@ -515,6 +551,31 @@ class LineTranscriber:
             candidate.confidence,
             len(candidate.text.strip()),
             candidate.source.startswith("primary"),
+        )
+
+    def _annotate_candidate_for_rerank(
+        self,
+        candidate: LineOcrCandidate,
+        *,
+        expected_char_count: int,
+    ) -> LineOcrCandidate:
+        canonical = canonicalize_exact_line(candidate.text)
+        observed_char_count = self._predicted_char_count(canonical)
+        count_matches = bool(expected_char_count <= 0 or observed_char_count == expected_char_count)
+        return LineOcrCandidate(
+            text=candidate.text,
+            confidence=candidate.confidence,
+            engine_name=candidate.engine_name,
+            view_name=candidate.view_name,
+            source=candidate.source,
+            tokens=candidate.tokens,
+            metadata={
+                **candidate.metadata,
+                "char_count_expected": expected_char_count,
+                "expected_char_count": expected_char_count,
+                "line_ocr_char_count": observed_char_count,
+                "line_ocr_count_matches": count_matches,
+            },
         )
 
     def _candidate_quality(self, candidate: LineOcrCandidate) -> float:

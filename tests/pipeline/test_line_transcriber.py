@@ -271,6 +271,65 @@ def test_line_transcriber_triggers_fallback_for_unknown_unit_sparse_junk() -> No
     assert result.lines[0].text == "1 LA Diam 4.0 cm"
 
 
+def test_line_transcriber_ignores_unreliable_dead_space_count_for_merged_blob_lines() -> None:
+    roi = np.ones((24, 120), dtype=np.uint8) * 255
+    cv2.rectangle(roi, (4, 4), (112, 20), 0, -1)
+    segmentation = SegmentationResult(
+        header_trim_px=0,
+        content_bbox=(0, 0, 120, 24),
+        lines=(
+            SegmentedLine(order=0, bbox=(0, 0, 120, 24), metadata={"token_count": 1}),
+        ),
+    )
+    primary = _RecordingEngine([("LVIDd 5.2 cm", 0.96)], name="primary")
+
+    result = LineTranscriber(
+        uncertain_threshold=0.7,
+        preprocess_views={"default": lambda image: image},
+    ).transcribe(
+        roi,
+        segmentation,
+        primary_engine=primary,
+        fallback_engine=None,
+    )
+
+    assert result.lines[0].text == "LVIDd 5.2 cm"
+    assert result.lines[0].metadata["char_count_expected"] == 0
+    assert result.lines[0].metadata["fallback_trigger_reason"] == "none"
+    assert result.lines[0].metadata["review_status"] == "accepted"
+    assert result.lines[0].metadata["vertical_slicer_reliable"] is False
+
+
+def test_line_transcriber_promotes_vertical_retry_text_when_count_matches() -> None:
+    roi = np.ones((30, 120), dtype=np.uint8) * 255
+    gap_positions = (4, 14, 24, 46, 56, 78)
+    for x in gap_positions:
+        cv2.rectangle(roi, (x, 5), (x + 5, 24), 0, -1)
+    segmentation = SegmentationResult(
+        header_trim_px=0,
+        content_bbox=(0, 0, 120, 30),
+        lines=(SegmentedLine(order=0, bbox=(0, 0, 120, 30), metadata={"token_count": 1}),),
+    )
+    primary = _RecordingEngine(
+        [("%FS 6 %", 0.96), ("%", 0.9), ("F", 0.9), ("S", 0.9), ("1", 0.9), ("6", 0.9), ("%", 0.9)],
+        name="primary",
+    )
+
+    result = LineTranscriber(
+        uncertain_threshold=0.7,
+        preprocess_views={"default": lambda image: image},
+    ).transcribe(
+        roi,
+        segmentation,
+        primary_engine=primary,
+        fallback_engine=None,
+    )
+
+    assert result.lines[0].text == "%FS 16 %"
+    assert result.lines[0].source == "vertical_slice_retry"
+    assert result.lines[0].metadata["review_status"] == "accepted"
+
+
 def test_line_transcriber_accepts_char_fallback_when_guardrails_pass() -> None:
     roi = np.ones((24, 72), dtype=np.uint8) * 255
     cv2.putText(roi, "123456", (2, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, 0, 1, cv2.LINE_AA)

@@ -198,16 +198,13 @@ def _normalize_line_predictions(raw: Any) -> list[dict[str, Any]]:
     for index, entry in enumerate(cast(list[Any], raw), start=1):
         if not isinstance(entry, dict):
             continue
-        entry_obj = cast(dict[str, Any], entry)
+        entry_obj = dict(cast(dict[str, Any], entry))
         text = str(entry_obj.get("text", "")).strip()
         if not text:
             continue
-        normalized.append(
-            {
-                "order": index,
-                "text": text,
-            }
-        )
+        entry_obj["text"] = text
+        entry_obj.setdefault("order", index)
+        normalized.append(entry_obj)
     return normalized
 
 
@@ -232,25 +229,54 @@ def _dataset_ids_for_path(input_root: Path, dicom_path: Path) -> tuple[str, str]
     return patient_id, exam_id
 
 
-def _sorted_prediction_rows(patients: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
-    rows: list[dict[str, Any]] = []
-    for _patient_key, patient_entry in sorted(patients.items(), key=lambda pair: pair[0]):
-        exams_map = cast(dict[str, dict[str, Any]], patient_entry["exams"])
-        exam_rows: list[dict[str, Any]] = []
-        for _exam_key, exam_entry in sorted(exams_map.items(), key=lambda pair: pair[0]):
-            exam_rows.append(
-                {
-                    "exam_id": exam_entry["exam_id"],
-                    "dicoms": exam_entry["dicoms"],
-                }
-            )
-        rows.append(
-            {
-                "patient_id": patient_entry["patient_id"],
-                "exams": exam_rows,
-            }
-        )
-    return rows
+def _line_prediction_texts(raw: Any) -> list[str]:
+    return [str(entry.get("text", "")).strip() for entry in _normalize_line_predictions(raw)]
+
+
+def _has_textual_measurements(raw: Any) -> bool:
+    return any(text for text in _line_prediction_texts(raw))
+
+
+def _has_structured_measurements(raw: Any) -> bool:
+    if not isinstance(raw, list):
+        return False
+    for entry in cast(list[Any], raw):
+        if not isinstance(entry, dict):
+            continue
+        name = str(entry.get("name", "")).strip()
+        value = str(entry.get("value", "")).strip()
+        if name or value:
+            return True
+    return False
+
+
+def _is_character_mismatch(line_predictions: list[dict[str, Any]]) -> bool:
+    for entry in line_predictions:
+        if bool(entry.get("manual_verify_required")):
+            return True
+        if str(entry.get("fallback_trigger_reason", "")).strip() == "char_count_mismatch":
+            return True
+        if entry.get("line_ocr_count_matches") is False:
+            return True
+        review_status = str(entry.get("review_status", "")).strip().lower()
+        if review_status in {"review_required", "review_retry_improved"}:
+            return True
+    return False
+
+
+def _batch_status_code(item: dict[str, Any]) -> int:
+    line_predictions = _normalize_line_predictions(item.get("line_predictions", []))
+    has_line_text = any(str(entry.get("text", "")).strip() for entry in line_predictions)
+    has_structured_measurements = _has_structured_measurements(item.get("measurements", []))
+    has_pipeline_error = isinstance(item.get("error"), dict)
+
+    if _is_character_mismatch(line_predictions):
+        return 2
+    if has_line_text and has_structured_measurements:
+        return 3
+    if has_line_text or has_structured_measurements or has_pipeline_error:
+        return 1
+    return 0
 
 
 def _build_nested_predictions(input_root: Path, items: list[dict[str, Any]]) -> dict[str, Any]:
@@ -273,18 +299,10 @@ def _build_nested_predictions(input_root: Path, items: list[dict[str, Any]]) -> 
         patient_key = patient_id or "__unknown_patient__"
         exam_key = exam_id or "__unknown_exam__"
 
-        patient_entry = patients.setdefault(
-            patient_key,
-            {
-                "patient_id": patient_id,
-                "exams": {},
-            },
-        )
-        exams_by_id = cast(dict[str, dict[str, Any]], patient_entry["exams"])
+        exams_by_id = patients.setdefault(patient_key, {})
         exam_entry = exams_by_id.setdefault(
             exam_key,
             {
-                "exam_id": exam_id,
                 "dicoms": [],
             },
         )
@@ -293,13 +311,23 @@ def _build_nested_predictions(input_root: Path, items: list[dict[str, Any]]) -> 
             {
                 "file_name": dicom_path.name,
                 "file_path": _canonical_path(dicom_path),
-                "status": str(item.get("status", "")).strip(),
-                "measurements": _normalize_line_predictions(item.get("line_predictions", [])),
+                "status": _batch_status_code(item),
+                "measurements": _line_prediction_texts(item.get("line_predictions", [])),
+                "source": {
+                    "dicomid": None,
+                    "frame": None,
+                },
                 "error": item.get("error"),
             }
         )
 
-    return {"predictions": _sorted_prediction_rows(patients)}
+    return {
+        patient_key: {
+            exam_key: patient_entry
+            for exam_key, patient_entry in sorted(exams.items(), key=lambda pair: pair[0])
+        }
+        for patient_key, exams in sorted(patients.items(), key=lambda pair: pair[0])
+    }
 
 
 def _scoped_resume_state(
@@ -349,42 +377,37 @@ def _try_resume_from_json(path: Path | None) -> tuple[list[dict[str, Any]], set[
         payload = json.loads(path.read_text(encoding="utf-8"))
     except Exception:
         return [], set()
-    predictions_raw = payload.get("predictions", [])
-    if not isinstance(predictions_raw, list):
-        return [], set()
-
     normalized: list[dict[str, Any]] = []
-    for patient in cast(list[Any], predictions_raw):
-        if not isinstance(patient, dict):
-            continue
-        patient_obj = cast(dict[str, Any], patient)
-        exams = patient_obj.get("exams", [])
-        if not isinstance(exams, list):
-            continue
-        for exam in cast(list[Any], exams):
-            if not isinstance(exam, dict):
+    if isinstance(payload.get("predictions"), list):
+        predictions_raw = cast(list[Any], payload.get("predictions", []))
+        for patient in predictions_raw:
+            if not isinstance(patient, dict):
                 continue
-            exam_obj = cast(dict[str, Any], exam)
-            dicoms = exam_obj.get("dicoms", [])
-            if not isinstance(dicoms, list):
+            patient_obj = cast(dict[str, Any], patient)
+            exams = patient_obj.get("exams", [])
+            if not isinstance(exams, list):
                 continue
-            for dicom in cast(list[Any], dicoms):
-                if not isinstance(dicom, dict):
+            for exam in cast(list[Any], exams):
+                if not isinstance(exam, dict):
                     continue
-                dicom_obj = cast(dict[str, Any], dicom)
-                file_path = str(dicom_obj.get("file_path", "")).strip()
-                if not file_path:
+                exam_obj = cast(dict[str, Any], exam)
+                dicoms = exam_obj.get("dicoms", [])
+                if not isinstance(dicoms, list):
                     continue
-                normalized.append(
-                    {
-                        "dicom_path": _canonical_path(Path(file_path)),
-                        "status": "ok",
-                        "measurements": [],
-                        "line_predictions": _normalize_line_predictions(dicom_obj.get("measurements", [])),
-                        "metadata": {},
-                        "error": None,
-                    }
-                )
+                for dicom in cast(list[Any], dicoms):
+                    _append_resume_item(normalized, dicom)
+    elif isinstance(payload, dict):
+        for exam_map in cast(dict[str, Any], payload).values():
+            if not isinstance(exam_map, dict):
+                continue
+            for exam_obj in cast(dict[str, Any], exam_map).values():
+                if not isinstance(exam_obj, dict):
+                    continue
+                dicoms = exam_obj.get("dicoms", [])
+                if not isinstance(dicoms, list):
+                    continue
+                for dicom in cast(list[Any], dicoms):
+                    _append_resume_item(normalized, dicom)
 
     processed = {
         str(item.get("dicom_path", "")).strip()
@@ -392,6 +415,37 @@ def _try_resume_from_json(path: Path | None) -> tuple[list[dict[str, Any]], set[
         if str(item.get("dicom_path", "")).strip()
     }
     return normalized, processed
+
+
+def _append_resume_item(normalized: list[dict[str, Any]], dicom: Any) -> None:
+    if not isinstance(dicom, dict):
+        return
+    dicom_obj = cast(dict[str, Any], dicom)
+    file_path = str(dicom_obj.get("file_path", "")).strip()
+    if not file_path:
+        return
+    normalized.append(
+        {
+            "dicom_path": _canonical_path(Path(file_path)),
+            "status": "ok",
+            "measurements": [],
+            "line_predictions": _resume_line_predictions(dicom_obj.get("measurements", [])),
+            "metadata": {},
+            "error": None,
+        }
+    )
+
+
+def _resume_line_predictions(raw: Any) -> list[dict[str, Any]]:
+    if not isinstance(raw, list):
+        return []
+    if all(isinstance(entry, str) for entry in raw):
+        return [
+            {"order": index, "text": str(entry).strip()}
+            for index, entry in enumerate(cast(list[Any], raw), start=1)
+            if str(entry).strip()
+        ]
+    return _normalize_line_predictions(raw)
 
 
 def _measurement_rows(item: dict[str, Any]) -> list[dict[str, str]]:

@@ -236,6 +236,46 @@ def test_lexicon_reranker_repairs_decimal_scale_outlier() -> None:
     assert ranked[0].candidate.text == "AV VTI 2.8 cm"
 
 
+def test_lexicon_reranker_keeps_verified_char_count_candidate() -> None:
+    reranker = LexiconReranker(
+        LexiconArtifact(
+            artifact_version=1,
+            created_at="now",
+            labels_path="labels/labels.json",
+            dataset_version=1,
+            dataset_task="exact_roi_measurement_transcription",
+            total_files=1,
+            total_lines=1,
+            exact_line_frequencies={"%FS 16 %": 2},
+            label_frequencies={"%fs": 2},
+            label_family_lines={"%fs": ["%FS 16 %"]},
+            label_unit_frequencies={"%fs": {"%": 2}},
+            label_order_frequencies={"%fs": {"4": 2}},
+            label_value_stats={"%fs": NumericStats(count=2, min=5.0, max=8.0, mean=6.0)},
+            token_frequencies={"fs": 2},
+            unit_frequencies={"%": 2},
+            prefix_frequencies={},
+            line_pattern_frequencies={"%fs <VALUE> <UNIT:%>": 2},
+        )
+    )
+
+    ranked = reranker.rank_candidates(
+        [
+            LineOcrCandidate(
+                text="%FS 16 %",
+                confidence=0.95,
+                engine_name="glm-ocr",
+                view_name="default",
+                source="primary",
+                metadata={"char_count_expected": 6, "line_ocr_count_matches": True},
+            ),
+        ],
+        line_order=3,
+    )
+
+    assert ranked[0].candidate.text == "%FS 16 %"
+
+
 def test_lexicon_reranker_drops_unexpected_prefix_for_known_family() -> None:
     reranker = LexiconReranker(
         LexiconArtifact(

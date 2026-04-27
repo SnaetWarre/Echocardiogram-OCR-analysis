@@ -12,7 +12,7 @@ from typing import Any
 import cv2
 import numpy as np
 
-from app.pipeline.transcription.dead_space_char_splitter import split_dead_space_char_slices
+from app.pipeline.transcription.vertical_slicer import slice_line_into_vertical_slices
 
 
 def _default_charset() -> str:
@@ -258,7 +258,7 @@ def build_dataset(
             continue
 
         rendered = _render_line(expected_text)
-        split = split_dead_space_char_slices(rendered)
+        split = slice_line_into_vertical_slices(rendered)
         split_ok = (
             split.expected_char_count == len(expected_chars)
             and split.confidence >= float(min_split_confidence)

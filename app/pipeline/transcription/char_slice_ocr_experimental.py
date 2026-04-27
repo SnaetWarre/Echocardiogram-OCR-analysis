@@ -13,7 +13,7 @@ from collections.abc import Callable
 import numpy as np
 
 from app.pipeline.ocr.ocr_engines import OcrEngine
-from app.pipeline.transcription.dead_space_char_splitter import CharSlice
+from app.pipeline.transcription.vertical_slicer import VerticalSliceResult, reconstruct_slice_text
 
 
 def _one_visible_char(ocr_text: str) -> str:
@@ -25,7 +25,7 @@ def _one_visible_char(ocr_text: str) -> str:
 
 def per_char_slice_ocr_line(
     line_image: np.ndarray,
-    slices: tuple[CharSlice, ...],
+    slice_result: VerticalSliceResult,
     *,
     primary_engine: OcrEngine,
     fallback_engine: OcrEngine | None = None,
@@ -38,6 +38,7 @@ def per_char_slice_ocr_line(
 
     Returns ``(line_text, mean_confidence, min_confidence, per_slice_confidences)``.
     """
+    slices = slice_result.slices
     if not slices or line_image.size == 0:
         return "", 0.0, 0.0, ()
 
@@ -90,7 +91,7 @@ def per_char_slice_ocr_line(
         parts.append(_one_visible_char(text))
         confs.append(conf)
 
-    line_text = "".join(parts)
+    line_text = reconstruct_slice_text(slice_result, tuple(parts))
     if not confs:
         return line_text, 0.0, 0.0, ()
     mean_c = float(sum(confs) / len(confs))

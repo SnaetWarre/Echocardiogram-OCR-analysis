@@ -34,12 +34,8 @@ from app.pipeline.echo_ocr_pipeline import (
 from app.pipeline.layout.echo_ocr_box_detector import TopLeftBlueGrayBoxDetector
 from app.pipeline.layout.line_segmenter import LineSegmenter
 from app.pipeline.ocr.ocr_engines import UnavailableOcrEngineError, build_engine
-from app.pipeline.transcription.dead_space_char_splitter import (
-    CharSlice,
-    DeadSpaceSplitResult,
-    split_dead_space_char_slices,
-)
 from app.pipeline.transcription.line_transcriber import crop_segment
+from app.pipeline.transcription.vertical_slicer import CharSlice, VerticalSliceResult, slice_line_into_vertical_slices
 from app.tools.batch.sweep_preprocessing_headless import _broad_configs, _build_preprocess_views
 from app.tools.char_fallback_dataset_bootstrap import (
     _augment_char_crop,
@@ -80,7 +76,7 @@ def _uniform_ink_span_split(
     expected_char_count: int,
     *,
     min_split_confidence: float,
-) -> DeadSpaceSplitResult | None:
+) -> VerticalSliceResult | None:
     """When column-based dead space does not yield one box per label char, split the ink span evenly."""
     if expected_char_count <= 0:
         return None
@@ -113,17 +109,26 @@ def _uniform_ink_span_split(
         slices.append(
             CharSlice(
                 x=int(xi0),
-                y=int(y1),
+                y=0,
                 width=max(1, int(xi1 - xi0)),
-                height=max(1, int(y2 - y1)),
+                height=int(h),
                 ink_density=ink_density,
+                local_ink_top=int(y1),
+                local_ink_bottom=int(y2),
             )
         )
-    return DeadSpaceSplitResult(
+    return VerticalSliceResult(
+        preprocessed_line=gray,
+        binary_mask=binary,
         slices=tuple(slices),
         expected_char_count=len(slices),
         confidence=float(min_split_confidence),
+        reliable=True,
         gap_count=max(0, n - 1),
+        gap_widths=tuple(max(0, slices[idx].x - (slices[idx - 1].x + slices[idx - 1].width)) for idx in range(1, len(slices))),
+        space_after=tuple(False for _ in range(max(0, len(slices) - 1))),
+        space_gap_threshold_px=0,
+        cut_columns=tuple(int(sl.x + sl.width) for sl in slices[:-1]),
     )
 
 
@@ -291,7 +296,7 @@ def build_labeled_roi_dataset(
             if raw_line.size == 0:
                 continue
 
-            split = split_dead_space_char_slices(raw_line)
+            split = slice_line_into_vertical_slices(raw_line)
             split_method = "dead_space"
             if (
                 split.expected_char_count != len(expected_chars)

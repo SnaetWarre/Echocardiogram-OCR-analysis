@@ -9,7 +9,7 @@ import cv2
 import numpy as np
 
 from app.pipeline.ocr.char_cnn_arch import build_char_fallback_cnn
-from app.pipeline.transcription.dead_space_char_splitter import CharSlice
+from app.pipeline.transcription.vertical_slicer import CharSlice
 
 try:
     import torch
@@ -114,9 +114,10 @@ class TorchCharCnnClassifier:
         valid: list[bool] = []
         for s in slices:
             x1 = max(0, int(s.x))
-            y1 = max(0, int(s.y))
+            y1 = max(0, int(s.local_ink_top if s.local_ink_bottom > s.local_ink_top else s.y))
             x2 = min(gray.shape[1], x1 + int(s.width))
-            y2 = min(gray.shape[0], y1 + int(s.height))
+            raw_y2 = int(s.local_ink_bottom if s.local_ink_bottom > s.local_ink_top else (s.y + s.height))
+            y2 = min(gray.shape[0], raw_y2)
             if x2 <= x1 or y2 <= y1:
                 valid.append(False)
                 batch.append(
@@ -202,9 +203,14 @@ class TemplateCharFallbackClassifier:
         confidences: list[float] = []
         for char_slice in slices:
             x1 = max(0, int(char_slice.x))
-            y1 = max(0, int(char_slice.y))
+            y1 = max(0, int(char_slice.local_ink_top if char_slice.local_ink_bottom > char_slice.local_ink_top else char_slice.y))
             x2 = min(gray.shape[1], x1 + int(char_slice.width))
-            y2 = min(gray.shape[0], y1 + int(char_slice.height))
+            raw_y2 = int(
+                char_slice.local_ink_bottom
+                if char_slice.local_ink_bottom > char_slice.local_ink_top
+                else (char_slice.y + char_slice.height)
+            )
+            y2 = min(gray.shape[0], raw_y2)
             if x2 <= x1 or y2 <= y1:
                 continue
             crop = gray[y1:y2, x1:x2]

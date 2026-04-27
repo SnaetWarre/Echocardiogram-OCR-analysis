@@ -297,6 +297,8 @@ class LexiconReranker:
         repaired_text = canonicalize_exact_line(" ".join(parts))
         if not repaired_text:
             return None
+        if self._changes_verified_char_count(candidate, repaired_text):
+            return None
         return LineOcrCandidate(
             text=repaired_text,
             confidence=max(0.0, candidate.confidence - 0.04),
@@ -357,8 +359,7 @@ class LexiconReranker:
             or repaired_unit != decoded.unit
             or repaired_value != decoded.value
         ):
-            repairs.append(
-                self._build_repaired_candidate(
+            repaired_candidate = self._build_repaired_candidate(
                     candidate,
                     prefix=repaired_prefix,
                     label=decoded.label,
@@ -371,7 +372,8 @@ class LexiconReranker:
                         "lexicon_scaled_value_from": decoded.value,
                     },
                 )
-            )
+            if repaired_candidate is not None:
+                repairs.append(repaired_candidate)
 
         return repairs
 
@@ -435,8 +437,8 @@ class LexiconReranker:
             formatted = f"{scaled_value:.0f}"
         return formatted.rstrip("0").rstrip(".") if "." in formatted else formatted
 
-    @staticmethod
     def _build_repaired_candidate(
+        self,
         candidate: LineOcrCandidate,
         *,
         prefix: str | None,
@@ -445,7 +447,7 @@ class LexiconReranker:
         unit: str | None,
         tag: str,
         metadata: dict[str, object],
-    ) -> LineOcrCandidate:
+    ) -> LineOcrCandidate | None:
         parts: list[str] = []
         if prefix:
             parts.append(prefix)
@@ -456,6 +458,8 @@ class LexiconReranker:
         if unit:
             parts.append(unit)
         repaired_text = canonicalize_exact_line(" ".join(parts))
+        if self._changes_verified_char_count(candidate, repaired_text):
+            return None
         return LineOcrCandidate(
             text=repaired_text,
             confidence=max(0.0, candidate.confidence - 0.03),
@@ -470,6 +474,24 @@ class LexiconReranker:
                 "lexicon_repair_from": candidate.text,
             },
         )
+
+    @staticmethod
+    def _changes_verified_char_count(candidate: LineOcrCandidate, repaired_text: str) -> bool:
+        if not repaired_text:
+            return False
+        if candidate.metadata.get("line_ocr_count_matches") is not True:
+            return False
+        expected_raw = candidate.metadata.get("char_count_expected") or candidate.metadata.get("expected_char_count")
+        try:
+            expected_count = int(expected_raw)
+        except (TypeError, ValueError):
+            expected_count = 0
+        if expected_count <= 0:
+            return False
+
+        original_count = sum(1 for ch in canonicalize_exact_line(candidate.text) if not ch.isspace())
+        repaired_count = sum(1 for ch in canonicalize_exact_line(repaired_text) if not ch.isspace())
+        return original_count == expected_count and repaired_count != expected_count
 
     def _best_matching_family(self, label: str, unit: str, *, line_order: int) -> tuple[str, float] | None:
         label_key = label_family_key(label)
