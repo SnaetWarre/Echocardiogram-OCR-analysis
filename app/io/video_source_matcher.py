@@ -28,6 +28,8 @@ class _PreparedVideo:
 
 
 _DEFAULT_ZOOM_CROP_FRACTIONS: tuple[float, ...] = (1.0, 0.92, 0.84, 0.76, 0.68, 0.6)
+_DEFAULT_MAX_EDGE = 192
+_PEARSON_TIE_EPSILON = 1e-6
 
 
 def discover_exam_video_candidates(
@@ -50,7 +52,7 @@ def build_matcher_scope_for_measurement_dicom(
     measurement_path: Path,
     exam_root: Path | None = None,
     *,
-    max_edge: int = 320,
+    max_edge: int = _DEFAULT_MAX_EDGE,
 ) -> dict[str, Any]:
     measurement = measurement_path.expanduser().resolve()
     measurement_series = load_dicom_series(measurement, load_pixels=False)
@@ -75,7 +77,7 @@ def rank_video_sources_for_measurement_dicom(
     measurement_path: Path,
     exam_root: Path | None = None,
     *,
-    max_edge: int = 320,
+    max_edge: int = _DEFAULT_MAX_EDGE,
     min_pearson: float = 0.72,
     min_margin: float = 0.015,
     frame_step: int = 1,
@@ -150,7 +152,7 @@ def find_source_video_for_measurement_dicom(
     measurement_path: Path,
     exam_root: Path | None = None,
     *,
-    max_edge: int = 320,
+    max_edge: int = _DEFAULT_MAX_EDGE,
     min_pearson: float = 0.72,
     min_margin: float = 0.015,
     frame_step: int = 1,
@@ -165,6 +167,10 @@ def find_source_video_for_measurement_dicom(
         frame_step=frame_step,
         zoom_crop_fractions=zoom_crop_fractions,
     )
+    return best_source_match_from_ranked(ranked)
+
+
+def best_source_match_from_ranked(ranked: list[dict[str, Any]]) -> dict[str, Any]:
     if not ranked:
         return {
             "dicomid": None,
@@ -371,23 +377,98 @@ def _best_frame_match(
     best_mae = float("inf")
     best_crop_fraction = 1.0
 
-    for pos, frame in enumerate(frames):
-        for crop_fraction in crop_fractions:
-            candidate_view = _resize_nearest(_center_crop(frame, crop_fraction=crop_fraction), frame.shape)
-            pixels = candidate_view.reshape(-1)[mask_flat].astype(np.float32, copy=False)
-            score = _pearson_from_values(pixels, query_values)
-            mae = float(np.mean(np.abs(pixels - query_values)) / 255.0)
-            if (
-                score > best_score
-                or (score == best_score and mae < best_mae)
-                or (score == best_score and mae == best_mae and crop_fraction > best_crop_fraction)
-            ):
-                best_frame_index = int(frame_indices[pos])
-                best_score = float(score)
-                best_mae = float(mae)
-                best_crop_fraction = float(crop_fraction)
+    for crop_fraction in crop_fractions:
+        candidate_values = _masked_center_crop_values(
+            frames,
+            mask_flat=mask_flat,
+            crop_fraction=crop_fraction,
+        )
+        scores, maes = _pearson_and_mae_from_values(candidate_values, query_values)
+        pos = _best_score_position(scores, maes, frame_indices)
+        score = float(scores[pos])
+        mae = float(maes[pos])
+        if (
+            score > best_score
+            or (score == best_score and mae < best_mae)
+            or (score == best_score and mae == best_mae and crop_fraction > best_crop_fraction)
+        ):
+            best_frame_index = int(frame_indices[pos])
+            best_score = score
+            best_mae = mae
+            best_crop_fraction = float(crop_fraction)
 
     return best_frame_index, best_score, best_mae, best_crop_fraction
+
+
+def _best_score_position(
+    scores: np.ndarray,
+    maes: np.ndarray,
+    frame_indices: np.ndarray,
+) -> int:
+    max_score = float(scores.max())
+    near_best = np.flatnonzero(scores >= max_score - _PEARSON_TIE_EPSILON)
+    if near_best.size == 1:
+        return int(near_best[0])
+    order = np.lexsort((frame_indices[near_best], maes[near_best]))
+    return int(near_best[int(order[0])])
+
+
+def _masked_center_crop_values(
+    frames: np.ndarray,
+    *,
+    mask_flat: np.ndarray,
+    crop_fraction: float,
+) -> np.ndarray:
+    if frames.ndim != 3:
+        raise ValueError(f"Expected frame stack (N, H, W), got {frames.shape}")
+    if crop_fraction >= 0.999:
+        return frames.reshape(frames.shape[0], -1)[:, mask_flat]
+
+    h, w = frames.shape[1:3]
+    crop_h = max(1, min(h, int(round(h * crop_fraction))))
+    crop_w = max(1, min(w, int(round(w * crop_fraction))))
+    top = max(0, (h - crop_h) // 2)
+    left = max(0, (w - crop_w) // 2)
+
+    mask = mask_flat.reshape(h, w)
+    mask_y, mask_x = np.nonzero(mask)
+    y_idx = np.clip(np.round(np.linspace(0, crop_h - 1, h)).astype(int), 0, crop_h - 1)
+    x_idx = np.clip(np.round(np.linspace(0, crop_w - 1, w)).astype(int), 0, crop_w - 1)
+    source_y = top + y_idx[mask_y]
+    source_x = left + x_idx[mask_x]
+    return frames[:, source_y, source_x]
+
+
+def _pearson_and_mae_from_values(
+    candidate_values: np.ndarray,
+    query_values: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    if candidate_values.ndim != 2:
+        raise ValueError(f"Expected value matrix (N, pixels), got {candidate_values.shape}")
+    values = candidate_values.astype(np.float32, copy=False)
+    query = query_values.astype(np.float32, copy=False)
+    if values.shape[1] != query.shape[0]:
+        raise ValueError(
+            f"Candidate/query pixel count mismatch: {values.shape[1]} != {query.shape[0]}"
+        )
+
+    query_centered = query - float(query.mean())
+    query_norm = float(np.linalg.norm(query_centered))
+    maes = np.mean(np.abs(values - query), axis=1) / 255.0
+    if query_norm <= 1e-9:
+        exact = np.all(values == query, axis=1)
+        return exact.astype(np.float32), maes.astype(np.float32, copy=False)
+
+    row_means = values.mean(axis=1)
+    row_sumsq = np.einsum("ij,ij->i", values, values, optimize=True)
+    centered_sumsq = row_sumsq - values.shape[1] * row_means * row_means
+    candidate_norms = np.sqrt(np.maximum(centered_sumsq, 0.0))
+    denom = candidate_norms * query_norm
+    dots = values @ query_centered
+    scores = np.zeros(values.shape[0], dtype=np.float32)
+    valid = denom > 1e-9
+    scores[valid] = dots[valid] / denom[valid]
+    return np.clip(scores, -1.0, 1.0), maes.astype(np.float32, copy=False)
 
 
 def _normalize_zoom_crop_fractions(
