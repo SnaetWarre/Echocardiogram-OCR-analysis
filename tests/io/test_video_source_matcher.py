@@ -183,7 +183,7 @@ def test_exam_video_cache_reuses_decoded_candidates_across_measurement_queries(
     assert load_counts[video_path.name] == 2
 
 
-def test_build_matcher_scope_uses_center_fifty_percent_window(tmp_path: Path) -> None:
+def test_build_matcher_scope_uses_ultrasound_sector_window(tmp_path: Path) -> None:
     exam = tmp_path / "patient" / "exam"
     exam.mkdir(parents=True)
     measurement = write_dicom(exam / "measurement.dcm", _base_frame(3, shape=(80, 100)))
@@ -192,9 +192,11 @@ def test_build_matcher_scope_uses_center_fifty_percent_window(tmp_path: Path) ->
 
     mask = scope["mask"]
     assert mask.shape == (80, 100)
-    assert bool(mask[20, 25]) is True
-    assert bool(mask[59, 74]) is True
-    assert bool(mask[19, 25]) is False
-    assert bool(mask[60, 74]) is False
-    assert bool(mask[20, 24]) is False
-    assert bool(mask[59, 75]) is False
+    assert bool(mask[8, 50]) is True
+    assert bool(mask[20, 50]) is True
+    assert bool(mask[60, 50]) is True
+    assert bool(mask[70, 50]) is False
+    assert bool(mask[20, 25]) is False
+    assert bool(mask[20, 75]) is False
+    assert bool(mask[79, 5]) is False
+    assert bool(mask[79, 95]) is False

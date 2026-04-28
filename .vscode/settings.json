@@ -1,13 +1,6 @@
 {
     "python-envs.defaultEnvManager": "ms-python.python:conda",
     "python-envs.defaultPackageManager": "ms-python.python:conda",
-    "python-envs.pythonProjects": [
-        {
-            "path": "/home/warre/Documents/howest/Semester_5/Stage/StageOpdracht/Master",
-            "envManager": "ms-python.python:conda",
-            "packageManager": "ms-python.python:conda"
-        }
-    ],
     "python.condaPath": "/home/warre/miniforge3/condabin/conda",
     "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
     "python.venvPath": "${workspaceFolder}",

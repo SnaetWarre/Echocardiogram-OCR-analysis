@@ -280,7 +280,7 @@ def _to_gray_frame(frame: np.ndarray) -> np.ndarray:
 
 
 def _build_query_mask(frame: np.ndarray) -> np.ndarray:
-    center_mask = _central_crop_mask(frame.shape[:2], margin_fraction=0.25)
+    center_mask = _ultrasound_footprint_mask(frame.shape[:2])
     detector = TopLeftBlueGrayBoxDetector()
     detection = detector.detect(frame)
     if detection.present and detection.bbox is not None:
@@ -296,6 +296,23 @@ def _build_query_mask(frame: np.ndarray) -> np.ndarray:
         if int(mask.sum()) >= 256:
             return mask
     return center_mask
+
+
+def _ultrasound_footprint_mask(shape: tuple[int, int]) -> np.ndarray:
+    h, w = shape
+    yy, xx = np.indices((h, w), dtype=np.float32)
+    apex_x = (w - 1) * 0.5
+    apex_y = (h - 1) * 0.08
+    radius = max(1.0, (h - 1) * 0.70)
+    half_angle = np.deg2rad(45.0)
+
+    dx = xx - apex_x
+    dy = yy - apex_y
+    radial = np.hypot(dx, dy)
+    angle = np.abs(np.arctan2(dx, dy))
+
+    mask = (dy >= 0.0) & (radial <= radius) & (angle <= half_angle)
+    return mask.astype(bool, copy=False)
 
 
 def _central_crop_mask(shape: tuple[int, int], *, margin_fraction: float) -> np.ndarray:
